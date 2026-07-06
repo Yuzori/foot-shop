@@ -32,7 +32,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ message: "Non autorisé." }, { status: 401 });
   }
   return NextResponse.json({
-    smtp: mailConfig.enabled,
+    provider: mailConfig.provider,
+    smtp: mailConfig.smtpEnabled,
+    resend: mailConfig.resendEnabled,
     adminSecretSet: Boolean(mailConfig.adminSecret),
   });
 }

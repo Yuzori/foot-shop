@@ -1,27 +1,22 @@
 /**
  * Email configuration (server-only).
  *
- * Hostinger Email — contact@foot-shop.fr (hPanel → Emails → Connect Apps & Devices) :
+ * Production sur Render : Hostinger SMTP (smtp.hostinger.com) est souvent
+ * injoignable (Connection timeout). Utiliser Resend (API HTTP) :
  *
- *   SMTP_HOST=smtp.hostinger.com
- *   SMTP_PORT=465
- *   SMTP_SECURE=1
- *   SMTP_USER=contact@foot-shop.fr
- *   SMTP_PASSWORD=...                    (mot de passe de la boîte Hostinger)
+ *   RESEND_API_KEY=re_...
  *   MAIL_FROM="Foot Shop <contact@foot-shop.fr>"
- *   CONTACT_EMAIL=contact@foot-shop.fr
- *   MAIL_REPLY_TO=contact@foot-shop.fr
  *
- * Si le port 465 échoue, essayez :
+ * Vérifier le domaine foot-shop.fr dans le dashboard Resend (DNS SPF/DKIM).
+ *
+ * SMTP Hostinger (local / si ça passe depuis votre hébergeur) :
+ *   SMTP_HOST=smtp.hostinger.com
  *   SMTP_PORT=587
  *   SMTP_SECURE=0
+ *   SMTP_USER=contact@foot-shop.fr
+ *   SMTP_PASSWORD=...
  *
- * Anti-spam (DNS chez Hostinger, pas dans le code) :
- *   - SPF : enregistrement TXT incluant Hostinger
- *   - DKIM : activé dans hPanel → Emails → Authentification email
- *   - DMARC : enregistrement TXT _dmarc.foot-shop.fr
- *
- * ADMIN_SECRET, SUPPLIER_EMAIL, CRON_SECRET — inchangés.
+ * Forcer le transport : MAIL_PROVIDER=resend | smtp
  */
 import "server-only";
 
@@ -33,6 +28,8 @@ function extractEmailAddress(value: string): string {
 const smtpUser = process.env.SMTP_USER ?? "";
 const mailFrom = process.env.MAIL_FROM ?? "Foot Shop <contact@foot-shop.fr>";
 const contactEmail = process.env.CONTACT_EMAIL ?? "contact@foot-shop.fr";
+const resendApiKey = process.env.RESEND_API_KEY ?? "";
+const mailProvider = (process.env.MAIL_PROVIDER ?? "").trim().toLowerCase();
 
 if (
   process.env.NODE_ENV !== "production" &&
@@ -45,6 +42,8 @@ if (
   );
 }
 
+export type MailProvider = "resend" | "smtp" | "none";
+
 export const mailConfig = {
   host: process.env.SMTP_HOST ?? "",
   port: Number(process.env.SMTP_PORT ?? "465"),
@@ -55,9 +54,23 @@ export const mailConfig = {
   replyTo: process.env.MAIL_REPLY_TO ?? contactEmail,
   contactEmail,
   adminSecret: process.env.ADMIN_SECRET ?? "",
+  resendApiKey,
   connectionTimeoutMs: Number(process.env.SMTP_CONNECTION_TIMEOUT_MS ?? "10000"),
   socketTimeoutMs: Number(process.env.SMTP_SOCKET_TIMEOUT_MS ?? "15000"),
-  get enabled(): boolean {
+  get smtpEnabled(): boolean {
     return Boolean(this.host && this.user && this.password);
+  },
+  get resendEnabled(): boolean {
+    return Boolean(this.resendApiKey);
+  },
+  get provider(): MailProvider {
+    if (mailProvider === "resend" && this.resendEnabled) return "resend";
+    if (mailProvider === "smtp" && this.smtpEnabled) return "smtp";
+    if (this.resendEnabled) return "resend";
+    if (this.smtpEnabled) return "smtp";
+    return "none";
+  },
+  get enabled(): boolean {
+    return this.provider !== "none";
   },
 } as const;
