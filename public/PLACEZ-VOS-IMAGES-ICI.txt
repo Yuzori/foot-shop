@@ -1,0 +1,30 @@
+PLACEZ VOS IMAGES DANS CE DOSSIER (public/)
+============================================
+
+Next.js sert uniquement les fichiers de ce dossier "public" via des URLs
+commençant par "/". Déposez ici :
+
+  • logo.png       ->  logo du site (header + footer)        ->  /logo.png
+  • icon.png       ->  icône onglet navigateur (favicon)     ->  /icon.png
+
+  Fonds DESKTOP :
+  • bkd.jpg        ->  fond du hero (page d'accueil)         ->  /bkd.jpg
+  • bkd2.jpg       ->  fond du bloc éditorial "flocage"      ->  /bkd2.jpg
+  • bkd3.jpg       ->  fond de la newsletter (bas de page)   ->  /bkd3.jpg
+
+  Fonds TÉLÉPHONE (mêmes noms + "-tel") pour éviter le rognage sur mobile :
+  • bkd-tel.jpg    ->  version mobile du hero
+  • bkd2-tel.jpg   ->  version mobile du bloc éditorial
+  • bkd3-tel.jpg   ->  version mobile de la newsletter
+
+  World Cup (bannière section accueil + nav) :
+  • worldcup-banner.jpg     ->  bannière desktop World Cup   ->  /worldcup-banner.jpg
+  • worldcup-banner-tel.jpg ->  bannière mobile World Cup    ->  /worldcup-banner-tel.jpg
+
+Important :
+  - Gardez exactement ces noms de fichiers.
+  - Sur mobile, la version "-tel" est utilisée automatiquement si elle existe.
+  - Si un fichier est absent, le site reste fonctionnel (logo -> texte
+    "Foot Shop", fond -> couleur premium par défaut).
+
+Vous pouvez supprimer ce fichier texte une fois vos images en place.

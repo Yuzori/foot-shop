@@ -1,0 +1,34 @@
+# Blueprint Render — Foot Shop (Next.js)
+# Dashboard → New → Blueprint → connecter le repo GitHub
+
+services:
+  - type: web
+    name: foot-shop
+    runtime: node
+    region: frankfurt
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: NODE_ENV
+        value: production
+
+  - type: cron
+    name: foot-shop-notify
+    schedule: "*/30 * * * *"
+    region: frankfurt
+    plan: free
+    runtime: node
+    buildCommand: npm ci
+    startCommand: node scripts/cron-notify.mjs
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      # À définir après le 1er déploiement (même valeur que sur le service web) :
+      - key: CRON_TARGET_URL
+        sync: false
+      - key: CRON_SECRET
+        sync: false

@@ -1,0 +1,14 @@
+{
+  "_comment": "Optionnel : liens Taobao/1688 pour gagner du temps sur BBDBuy (coller le lien au lieu de chercher). Sans lien, l'email contient déjà nom + taille + image.",
+  "products": {
+    "25": {
+      "supplierUrl": "https://item.taobao.com/item.htm?id=EXEMPLE",
+      "label": "Maillot PSG Domicile Stadium Nike 26/27",
+      "supplierNotes": "Version fan, vérifier patch Ligue 1",
+      "variants": {
+        "0": { "size": "M" },
+        "68": { "size": "L" }
+      }
+    }
+  }
+}
