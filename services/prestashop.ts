@@ -1254,6 +1254,41 @@ class PrestaShopService {
     }
   }
 
+  private async lookupOrderByCartId(
+    cartId: string,
+  ): Promise<{ orderId: string | null; reference: string | null }> {
+    const lookup = await this.request<{ orders?: PsOrder[] }>("/orders", {
+      display: "[id,reference]",
+      "filter[id_cart]": cartId,
+      sort: "[id_DESC]",
+      limit: 1,
+    });
+    const found = asArray<PsOrder>(lookup.data as never, "orders")[0];
+    if (!found?.id) return { orderId: null, reference: null };
+    return {
+      orderId: String(found.id),
+      reference: found.reference ? String(found.reference) : null,
+    };
+  }
+
+  /** POST /orders peut renvoyer 500 après création (ex. e-mail « payment » manquant). */
+  private isRecoverableOrderPostError(
+    status: number | null,
+    error: string | null,
+  ): boolean {
+    if (status !== null && status < 400) return true;
+    if (!error) return false;
+    const lower = error.toLowerCase();
+    return (
+      lower.includes("modèle d'e-mail") ||
+      lower.includes("modele d'e-mail") ||
+      lower.includes("email template") ||
+      lower.includes("e-mail template") ||
+      lower.includes("mail template is missing") ||
+      lower.includes("template is missing")
+    );
+  }
+
   async createOrder(input: CreateOrderInput): Promise<{
     reference: string | null;
     orderId: string | null;
@@ -1340,18 +1375,20 @@ class PrestaShopService {
           ? String(orderRes.data.order.reference)
           : null;
 
-      // PrestaShop crée parfois la commande mais renvoie du XML ou un JSON sans id.
-      if (!orderId && orderRes.status !== null && orderRes.status < 400) {
-        const lookup = await this.request<{ orders?: PsOrder[] }>("/orders", {
-          display: "[id,reference]",
-          "filter[id_cart]": cartId,
-          sort: "[id_DESC]",
-          limit: 1,
-        });
-        const found = asArray<PsOrder>(lookup.data as never, "orders")[0];
-        if (found?.id) {
-          orderId = String(found.id);
-          reference = found.reference ? String(found.reference) : reference;
+      // PrestaShop crée parfois la commande mais renvoie du XML, un JSON sans id,
+      // ou une 500 si l'envoi d'e-mail échoue (modèle « payment » manquant, etc.).
+      if (
+        !orderId &&
+        this.isRecoverableOrderPostError(orderRes.status, orderRes.error)
+      ) {
+        const recovered = await this.lookupOrderByCartId(cartId);
+        orderId = recovered.orderId;
+        reference = recovered.reference ?? reference;
+        if (orderId && orderRes.error) {
+          console.warn(
+            `[prestashop] order recovered after POST /orders error (cart=${cartId} order=${orderId})`,
+            orderRes.error,
+          );
         }
       }
 
