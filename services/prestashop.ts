@@ -1330,24 +1330,49 @@ class PrestaShopService {
           secureKey: input.secureKey,
         }),
       );
-      const order = orderRes.data?.order;
-      if (!order?.id)
+
+      let orderId =
+        orderRes.data?.order?.id != null
+          ? String(orderRes.data.order.id)
+          : extractCreatedId(orderRes.data, "order");
+      let reference =
+        orderRes.data?.order?.reference != null
+          ? String(orderRes.data.order.reference)
+          : null;
+
+      // PrestaShop crée parfois la commande mais renvoie du XML ou un JSON sans id.
+      if (!orderId && orderRes.status !== null && orderRes.status < 400) {
+        const lookup = await this.request<{ orders?: PsOrder[] }>("/orders", {
+          display: "[id,reference]",
+          "filter[id_cart]": cartId,
+          sort: "[id_DESC]",
+          limit: 1,
+        });
+        const found = asArray<PsOrder>(lookup.data as never, "orders")[0];
+        if (found?.id) {
+          orderId = String(found.id);
+          reference = found.reference ? String(found.reference) : reference;
+        }
+      }
+
+      if (!orderId) {
         return {
           reference: null,
           orderId: null,
           error: `order_failed: ${orderRes.error ?? "unknown"}`,
         };
+      }
 
       // Note fournisseur (flocage, etc.) — non bloquant si l'API messages échoue.
-      if (input.note?.trim() && order.id) {
-        await this.addOrderMessage(String(order.id), input.note.trim());
+      if (input.note?.trim()) {
+        await this.addOrderMessage(orderId, input.note.trim());
       }
 
       await this.decrementStockForLines(input.lines);
 
       return {
-        reference: String(order.reference ?? order.id),
-        orderId: String(order.id),
+        reference: reference ?? orderId,
+        orderId,
         error: null,
       };
     } catch (error) {
