@@ -948,7 +948,7 @@ class PrestaShopService {
       "filter[id_customer]": customerId,
       sort: "[id_DESC]",
     });
-    const orders = asArray<PsOrder>(data as never, "orders").map(mapOrder);
+    const orders = asArray<PsOrder>(data as never, "orders").map((o) => mapOrder(o));
     return orders.sort((a, b) => {
       const da = a.createdAt ? Date.parse(a.createdAt) : 0;
       const db = b.createdAt ? Date.parse(b.createdAt) : 0;

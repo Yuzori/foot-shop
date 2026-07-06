@@ -21,6 +21,7 @@ function expandBogoUnits(lines: readonly BogoLine[]): BogoUnit[] {
   const units: BogoUnit[] = [];
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const line = lines[lineIndex];
+    if (!line) continue;
     for (let q = 0; q < line.quantity; q++) {
       units.push({ price: line.unitPrice, lineIndex });
     }
@@ -96,7 +97,8 @@ export function allocateBogoFreeQuantities(
   const freeUnits = Math.floor(units.length / 3);
   const freeSet = units.slice(units.length - freeUnits);
   for (const unit of freeSet) {
-    freePerLine[unit.lineIndex]++;
+    const idx = unit.lineIndex;
+    freePerLine[idx] = (freePerLine[idx] ?? 0) + 1;
   }
 
   return freePerLine;

@@ -256,7 +256,7 @@ export function mapOrder(ps: PsOrder, trackingNumber: string | null = null): Ord
     trackingUrl: null,
     lines:
       ps.associations?.order_rows?.map((row) => ({
-        productId: row.product_id,
+        productId: String(row.product_id),
         name: row.product_name,
         quantity: toNumber(row.product_quantity),
         unitPrice: toNumber(row.unit_price_tax_incl),

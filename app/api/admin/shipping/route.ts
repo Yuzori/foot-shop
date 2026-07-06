@@ -61,7 +61,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "order_not_found" }, { status: 404 });
   }
 
-  let customerEmail =
+  const customerEmail =
     body.customerEmail?.trim().toLowerCase() ||
     (await prestashop.getCustomerEmailByOrderId(order.id)) ||
     null;

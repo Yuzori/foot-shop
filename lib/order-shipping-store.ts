@@ -65,9 +65,10 @@ export async function markShippingEmailSent(reference: string): Promise<void> {
   const key = reference.trim().toUpperCase();
   const items = await readAll();
   const idx = items.findIndex((i) => i.reference.toUpperCase() === key);
-  if (idx < 0) return;
+  const item = items[idx];
+  if (!item) return;
   items[idx] = {
-    ...items[idx],
+    ...item,
     sentAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };

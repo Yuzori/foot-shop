@@ -19,7 +19,7 @@ const BBDBUY_CHECKLIST = [
 
 function extractSizeFromName(name: string): string | null {
   const match = name.match(/\b(XXS|XS|S|M|L|XL|XXL|2XL|3XL)\b/i);
-  return match ? match[1].toUpperCase() : null;
+  return match?.[1]?.toUpperCase() ?? null;
 }
 
 async function resolveProductImage(productId: string): Promise<string | null> {
