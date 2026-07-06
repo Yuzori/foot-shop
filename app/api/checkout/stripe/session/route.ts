@@ -114,6 +114,7 @@ export async function POST(request: Request) {
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       ui_mode: "elements",
+      payment_method_types: ["card"],
       customer_email: body.contact.email || undefined,
       line_items: chargeLines.map((it) => ({
         quantity: it.quantity,

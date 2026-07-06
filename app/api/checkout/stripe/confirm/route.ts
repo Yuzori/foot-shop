@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import type Stripe from "stripe";
 
 import { paymentConfig } from "@/config/payment";
@@ -17,26 +17,24 @@ async function retrievePaidSession(
   stripe: Stripe,
   checkoutSessionId: string,
 ): Promise<Stripe.Checkout.Session> {
-  const delays = [0, 500, 1000, 1500, 2000];
-
-  for (const delay of delays) {
-    if (delay > 0) {
-      await new Promise((resolve) => setTimeout(resolve, delay));
-    }
-
-    const session = await stripe.checkout.sessions.retrieve(checkoutSessionId);
-    if (isSessionPaid(session)) {
-      return session;
-    }
-  }
-
   const session = await stripe.checkout.sessions.retrieve(checkoutSessionId);
-  if (!isSessionPaid(session)) {
-    throw new Error(
-      `Paiement non finalisé (statut : ${session.status}, paiement : ${session.payment_status}).`,
-    );
+  if (isSessionPaid(session)) {
+    return session;
   }
-  return session;
+
+  // Stripe peut mettre quelques centaines de ms à passer en "paid" après confirm().
+  const delays = [300, 600, 1000];
+  for (const delay of delays) {
+    await new Promise((resolve) => setTimeout(resolve, delay));
+    const retry = await stripe.checkout.sessions.retrieve(checkoutSessionId);
+    if (isSessionPaid(retry)) {
+      return retry;
+    }
+  }
+
+  throw new Error(
+    `Paiement non finalisé (statut : ${session.status}, paiement : ${session.payment_status}).`,
+  );
 }
 
 /** Vérifie une Checkout Session payée et marque la commande PrestaShop comme payée. */
@@ -68,16 +66,22 @@ export async function POST(request: Request) {
     const reference = session.metadata?.reference ?? null;
     const customerEmail = session.metadata?.customerEmail ?? session.customer_email;
 
-    if (orderId) {
-      await fulfillPaidOrder(orderId, customerEmail);
-    }
-
-    if (
-      session.metadata?.welcomePromo === "1" &&
-      session.metadata.customerId
-    ) {
-      await markWelcomePromoUsed(session.metadata.customerId);
-    }
+    // PrestaShop + e-mails peuvent prendre >20s : ne pas bloquer le client.
+    after(async () => {
+      try {
+        if (orderId) {
+          await fulfillPaidOrder(orderId, customerEmail);
+        }
+        if (
+          session.metadata?.welcomePromo === "1" &&
+          session.metadata.customerId
+        ) {
+          await markWelcomePromoUsed(session.metadata.customerId);
+        }
+      } catch (error) {
+        console.error("[stripe] confirm background fulfillment failed", error);
+      }
+    });
 
     return NextResponse.json({
       ok: true,

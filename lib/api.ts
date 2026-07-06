@@ -218,6 +218,7 @@ export const api = {
     const { data } = await http.post<{ ok: boolean; reference: string | null }>(
       "/checkout/stripe/confirm",
       { checkoutSessionId },
+      { timeout: 60_000 },
     );
     return data;
   },
