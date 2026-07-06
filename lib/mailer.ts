@@ -39,6 +39,11 @@ function buildTransportOptions() {
     port: mailConfig.port,
     secure: mailConfig.secure,
     auth: { user: mailConfig.user, pass: mailConfig.password },
+    connectionTimeout: mailConfig.connectionTimeoutMs,
+    greetingTimeout: mailConfig.connectionTimeoutMs,
+    socketTimeout: mailConfig.socketTimeoutMs,
+    // Render / cloud : évite les blocages IPv6 vers certains SMTP.
+    family: 4,
     ...(useStartTls ? { requireTLS: true as const } : {}),
     tls: {
       minVersion: "TLSv1.2" as const,

@@ -256,12 +256,16 @@ function ShippingForm({ secret }: { secret: string }) {
     setBusy(true);
     setMessage(null);
     try {
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), 45_000);
+
       const res = await fetch("/api/admin/shipping", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${secret}`,
         },
+        signal: controller.signal,
         body: JSON.stringify({
           reference,
           trackingNumber,
@@ -270,15 +274,26 @@ function ShippingForm({ secret }: { secret: string }) {
           action: sendEmail ? "send" : undefined,
         }),
       });
+      window.clearTimeout(timeout);
+
       const data = (await res.json().catch(() => null)) as {
         message?: string;
+        emailSent?: boolean;
+        emailError?: string | null;
       } | null;
       if (!res.ok) throw new Error(data?.message ?? "Échec");
-      setMessage(
-        sendEmail
-          ? `Email d'expédition envoyé pour ${reference.trim().toUpperCase()}.`
-          : `Suivi enregistré pour ${reference.trim().toUpperCase()}.`,
-      );
+
+      if (sendEmail && data?.emailSent === false) {
+        setMessage(
+          `Suivi enregistré pour ${reference.trim().toUpperCase()}, mais l'email n'a pas pu être envoyé : ${data.emailError ?? "erreur SMTP"}. Vérifiez SMTP_* sur Render (port 587 souvent).`,
+        );
+      } else {
+        setMessage(
+          sendEmail
+            ? `Email d'expédition envoyé pour ${reference.trim().toUpperCase()}.`
+            : `Suivi enregistré pour ${reference.trim().toUpperCase()}.`,
+        );
+      }
       if (!sendEmail) {
         setReference("");
         setTrackingNumber("");
@@ -287,7 +302,13 @@ function ShippingForm({ secret }: { secret: string }) {
       }
       await load();
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Échec");
+      const msg =
+        err instanceof Error && err.name === "AbortError"
+          ? "Délai dépassé — le suivi est peut-être enregistré, rechargez la page."
+          : err instanceof Error
+            ? err.message
+            : "Échec";
+      setMessage(msg);
     } finally {
       setBusy(false);
     }

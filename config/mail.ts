@@ -55,6 +55,8 @@ export const mailConfig = {
   replyTo: process.env.MAIL_REPLY_TO ?? contactEmail,
   contactEmail,
   adminSecret: process.env.ADMIN_SECRET ?? "",
+  connectionTimeoutMs: Number(process.env.SMTP_CONNECTION_TIMEOUT_MS ?? "10000"),
+  socketTimeoutMs: Number(process.env.SMTP_SOCKET_TIMEOUT_MS ?? "15000"),
   get enabled(): boolean {
     return Boolean(this.host && this.user && this.password);
   },

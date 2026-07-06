@@ -87,21 +87,35 @@ export async function POST(request: Request) {
       );
     }
 
-    try {
-      await sendShippingNotificationEmail({
-        to: customerEmail,
-        reference,
-        trackingNumber,
-        carrierUrl,
-      });
+    let emailSent = false;
+    let emailError: string | null = null;
+
+    const emailResult = await sendShippingNotificationEmail({
+      to: customerEmail,
+      reference,
+      trackingNumber,
+      carrierUrl,
+    });
+
+    if (emailResult.delivered) {
       await markShippingEmailSent(reference);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "email_failed";
-      return NextResponse.json({ message }, { status: 502 });
+      emailSent = true;
+    } else {
+      emailError =
+        emailResult.error ??
+        (emailResult.devMode
+          ? "SMTP non configuré sur le serveur (variables SMTP_* manquantes)."
+          : "Échec d'envoi email.");
+      console.error("[admin/shipping] email failed", reference, emailError);
     }
 
     const updated = await getOrderShipping(reference);
-    return NextResponse.json({ ok: true, shipping: updated });
+    return NextResponse.json({
+      ok: true,
+      shipping: updated,
+      emailSent,
+      emailError,
+    });
   }
 
   return NextResponse.json({ ok: true, shipping: saved });

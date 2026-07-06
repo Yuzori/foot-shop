@@ -9,18 +9,18 @@ import {
   emailParagraph,
   escapeHtml,
 } from "@/lib/email-template";
-import { assertMailDelivered, sendMail } from "@/lib/mailer";
+import { sendMail, type SendMailResult } from "@/lib/mailer";
 
 export async function sendShippingNotificationEmail(input: {
   to: string;
   reference: string;
   trackingNumber: string;
   carrierUrl: string;
-}): Promise<void> {
+}): Promise<SendMailResult> {
   const base = publicConfig.siteUrl.replace(/\/$/, "");
   const siteTracking = `${base}${routes.tracking}?ref=${encodeURIComponent(input.reference)}`;
 
-  const result = await sendMail({
+  return sendMail({
     to: input.to,
     subject: `Votre colis est en route — ${input.reference}`,
     text: [
@@ -39,6 +39,4 @@ export async function sendShippingNotificationEmail(input: {
       ${emailParagraph(`Vous pouvez aussi consulter le suivi sur <a href="${escapeHtml(siteTracking)}" style="color:#c41e3a">${escapeHtml(publicConfig.siteName)}</a>.`)}
     `),
   });
-
-  assertMailDelivered(result, `expédition → ${input.to}`);
 }
