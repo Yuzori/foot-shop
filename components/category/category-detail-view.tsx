@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
+import { SortSelect } from "@/components/catalogue/sort-select";
 import { ProductGrid } from "@/components/product/product-grid";
 import { Container } from "@/components/ui/container";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -12,7 +13,7 @@ import { routes } from "@/config/site";
 import { useCatalogNav } from "@/hooks/use-catalog-nav";
 import { useCategory } from "@/hooks/use-categories";
 import { filterProductsByAudience } from "@/lib/catalog-tree";
-import type { Product } from "@/types/domain";
+import type { Product, SortOption } from "@/types/domain";
 import {
   collectionKindFromCategory,
   filterProductsByKind,
@@ -45,8 +46,10 @@ export function CategoryDetailView({ id }: { id: string }) {
     ? (audienceParam as (typeof VALID_AUDIENCES)[number])
     : null;
 
+  const [sort, setSort] = useState<SortOption>("relevance");
+
   const catalogNav = useCatalogNav();
-  const { data, isLoading, isError } = useCategory(id, audience);
+  const { data, isLoading, isError } = useCategory(id, { audience, sort });
   const category = data?.category;
   const rawProducts = data?.products ?? [];
 
@@ -149,7 +152,15 @@ export function CategoryDetailView({ id }: { id: string }) {
           }}
         />
       ) : (
-        <ProductGrid products={products} />
+        <>
+          <div className="mb-10 flex items-center justify-between gap-4">
+            <p className="text-sm text-ink/50">
+              {products.length} produit{products.length > 1 ? "s" : ""}
+            </p>
+            <SortSelect value={sort} onChange={setSort} />
+          </div>
+          <ProductGrid products={products} />
+        </>
       )}
     </Container>
   );

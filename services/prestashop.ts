@@ -17,6 +17,7 @@ import type {
 } from "@/types/domain";
 
 import type { SupplierOrderContext } from "@/lib/bbdbuy/types";
+import { sortProducts } from "@/lib/product-sort";
 import type {
   PsAttributeGroup,
   PsCategory,
@@ -41,30 +42,6 @@ import {
   psStr,
   resolveLang,
 } from "./mappers";
-
-/** Tri côté app : cette version de PrestaShop refuse date_add/price/name en API. */
-function sortProducts(items: Product[], sort?: SortOption): Product[] {
-  if (!sort || sort === "relevance") return items;
-
-  const copy = [...items];
-  switch (sort) {
-    case "newest":
-      return copy.sort((a, b) => {
-        const da = a.createdAt ? Date.parse(a.createdAt) : 0;
-        const db = b.createdAt ? Date.parse(b.createdAt) : 0;
-        if (db !== da) return db - da;
-        return Number(b.id) - Number(a.id);
-      });
-    case "price-asc":
-      return copy.sort((a, b) => a.price - b.price);
-    case "price-desc":
-      return copy.sort((a, b) => b.price - a.price);
-    case "name-asc":
-      return copy.sort((a, b) => a.name.localeCompare(b.name, "fr"));
-    default:
-      return copy;
-  }
-}
 
 /** Product list options: the public query + an internal test/override flag. */
 interface GetProductsOptions extends ProductQuery {
@@ -1127,6 +1104,7 @@ class PrestaShopService {
       { display: "full", "filter[newsletter]": "1", "filter[active]": "1" },
     );
     let emails = asArray<PsCustomer>(data as never, "customers")
+      .filter((c) => c.newsletter === "1")
       .map((c) => c.email?.trim().toLowerCase())
       .filter((e): e is string => Boolean(e));
 

@@ -67,11 +67,13 @@ export async function processStockAlertEmails(): Promise<number> {
       `),
     });
 
-    if (!result.delivered && !result.devMode) {
-      console.error(
-        `[stock] mail failed to=${sub.email} product=${sub.productId}`,
-        result.error,
-      );
+    if (!result.delivered) {
+      if (!result.devMode) {
+        console.error(
+          `[stock] mail failed to=${sub.email} product=${sub.productId}`,
+          result.error,
+        );
+      }
       continue;
     }
 

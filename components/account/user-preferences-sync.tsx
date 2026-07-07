@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 import { useSession } from "@/hooks/use-auth";
 import { api } from "@/lib/api";
+import { mergeCartLines } from "@/lib/cart-merge";
 import { useCartStore } from "@/store/cart-store";
 import { useFavoritesStore } from "@/store/favorites-store";
 import { usePreferencesSyncStore } from "@/store/preferences-sync-store";
@@ -16,7 +17,7 @@ function isProtectedRoute(pathname: string): boolean {
   return pathname.startsWith(CHECKOUT_PREFIX) || pathname.startsWith(CART_PREFIX);
 }
 
-/** Synchronise favoris avec le compte. Le panier reste local. */
+/** Synchronise panier et favoris avec le compte client. */
 export function UserPreferencesSync() {
   const pathname = usePathname();
   const protectedRoute = isProtectedRoute(pathname);
@@ -28,6 +29,7 @@ export function UserPreferencesSync() {
   const reset = usePreferencesSyncStore((s) => s.reset);
 
   const favoriteIds = useFavoritesStore((s) => s.ids);
+  const cartLines = useCartStore((s) => s.lines);
   const hydrating = useRef(false);
   const lastSavedCart = useRef("");
 
@@ -55,6 +57,13 @@ export function UserPreferencesSync() {
         const localFavs = useFavoritesStore.getState().ids;
         const mergedFavs = [...new Set([...localFavs, ...serverFavs])];
         useFavoritesStore.getState().setIds(mergedFavs);
+
+        const serverCart = prefs.cart ?? [];
+        const localCart = useCartStore.getState().lines;
+        const mergedCart = mergeCartLines(localCart, serverCart);
+        useCartStore.setState({ lines: mergedCart });
+        lastSavedCart.current = JSON.stringify(mergedCart);
+
         markLoaded(userId);
       } catch {
         if (!cancelled) markLoaded(userId);
@@ -83,20 +92,17 @@ export function UserPreferencesSync() {
     }
 
     const timer = window.setTimeout(() => {
-      const { lines } = useCartStore.getState();
-      if (lines.length === 0) return;
-
-      const cartSig = JSON.stringify(lines);
+      const cartSig = JSON.stringify(cartLines);
       if (cartSig === lastSavedCart.current) return;
       lastSavedCart.current = cartSig;
 
       api
-        .savePreferences({ cart: lines, favorites: favoriteIds })
+        .savePreferences({ cart: cartLines, favorites: favoriteIds })
         .catch(() => {});
-    }, 3_000);
+    }, 2_000);
 
     return () => window.clearTimeout(timer);
-  }, [userId, favoriteIds, paused, loadedUserId, protectedRoute]);
+  }, [userId, cartLines, favoriteIds, paused, loadedUserId, protectedRoute]);
 
   return null;
 }

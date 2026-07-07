@@ -8,8 +8,26 @@ import {
   emailParagraph,
 } from "@/lib/email-template";
 import { sendMail } from "@/lib/mailer";
-import { addGuestNewsletterEmail } from "@/lib/newsletter-subscribers";
+import {
+  addGuestNewsletterEmail,
+  removeGuestNewsletterEmail,
+} from "@/lib/newsletter-subscribers";
 import { prestashop } from "@/services/prestashop";
+
+async function sendWelcomeNewsletterEmail(email: string): Promise<void> {
+  const base = publicConfig.siteUrl.replace(/\/$/, "");
+  await sendMail({
+    to: email,
+    subject: `${publicConfig.siteName} — Bienvenue dans la newsletter`,
+    text: `Merci pour votre inscription à la newsletter ${publicConfig.siteName}.\n${base}`,
+    html: emailLayout(`
+      ${emailHeading("Bienvenue !")}
+      ${emailParagraph(`Vous êtes inscrit à la newsletter <strong>${publicConfig.siteName}</strong>.`)}
+      ${emailParagraph("Nouveautés, éditions limitées et retours en stock — directement dans votre boîte mail.")}
+      ${emailButton(`${base}/catalogue`, "Découvrir la boutique")}
+    `),
+  });
+}
 
 /** Inscription newsletter (compte PrestaShop ou invité). */
 export async function POST(request: Request) {
@@ -31,6 +49,12 @@ export async function POST(request: Request) {
 
   const account = await prestashop.subscribeCustomerNewsletter(email);
   if (account.ok) {
+    await removeGuestNewsletterEmail(email);
+    if (!account.already) {
+      await sendWelcomeNewsletterEmail(email).catch((err) => {
+        console.error("[newsletter] welcome email failed", email, err);
+      });
+    }
     return NextResponse.json({
       message: account.already
         ? "Vous êtes déjà inscrit à la newsletter."
@@ -38,20 +62,23 @@ export async function POST(request: Request) {
     });
   }
 
-  const { added } = await addGuestNewsletterEmail(email);
-  const base = publicConfig.siteUrl.replace(/\/$/, "");
+  const hasAccount = await prestashop.getCustomerAuthByEmail(email);
+  if (hasAccount) {
+    return NextResponse.json(
+      {
+        message:
+          "Compte trouvé mais l'inscription a échoué. Réessayez ou contactez le support.",
+      },
+      { status: 502 },
+    );
+  }
 
-  await sendMail({
-    to: email,
-    subject: `${publicConfig.siteName} — Bienvenue dans la newsletter`,
-    text: `Merci pour votre inscription à la newsletter ${publicConfig.siteName}.\n${base}`,
-    html: emailLayout(`
-      ${emailHeading("Bienvenue !")}
-      ${emailParagraph(`Vous êtes inscrit à la newsletter <strong>${publicConfig.siteName}</strong>.`)}
-      ${emailParagraph("Nouveautés, éditions limitées et retours en stock — directement dans votre boîte mail.")}
-      ${emailButton(`${base}/catalogue`, "Découvrir la boutique")}
-    `),
-  });
+  const { added } = await addGuestNewsletterEmail(email);
+  if (added) {
+    await sendWelcomeNewsletterEmail(email).catch((err) => {
+      console.error("[newsletter] welcome email failed", email, err);
+    });
+  }
 
   return NextResponse.json({
     message: added

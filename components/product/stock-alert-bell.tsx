@@ -25,12 +25,16 @@ async function fetchAlertStatus(
   email: string | undefined,
 ): Promise<boolean> {
   if (!email) return false;
-  const params = new URLSearchParams({ productId });
+  const params = new URLSearchParams({ productId, email });
   if (variantId) params.set("variantId", variantId);
   const res = await fetch(`/api/stock-alert/status?${params}`);
   if (!res.ok) return false;
   const data = (await res.json()) as { subscribed?: boolean };
   return Boolean(data.subscribed);
+}
+
+function guestStorageKey(productId: string, variantId: string | null): string {
+  return `footshop-stock:${productId}:${variantId ?? "0"}`;
 }
 
 export function StockAlertBell({
@@ -44,11 +48,23 @@ export function StockAlertBell({
 }: StockAlertBellProps) {
   const { data: user } = useSession();
   const userEmail = user?.email?.trim().toLowerCase();
+  const [guestEmail, setGuestEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem(guestStorageKey(productId, variantId));
+      if (stored) setGuestEmail(stored.trim().toLowerCase());
+    } catch {
+      /* ignore */
+    }
+  }, [productId, variantId]);
+
+  const statusEmail = userEmail ?? guestEmail ?? undefined;
 
   const statusQuery = useQuery({
-    queryKey: ["stock-alert-status", productId, variantId, userEmail],
-    queryFn: () => fetchAlertStatus(productId, variantId, userEmail),
-    enabled: Boolean(userEmail),
+    queryKey: ["stock-alert-status", productId, variantId, statusEmail],
+    queryFn: () => fetchAlertStatus(productId, variantId, statusEmail),
+    enabled: Boolean(statusEmail),
     staleTime: 30_000,
   });
 
@@ -96,6 +112,12 @@ export function StockAlertBell({
       if (data.subscribed || data.message.includes("déjà inscrit")) {
         playDingDong();
         setJustSubscribed(true);
+        try {
+          sessionStorage.setItem(guestStorageKey(productId, variantId), target);
+        } catch {
+          /* ignore */
+        }
+        if (!userEmail) setGuestEmail(target);
         await statusQuery.refetch();
       }
       if (!data.alreadyInStock) setOpen(false);

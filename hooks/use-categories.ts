@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/query-client";
+import type { SortOption } from "@/types/domain";
 
 /** All active categories. */
 export function useCategories() {
@@ -15,11 +16,20 @@ export function useCategories() {
 }
 
 /** A category with its first page of products. */
-export function useCategory(id: string, audience?: "kids" | "adult" | null) {
+export function useCategory(
+  id: string,
+  options?: { audience?: "kids" | "adult" | null; sort?: SortOption },
+) {
+  const audience = options?.audience ?? null;
+  const sort = options?.sort;
+
   return useQuery({
-    queryKey: [...queryKeys.category(id), audience ?? "all"],
+    queryKey: [...queryKeys.category(id), audience ?? "all", sort ?? "relevance"],
     queryFn: () =>
-      api.getCategory(id, audience ? { audience } : undefined),
+      api.getCategory(id, {
+        audience: audience ?? undefined,
+        sort,
+      }),
     enabled: Boolean(id),
     staleTime: 2 * 60 * 1000,
   });

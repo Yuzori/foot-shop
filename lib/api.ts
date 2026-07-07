@@ -77,12 +77,12 @@ export const api = {
 
   async getCategory(
     id: string,
-    options?: { audience?: "kids" | "adult" },
+    options?: { audience?: "kids" | "adult"; sort?: ProductQuery["sort"] },
   ): Promise<{ category: Category; products: Product[] }> {
-    const qs =
-      options?.audience != null
-        ? `?audience=${encodeURIComponent(options.audience)}`
-        : "";
+    const qs = toQueryString({
+      audience: options?.audience,
+      sort: options?.sort,
+    });
     const { data } = await http.get<{
       category: Category;
       products: Product[];

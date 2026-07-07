@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { isAdminAuthorized } from "@/lib/admin-auth";
 
 import { filterProductsByKind, type ProductCollectionKind } from "@/lib/product-collection";
+import { maybeProcessStockAlerts } from "@/lib/stock-notify";
 
 import { prestashop } from "@/services/prestashop";
 
@@ -90,6 +91,10 @@ export async function GET(request: Request) {
 
 
   const result = await prestashop.getProducts(query);
+
+  void maybeProcessStockAlerts().catch((err) => {
+    console.error("[stock] background processing failed", err);
+  });
 
   if (result.connectionError) {
     return NextResponse.json(
