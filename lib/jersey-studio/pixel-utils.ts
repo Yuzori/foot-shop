@@ -226,7 +226,7 @@ function floodFillEnclosedBackground(
           touchesBorder = true;
         }
 
-        const neighbors = [
+        const neighbors: [number, number][] = [
           [cx - 1, cy],
           [cx + 1, cy],
           [cx, cy - 1],
@@ -303,7 +303,7 @@ export function removeCornerWatermarkArtifacts(
         const cy = (cp - cx) / width;
         if (cx >= cx0 && cx <= cx1 && cy >= cy0 && cy <= cy1) touchesCenter = true;
 
-        const neighbors = [
+        const neighbors: [number, number][] = [
           [cx - 1, cy],
           [cx + 1, cy],
           [cx, cy - 1],
@@ -333,7 +333,7 @@ export function removeCornerWatermarkArtifacts(
 
   for (let p = 0; p < total; p++) {
     const label = labels[p];
-    if (label <= 0) continue;
+    if (label === undefined || label <= 0) continue;
     const s = stats.get(label);
     if (!s) continue;
     const keep =

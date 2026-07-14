@@ -199,7 +199,9 @@ function buildProductCard(imageBytes: Uint8Array, name: string, x: number, y: nu
   halo.resize(CARD_W, CARD_H);
   halo.opacity = 0.37;
   halo.fills = [imageFill];
-  halo.effects = [{ type: "LAYER_BLUR", radius: HALO_BLUR, visible: true }];
+  halo.effects = [
+    { type: "LAYER_BLUR", radius: HALO_BLUR, visible: true, blurType: "NORMAL" },
+  ];
 
   const jersey = figma.createRectangle();
   jersey.name = "Maillot";
