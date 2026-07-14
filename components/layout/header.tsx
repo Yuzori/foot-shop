@@ -10,11 +10,11 @@ import {
   HeartIcon,
   MenuIcon,
   SearchIcon,
+  TrophyIcon,
   UserIcon,
 } from "@/components/layout/icons";
 import { Logo } from "@/components/layout/logo";
 import { MobileMenu } from "@/components/layout/mobile-menu";
-import { WorldCupNavLink } from "@/components/layout/world-cup-nav-link";
 import { Container } from "@/components/ui/container";
 import { primaryNav, routes } from "@/config/site";
 import { worldCupConfig } from "@/config/world-cup";
@@ -151,6 +151,35 @@ export function Header() {
 
       <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
     </>
+  );
+}
+
+function WorldCupNavLink({
+  href,
+  label,
+  active,
+}: {
+  href: string;
+  label: string;
+  active: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "group relative mr-1 hidden items-center gap-2 overflow-hidden rounded-full bg-ink px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-paper transition-[transform,background-color,box-shadow] duration-300 ease-premium lg:flex",
+        "hover:scale-[1.04] hover:bg-accent hover:text-ink active:scale-[0.97]",
+        "hover:shadow-glow-sm",
+        active && "bg-accent text-ink ring-2 ring-accent/40 ring-offset-2",
+      )}
+    >
+      <span
+        className="absolute inset-0 -translate-x-full bg-paper/10 transition-transform duration-500 ease-premium group-hover:translate-x-full"
+        aria-hidden
+      />
+      <TrophyIcon className="relative h-4 w-4 shrink-0 transition-transform duration-300 ease-premium group-hover:-rotate-12 group-hover:scale-110" />
+      <span className="relative">{label}</span>
+    </Link>
   );
 }
 

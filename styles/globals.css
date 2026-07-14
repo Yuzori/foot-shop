@@ -9,11 +9,6 @@
     --color-accent: #66baff;
     --color-accent-dark: #3da8f5;
     --color-accent-glow: rgba(102, 186, 255, 0.45);
-    /* FIFA World Cup 2026 — palette officielle (sous-ensemble) */
-    --fifa-navy: #1a2e7d;
-    --fifa-blue: #2c6cf5;
-    --fifa-cyan: #2eb2ff;
-    --fifa-purple: #6e1af0;
   }
 
   * {
@@ -110,44 +105,6 @@
       transparent
     );
     animation: shimmer 1.6s infinite;
-  }
-
-  .world-cup-nav {
-    isolation: isolate;
-  }
-
-  /* Hover : dégradé statique FIFA (navy → bleu → cyan), sans animation */
-  .world-cup-nav__gradient {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    transition: opacity 0.45s ease;
-    background: linear-gradient(
-      128deg,
-      var(--fifa-navy) 0%,
-      var(--fifa-blue) 42%,
-      var(--fifa-cyan) 88%
-    );
-  }
-
-  .world-cup-nav:hover .world-cup-nav__gradient,
-  .world-cup-nav:focus-visible .world-cup-nav__gradient {
-    opacity: 1;
-  }
-
-  .world-cup-nav:hover,
-  .world-cup-nav:focus-visible {
-    color: #fff;
-  }
-
-  /* Page active : bleu FIFA uni */
-  .world-cup-nav--active {
-    background: var(--fifa-blue);
-    color: #fff;
-  }
-
-  .world-cup-nav--active .world-cup-nav__gradient {
-    opacity: 0;
   }
 }
 
