@@ -9,6 +9,11 @@
     --color-accent: #66baff;
     --color-accent-dark: #3da8f5;
     --color-accent-glow: rgba(102, 186, 255, 0.45);
+    /* FIFA World Cup 2026 — palette officielle (sous-ensemble) */
+    --fifa-navy: #1a2e7d;
+    --fifa-blue: #2c6cf5;
+    --fifa-cyan: #2eb2ff;
+    --fifa-purple: #6e1af0;
   }
 
   * {
@@ -111,33 +116,38 @@
     isolation: isolate;
   }
 
-  /* FIFA World Cup 2026 — violet, rouge, jaune, vert, bleu ciel (hover uniquement) */
+  /* Hover : dégradé statique FIFA (navy → bleu → cyan), sans animation */
   .world-cup-nav__gradient {
     position: absolute;
     inset: 0;
     opacity: 0;
-    transition: opacity 0.35s ease;
+    transition: opacity 0.45s ease;
     background: linear-gradient(
-      112deg,
-      #6b4fbb 0%,
-      #e31937 26%,
-      #ffd100 52%,
-      #00a651 76%,
-      #00b5e2 100%
+      128deg,
+      var(--fifa-navy) 0%,
+      var(--fifa-blue) 42%,
+      var(--fifa-cyan) 88%
     );
-    background-size: 180% 100%;
-    background-position: 0% 50%;
   }
 
   .world-cup-nav:hover .world-cup-nav__gradient,
   .world-cup-nav:focus-visible .world-cup-nav__gradient {
     opacity: 1;
-    animation: world-cup-sweep 2.4s ease-in-out infinite;
   }
 
   .world-cup-nav:hover,
   .world-cup-nav:focus-visible {
-    box-shadow: 0 6px 20px -6px rgba(107, 79, 187, 0.45);
+    color: #fff;
+  }
+
+  /* Page active : bleu FIFA uni */
+  .world-cup-nav--active {
+    background: var(--fifa-blue);
+    color: #fff;
+  }
+
+  .world-cup-nav--active .world-cup-nav__gradient {
+    opacity: 0;
   }
 }
 
@@ -178,15 +188,5 @@
   }
   to {
     transform: rotate(360deg);
-  }
-}
-
-@keyframes world-cup-sweep {
-  0%,
-  100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
   }
 }
