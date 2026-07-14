@@ -106,6 +106,40 @@
     );
     animation: shimmer 1.6s infinite;
   }
+
+  .world-cup-nav {
+    isolation: isolate;
+  }
+
+  .world-cup-nav__gradient {
+    position: absolute;
+    inset: -40%;
+    background: conic-gradient(
+      from 0deg,
+      #009739,
+      #ffdf00,
+      #002776,
+      #c8102e,
+      #ff8200,
+      #ffffff,
+      #009739
+    );
+    animation: world-cup-spin 5s linear infinite;
+    opacity: 0.95;
+  }
+
+  .world-cup-nav__shimmer {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      105deg,
+      transparent 35%,
+      rgba(255, 255, 255, 0.45) 50%,
+      transparent 65%
+    );
+    transform: translateX(-120%);
+    animation: world-cup-shimmer 2.8s ease-in-out infinite;
+  }
 }
 
 @layer utilities {
@@ -145,5 +179,24 @@
   }
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes world-cup-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes world-cup-shimmer {
+  0%,
+  100% {
+    transform: translateX(-120%);
+  }
+  50% {
+    transform: translateX(120%);
   }
 }

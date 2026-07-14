@@ -24,8 +24,7 @@ import { removeCornerWatermarkArtifacts } from "@/lib/jersey-studio/pixel-utils"
 import { getAlphaBounds } from "@/lib/jersey-studio/pixel-utils";
 
 /**
- * Recadre le maillot, redimensionne avec ratio conservé et centre sur la carte
- * de travail (2× export). Pas d'upscale — qualité native préservée.
+ * Recadre le maillot, redimensionne à taille uniforme et centre sur la carte de travail.
  */
 async function normalizeJerseyPng(cutout: Buffer): Promise<Buffer> {
   const { data, width, height } = await sharp(cutout)
@@ -59,9 +58,8 @@ async function normalizeJerseyPng(cutout: Buffer): Promise<Buffer> {
       height: bounds.height,
     })
     .resize(targetW, targetH, {
-      fit: "inside",
+      fit: "fill",
       kernel: sharp.kernel.lanczos3,
-      withoutEnlargement: true,
     })
     .ensureAlpha()
     .png(LOSSLESS_PNG)

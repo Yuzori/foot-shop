@@ -19,7 +19,8 @@ import {
   type CatalogNavCategories,
 } from "@/config/catalog-leagues";
 
-import { CloseIcon, TrophyIcon } from "@/components/layout/icons";
+import { CloseIcon } from "@/components/layout/icons";
+import { WorldCupNavLink } from "@/components/layout/world-cup-nav-link";
 
 import { primaryNav, routes } from "@/config/site";
 
@@ -118,29 +119,12 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
             <div className="mt-10 flex flex-col gap-1">
 
               {worldCupConfig.enabled ? (
-
-                <Link
-
+                <WorldCupNavLink
                   href={worldCupConfig.href}
-
+                  label={worldCupConfig.label}
                   onClick={onClose}
-
-                  className={cn(
-
-                    "group relative mb-4 flex items-center justify-center gap-2 overflow-hidden rounded-full bg-ink px-5 py-3.5 text-xs font-semibold uppercase tracking-[0.16em] text-paper",
-
-                    "transition-[transform,background-color] duration-300 hover:scale-[1.02] hover:bg-accent",
-
-                  )}
-
-                >
-
-                  <TrophyIcon className="h-4 w-4 shrink-0" />
-
-                  {worldCupConfig.label}
-
-                </Link>
-
+                  className="mb-4 flex w-full justify-center px-5 py-3.5 text-xs lg:hidden"
+                />
               ) : null}
 
               <MobileCatalogGroup

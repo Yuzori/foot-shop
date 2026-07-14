@@ -49,13 +49,7 @@ export async function GET(
 
   let products = await prestashop.getCategoryProducts(id);
   const allCategories = await prestashop.getCategories();
-  const isParentCategory = allCategories.some(
-    (item) => item.parentId === id,
-  );
-
-  if (isParentCategory) {
-    products = filterProductsByCategoryScope(products, id, allCategories);
-  }
+  products = filterProductsByCategoryScope(products, id, allCategories);
 
   if (leagueParam) {
     const league = catalogLeagues.find((item) => item.id === leagueParam);

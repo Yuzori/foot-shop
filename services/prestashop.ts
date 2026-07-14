@@ -1426,11 +1426,18 @@ class PrestaShopService {
     return id;
   }
 
-  /** Force la catégorie (évite le rattachement par défaut à Accueil). */
-  async assignProductCategory(productId: string, categoryId: string): Promise<void> {
+  /** Force la catégorie + associations parentes (évite le rattachement par défaut à Accueil). */
+  async assignProductCategory(
+    productId: string,
+    categoryId: string,
+    associationIds?: string[],
+  ): Promise<void> {
+    const ids = associationIds?.length
+      ? [...new Set(associationIds.map((id) => String(id).trim()).filter(Boolean))]
+      : [categoryId];
     const raw = await this.getProductRawXml(productId);
     if (raw) {
-      const patched = patchProductCategoryXml(raw, categoryId);
+      const patched = patchProductCategoryXml(raw, categoryId, ids);
       const { status, error } = await this.put(`/products/${productId}`, patched);
       if (status !== null && status < 400) return;
       console.warn(
@@ -1446,9 +1453,13 @@ class PrestaShopService {
     <id_category_default>${escapeXml(categoryId)}</id_category_default>
     <associations>
       <categories>
-        <category>
-          <id>${escapeXml(categoryId)}</id>
-        </category>
+${ids
+  .map(
+    (id) => `        <category>
+          <id>${escapeXml(id)}</id>
+        </category>`,
+  )
+  .join("\n")}
       </categories>
     </associations>
   </product>
@@ -1937,16 +1948,25 @@ function extractCreatedId(data: unknown, resourceKey: string): string | null {
 }
 
 /** Met à jour id_category_default + associations dans le XML produit complet. */
-function patchProductCategoryXml(xml: string, categoryId: string): string {
+function patchProductCategoryXml(
+  xml: string,
+  categoryId: string,
+  associationIds: string[],
+): string {
+  const ids = associationIds.length ? associationIds : [categoryId];
   let out = xml.replace(
     /<id_category_default>(?:<!\[CDATA\[)?[\s\S]*?(?:\]\]>)?<\/id_category_default>/,
     `<id_category_default><![CDATA[${categoryId}]]></id_category_default>`,
   );
 
   const categoriesXml = `<categories>
-<category>
-<id><![CDATA[${categoryId}]]></id>
-</category>
+${ids
+  .map(
+    (id) => `<category>
+<id><![CDATA[${id}]]></id>
+</category>`,
+  )
+  .join("\n")}
 </categories>`;
 
   if (/<categories>[\s\S]*?<\/categories>/.test(out)) {

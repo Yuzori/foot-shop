@@ -78,27 +78,32 @@ export function matchesBackground(
   return false;
 }
 
-/** Fond studio blanc / gris neutre (#FFF, #F8F8F8…) — jamais du tissu. */
+/** Fond studio neutre (#EEE, gris photo) — pas le blanc du maillot. */
 export function isStudioBackgroundPixel(r: number, g: number, b: number): boolean {
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
   const sat = max - min;
-  if (sat > 14) return false;
-  if (min >= 240) return true;
+  if (sat > 12) return false;
+  // Fond carte / studio ~#EEEEEE (238)
+  if (min >= 234 && max <= 246 && sat <= 10) return true;
+  // Blanc pur photo autour du produit
+  if (min >= 248 && max <= 255 && sat <= 6) return true;
   return false;
 }
 
 /**
- * Tissu du maillot (rouge, bleu, jaune, orange…) — ne jamais confondre avec le fond blanc/gris.
- * Les JPEG éclaircissent le rouge en rose pâle (255,230,230) : distance RGB proche du blanc
- * mais c'est du tissu, pas du fond.
+ * Tissu du maillot (rouge, bleu, jaune, blanc…) — ne jamais confondre avec le fond.
  */
 export function isJerseyFabricPixel(r: number, g: number, b: number): boolean {
-  if (isStudioBackgroundPixel(r, g, b)) return false;
-
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
   const sat = max - min;
+
+  // Maillot blanc / gris clair / blanc éclatant (avant test fond studio)
+  if (min >= 185 && max <= 255 && sat < 36) return true;
+  if (min >= 220 && sat < 28) return true;
+
+  if (isStudioBackgroundPixel(r, g, b)) return false;
 
   if (r >= 90 && r > g + 4 && r > b + 4) return true;
   if (b >= 50 && b > r + 4 && b > g + 4) return true;
@@ -106,10 +111,6 @@ export function isJerseyFabricPixel(r: number, g: number, b: number): boolean {
   if (r >= 130 && g >= 60 && b <= 130 && r >= b + 12 && g >= b) return true;
   if (r >= 155 && g >= 120 && b <= 145 && r >= b + 25) return true;
   if (r >= 200 && g >= 175 && b <= 110) return true;
-
-  // Maillot blanc / gris clair texturé (Italie, etc.)
-  if (min >= 170 && max <= 238 && sat >= 2 && sat < 40) return true;
-  if (min >= 198 && max >= 228 && sat >= 6 && sat < 26) return true;
 
   // Mint / teal / bleu-vert clair (Portugal extérieur, etc.)
   if (g >= 90 && g >= r + 5 && b >= 70 && b >= r - 25) return true;
@@ -134,9 +135,12 @@ export function floodFillBackground(
   height: number,
   refs: Rgb[],
   tolerance: number,
+  opts?: { includeEnclosed?: boolean },
 ): void {
   floodFillBackgroundFromBorder(mask, data, width, height, refs, tolerance);
-  floodFillEnclosedBackground(mask, data, width, height, refs, tolerance);
+  if (opts?.includeEnclosed) {
+    floodFillEnclosedBackground(mask, data, width, height, refs, tolerance);
+  }
 }
 
 function floodFillBackgroundFromBorder(
@@ -627,20 +631,10 @@ export function pruneOutlineHalos(
       const neutralHalo = isNeutralOutlinePixel(r, g, b);
       const paleFringe =
         !isJerseyFabricPixel(r, g, b) &&
-        (neutralHalo || (a < 220 && r >= 200 && g >= 200 && b >= 195));
-      const washedFabricFringe =
-        isJerseyFabricPixel(r, g, b) &&
-        !isAccentStripePixel(r, g, b) &&
-        sat < 10 &&
-        a < 180 &&
-        r >= 248 &&
-        g >= 248 &&
-        b >= 248;
-      const weakColoredFringe =
-        isJerseyFabricPixel(r, g, b) &&
-        !isAccentStripePixel(r, g, b) &&
-        a < 160 &&
-        touchesTransparentNeighbor(data, width, height, x, y);
+        neutralHalo &&
+        a < 200;
+      const washedFabricFringe = false;
+      const weakColoredFringe = false;
 
       if (paleFringe || washedFabricFringe || weakColoredFringe) {
         data[i] = 0;

@@ -114,7 +114,7 @@ export function filterProductsByCategoryScope(
 }
 
 export function isKidsProductName(name: string): boolean {
-  return /\benfant\b/i.test(name);
+  return /\b(enfant|junior|kids?)\b/i.test(name);
 }
 
 /** Filtre audience enfant / adulte selon le nom produit. */
