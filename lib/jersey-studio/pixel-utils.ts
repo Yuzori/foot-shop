@@ -143,6 +143,149 @@ export function floodFillBackground(
   }
 }
 
+function isStrictExteriorBackground(
+  r: number,
+  g: number,
+  b: number,
+  a: number,
+  refs: Rgb[],
+  tolerance: number,
+): boolean {
+  if (a < 24) return true;
+  if (isJerseyFabricPixel(r, g, b) || isAccentStripePixel(r, g, b)) return false;
+  if (isStudioBackgroundPixel(r, g, b)) return true;
+  return matchesBackground(r, g, b, refs, Math.min(tolerance, 28));
+}
+
+function hasInwardFabricNeighbor(
+  data: Uint8Array,
+  width: number,
+  height: number,
+  x: number,
+  y: number,
+): boolean {
+  const neighbors: [number, number][] = [
+    [x - 1, y],
+    [x + 1, y],
+    [x, y - 1],
+    [x, y + 1],
+  ];
+
+  for (const [nx, ny] of neighbors) {
+    if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+    if (touchesTransparentNeighbor(data, width, height, nx, ny)) continue;
+    const ni = (ny * width + nx) * 4;
+    const r = data[ni] ?? 0;
+    const g = data[ni + 1] ?? 0;
+    const b = data[ni + 2] ?? 0;
+    const sat = Math.max(r, g, b) - Math.min(r, g, b);
+    if (isJerseyFabricPixel(r, g, b) && sat >= 14) return true;
+    if (isAccentStripePixel(r, g, b)) return true;
+  }
+
+  return false;
+}
+
+/** Comble les trous transparents à l'intérieur du maillot (zones blanches mal détourées). */
+export function repairEnclosedTransparentHoles(
+  data: Uint8Array,
+  width: number,
+  height: number,
+): void {
+  for (let pass = 0; pass < 8; pass++) {
+    let changed = false;
+
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const p = y * width + x;
+        const i = p * 4;
+        if ((data[i + 3] ?? 0) >= 24) continue;
+
+        let opaqueCount = 0;
+        let sr = 0;
+        let sg = 0;
+        let sb = 0;
+
+        const cardinals: [number, number][] = [
+          [x - 1, y],
+          [x + 1, y],
+          [x, y - 1],
+          [x, y + 1],
+        ];
+
+        for (const [nx, ny] of cardinals) {
+          const ni = (ny * width + nx) * 4;
+          const na = data[ni + 3] ?? 0;
+          if (na < 180) continue;
+          opaqueCount++;
+          sr += data[ni] ?? 0;
+          sg += data[ni + 1] ?? 0;
+          sb += data[ni + 2] ?? 0;
+        }
+
+        if (opaqueCount < 3) continue;
+
+        data[i] = Math.round(sr / opaqueCount);
+        data[i + 1] = Math.round(sg / opaqueCount);
+        data[i + 2] = Math.round(sb / opaqueCount);
+        data[i + 3] = 255;
+        changed = true;
+      }
+    }
+
+    if (!changed) break;
+  }
+}
+
+/**
+ * Retire les franges blanches/grises du fond sur le contour (côtes, manches…).
+ * Ne touche jamais l'intérieur du maillot.
+ */
+export function removeOutlineStudioBleed(
+  data: Uint8Array,
+  width: number,
+  height: number,
+): void {
+  for (let pass = 0; pass < 5; pass++) {
+    let changed = false;
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const p = y * width + x;
+        const i = p * 4;
+        const a = data[i + 3] ?? 0;
+        if (a === 0) continue;
+        if (!touchesTransparentNeighbor(data, width, height, x, y)) continue;
+
+        const r = data[i] ?? 0;
+        const g = data[i + 1] ?? 0;
+        const b = data[i + 2] ?? 0;
+        const sat = Math.max(r, g, b) - Math.min(r, g, b);
+
+        if (isAccentStripePixel(r, g, b)) continue;
+        if (isJerseyFabricPixel(r, g, b) && sat >= 22 && a >= 220) continue;
+
+        const neutralFringe =
+          isStudioBackgroundPixel(r, g, b) ||
+          isNeutralOutlinePixel(r, g, b) ||
+          (sat < 28 && r >= 210 && g >= 210 && b >= 205);
+
+        const semiBlend = a < 235 && sat < 32 && r >= 200;
+
+        if ((neutralFringe || semiBlend) && hasInwardFabricNeighbor(data, width, height, x, y)) {
+          data[i] = 0;
+          data[i + 1] = 0;
+          data[i + 2] = 0;
+          data[i + 3] = 0;
+          changed = true;
+        }
+      }
+    }
+
+    if (!changed) break;
+  }
+}
+
 function floodFillBackgroundFromBorder(
   mask: Uint8Array,
   data: Uint8Array,
@@ -162,12 +305,7 @@ function floodFillBackgroundFromBorder(
     const g = data[i + 1] ?? 0;
     const b = data[i + 2] ?? 0;
     const a = data[i + 3] ?? 0;
-    if (a < 20) {
-      mask[p] = 1;
-      queue.push(p);
-      return;
-    }
-    if (matchesBackground(r, g, b, refs, tolerance)) {
+    if (isStrictExteriorBackground(r, g, b, a, refs, tolerance)) {
       mask[p] = 1;
       queue.push(p);
     }
@@ -551,7 +689,7 @@ export function isProtectedJerseyPixel(r: number, g: number, b: number): boolean
   return isJerseyFabricPixel(r, g, b);
 }
 
-/** Renforce l'opacité des pixels colorés du maillot (intérieur + bords saturés uniquement). */
+/** Renforce l'opacité de tout l'intérieur du maillot (blanc, couleur, etc.). */
 export function solidifyJerseyColors(
   data: Uint8Array,
   width: number,
@@ -564,21 +702,14 @@ export function solidifyJerseyColors(
       const a = data[i + 3] ?? 0;
       if (a === 0) continue;
 
-      const r = data[i] ?? 0;
-      const g = data[i + 1] ?? 0;
-      const b = data[i + 2] ?? 0;
-      if (!isJerseyFabricPixel(r, g, b)) continue;
-
-      const onOutline = touchesTransparentNeighbor(data, width, height, x, y);
-
-      if (!onOutline) {
+      if (!touchesTransparentNeighbor(data, width, height, x, y)) {
         data[i + 3] = 255;
       }
     }
   }
 }
 
-function touchesTransparentNeighbor(
+export function touchesTransparentNeighbor(
   data: Uint8Array,
   width: number,
   height: number,

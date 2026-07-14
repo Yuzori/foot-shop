@@ -16,10 +16,12 @@ export function Editorial() {
       <div className="grid items-center gap-12 lg:grid-cols-2">
         <Reveal>
           <div className="relative aspect-[4/3] overflow-hidden rounded-3xl bg-ink">
-            {/* Independent image (public/bkd2.jpg + /bkd2-tel.jpg) */}
-            <ResponsiveBackground src="/bkd2.jpg" />
+            <ResponsiveBackground
+              src="/flocage.jpg"
+              mobileSrc="/flocage.jpg"
+            />
             <div
-              className="absolute inset-0 bg-gradient-to-tr from-ink/80 via-ink/20 to-transparent"
+              className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-ink/85 to-transparent"
               aria-hidden
             />
             <div className="absolute bottom-0 left-0 p-8">

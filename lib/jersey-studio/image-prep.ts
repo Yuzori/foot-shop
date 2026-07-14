@@ -22,8 +22,11 @@ import {
   isJerseyFabricPixel,
   pruneOutlineHalos,
   repairAccentHighlights,
+  repairEnclosedTransparentHoles,
+  removeOutlineStudioBleed,
   solidifyJerseyColors,
   stripNeutralOutlineFringe,
+  touchesTransparentNeighbor,
 } from "@/lib/jersey-studio/pixel-utils";
 
 export async function rawRgba(buffer: Buffer): Promise<{
@@ -130,6 +133,9 @@ async function removeBackgroundInternal(
     if (mask[p]) work[p * 4 + 3] = 0;
   }
 
+  repairEnclosedTransparentHoles(work, width, height);
+  removeOutlineStudioBleed(work, width, height);
+
   if (opts.aggressiveFringe) {
     cleanColorFringe(work, width, height);
   }
@@ -155,21 +161,25 @@ function cleanColorFringeLight(
   width: number,
   height: number,
 ): void {
-  for (let p = 0; p < width * height; p++) {
-    const i = p * 4;
-    const r = data[i] ?? 0;
-    const g = data[i + 1] ?? 0;
-    const b = data[i + 2] ?? 0;
-    const a = data[i + 3] ?? 0;
-    if (a === 0 || a >= 240) continue;
-    if (isJerseyFabricPixel(r, g, b) || isAccentStripePixel(r, g, b)) continue;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const p = y * width + x;
+      const i = p * 4;
+      const r = data[i] ?? 0;
+      const g = data[i + 1] ?? 0;
+      const b = data[i + 2] ?? 0;
+      const a = data[i + 3] ?? 0;
+      if (a === 0 || a >= 240) continue;
+      if (!touchesTransparentNeighbor(data, width, height, x, y)) continue;
+      if (isJerseyFabricPixel(r, g, b) || isAccentStripePixel(r, g, b)) continue;
 
-    const nearWhite = r >= 248 && g >= 248 && b >= 248;
-    if (nearWhite && a < 200) {
-      data[i] = 0;
-      data[i + 1] = 0;
-      data[i + 2] = 0;
-      data[i + 3] = 0;
+      const nearWhite = r >= 248 && g >= 248 && b >= 248;
+      if (nearWhite && a < 200) {
+        data[i] = 0;
+        data[i + 1] = 0;
+        data[i + 2] = 0;
+        data[i + 3] = 0;
+      }
     }
   }
 }
@@ -195,6 +205,8 @@ export async function polishCutoutJersey(png: Buffer): Promise<Buffer> {
 /** Finition détail : pas de flou, dimensions carte conservées. */
 export async function polishCutoutDetail(png: Buffer): Promise<Buffer> {
   const { data, width, height } = await rawRgba(png);
+  repairEnclosedTransparentHoles(data, width, height);
+  removeOutlineStudioBleed(data, width, height);
   pruneOutlineHalos(data, width, height);
   cleanColorFringeLight(data, width, height);
   repairAccentHighlights(data, width, height);

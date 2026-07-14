@@ -10,7 +10,7 @@ import {
   WORK_HALO_BLUR_SIGMA,
   HALO_OPACITY,
 } from "@/lib/jersey-studio/constants";
-import { isProtectedJerseyPixel, isStudioBackgroundPixel } from "@/lib/jersey-studio/pixel-utils";
+import { isProtectedJerseyPixel, isJerseyFabricPixel, isStudioBackgroundPixel } from "@/lib/jersey-studio/pixel-utils";
 import { applyOpacity, rawRgba, rgbaToPng } from "@/lib/jersey-studio/image-prep";
 
 export async function fitToCardLayer(input: Buffer): Promise<Buffer> {
@@ -41,13 +41,14 @@ export async function buildColoredHalo(jerseyLayer: Buffer): Promise<Buffer> {
       continue;
     }
 
-    if (isStudioBackgroundPixel(r, g, b)) {
+    if (isStudioBackgroundPixel(r, g, b) && !isJerseyFabricPixel(r, g, b)) {
       data[i + 3] = 0;
       continue;
     }
 
     const nearWhite = r >= 248 && g >= 248 && b >= 248;
-    const paleFringe = a < 210 && !isProtectedJerseyPixel(r, g, b) && nearWhite;
+    const paleFringe =
+      a < 210 && !isProtectedJerseyPixel(r, g, b) && nearWhite;
 
     if (paleFringe) {
       data[i] = CARD_BG.r;
