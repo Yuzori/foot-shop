@@ -9,7 +9,10 @@ import crypto from "node:crypto";
 import { formatFlocageLabel } from "@/config/shop";
 
 import { getSession } from "@/lib/auth";
+import { archiveOrder } from "@/lib/order-archive-store";
+import { applyPercentDiscount, resolvePromoCode } from "@/lib/promo-code";
 import { resolveCartLines } from "@/lib/resolve-cart-lines";
+import { resolveShippingFee } from "@/lib/shipping-fee";
 import { prestashop } from "@/services/prestashop";
 
 import type { CreateOrderLine } from "@/services/prestashop";
@@ -36,6 +39,8 @@ export interface CheckoutBody {
 
   lines: CreateOrderLine[];
 
+  promoCode?: string;
+
 }
 
 
@@ -54,6 +59,14 @@ export interface PlaceOrderResult {
 
   /** Lignes recalculées côté serveur (prix PrestaShop). */
   lines?: CreateOrderLine[];
+
+  shippingFee?: number;
+
+  shippingLabel?: string;
+
+  promoDiscount?: number;
+
+  promoCode?: string | null;
 
   message?: string;
 
@@ -298,7 +311,18 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
 
   const note = buildOrderNote(resolvedLines);
 
+  const shipping = await resolveShippingFee({
+    email: contact.email,
+    customerId,
+  });
 
+  const subtotal = resolvedLines.reduce(
+    (sum, line) => sum + line.unitPrice * line.quantity,
+    0,
+  );
+  const promo = resolvePromoCode(body.promoCode);
+  const promoDiscount =
+    promo?.valid === true ? applyPercentDiscount(subtotal, promo.percent) : 0;
 
   const result = await prestashop.createOrder({
 
@@ -313,6 +337,8 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
     lines: resolvedLines,
 
     note,
+
+    shippingFee: shipping.fee,
 
   });
 
@@ -338,6 +364,32 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
 
 
 
+  const archiveId = `ord-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
+  const total = Math.max(0, subtotal - promoDiscount + shipping.fee);
+
+  await archiveOrder({
+    id: archiveId,
+    reference: result.reference ?? archiveId,
+    orderId: result.orderId,
+    customerId,
+    createdAt: new Date().toISOString(),
+    paidAt: null,
+    status: "created",
+    contact,
+    address,
+    lines: resolvedLines,
+    subtotal,
+    shippingFee: shipping.fee,
+    promoCode: promo?.valid ? promo.code : null,
+    promoDiscount,
+    total,
+    currency: "EUR",
+    note: note || undefined,
+    source: "checkout",
+  }).catch((err) => {
+    console.error("[placeOrder] archive failed", err);
+  });
+
   return {
 
     ok: true,
@@ -351,6 +403,14 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
     customerId,
 
     lines: resolvedLines,
+
+    shippingFee: shipping.fee,
+
+    shippingLabel: shipping.label,
+
+    promoDiscount,
+
+    promoCode: promo?.valid ? promo.code : null,
 
   };
 

@@ -27,14 +27,15 @@ const config: Config = {
           muted: "#1c1c1c",
         },
         accent: {
-          DEFAULT: "#e2001a",
-          dark: "#b80016",
-          soft: "#ff3b30",
+          DEFAULT: "#66BAFF",
+          dark: "#3DA8F5",
+          soft: "#99D4FF",
+          muted: "#E8F5FF",
         },
         paper: {
           DEFAULT: "#ffffff",
-          soft: "#f6f6f6",
-          muted: "#ededed",
+          soft: "#f7f9fc",
+          muted: "#eef2f7",
         },
       },
       fontFamily: {
@@ -47,10 +48,14 @@ const config: Config = {
       borderRadius: {
         "2xl": "1.25rem",
         "3xl": "1.75rem",
+        "4xl": "2rem",
       },
       boxShadow: {
-        soft: "0 1px 2px rgba(0,0,0,0.04), 0 8px 30px rgba(0,0,0,0.06)",
-        lift: "0 20px 60px -20px rgba(0,0,0,0.25)",
+        soft: "0 1px 2px rgba(0,0,0,0.03), 0 8px 32px rgba(0,0,0,0.05)",
+        lift: "0 24px 64px -24px rgba(0,0,0,0.22)",
+        glow: "0 8px 32px -8px rgba(102, 186, 255, 0.55)",
+        "glow-sm": "0 4px 20px -4px rgba(102, 186, 255, 0.45)",
+        panel: "0 0 0 1px rgba(10,10,10,0.06), 0 20px 48px -24px rgba(0,0,0,0.12)",
       },
       maxWidth: {
         "8xl": "1440px",
@@ -72,18 +77,33 @@ const config: Config = {
         },
         "pulse-accent": {
           "0%, 100%": { opacity: "1" },
-          "50%": { opacity: "0.65" },
+          "50%": { opacity: "0.55" },
         },
         float: {
           "0%, 100%": { transform: "translateY(0)" },
           "50%": { transform: "translateY(-6px)" },
+        },
+        "radar-ping": {
+          "0%": { transform: "scale(0.85)", opacity: "0.55" },
+          "100%": { transform: "scale(2.4)", opacity: "0" },
+        },
+        "radar-sweep": {
+          "0%": { transform: "rotate(0deg)" },
+          "100%": { transform: "rotate(360deg)" },
+        },
+        "card-laser-spin": {
+          from: { transform: "rotate(0deg)" },
+          to: { transform: "rotate(360deg)" },
         },
       },
       animation: {
         "fade-up": "fade-up 0.6s cubic-bezier(0.16,1,0.3,1) both",
         marquee: "marquee 22s linear infinite",
         "pulse-accent": "pulse-accent 2.5s ease-in-out infinite",
-        "float": "float 4s ease-in-out infinite",
+        float: "float 4s ease-in-out infinite",
+        "radar-ping": "radar-ping 2s cubic-bezier(0,0,0.2,1) infinite",
+        "radar-sweep": "radar-sweep 2.4s linear infinite",
+        "card-laser-spin": "card-laser-spin 2.8s linear infinite",
       },
     },
   },

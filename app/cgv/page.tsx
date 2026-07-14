@@ -1,6 +1,7 @@
 import { type Metadata } from "next";
 
 import { ArticlePage } from "@/components/common/article-page";
+import { shopConfig } from "@/config/shop";
 import { legalInfo } from "@/config/legal";
 
 export const metadata: Metadata = {
@@ -58,18 +59,40 @@ export default function TermsPage() {
         <h2>Article 5 — Paiement</h2>
         <p>
           Le paiement s&apos;effectue de manière sécurisée au moment de la
-          commande. Les données bancaires sont traitées par le prestataire de
-          paiement et ne sont pas conservées par le vendeur.
+          commande par carte bancaire via le prestataire Stripe. Les données
+          bancaires sont traitées par ce prestataire et ne sont pas conservées
+          par {legalInfo.companyName}.
+        </p>
+      </section>
+
+      <section>
+        <h2>Article 5 bis — Codes promotionnels</h2>
+        <p>
+          Les codes promotionnels sont personnels, non cumulables sauf mention
+          contraire, et utilisables dans la limite de leur validité.{" "}
+          {legalInfo.companyName} se réserve le droit d&apos;en modifier ou
+          d&apos;en retirer l&apos;usage à tout moment.
         </p>
       </section>
 
       <section>
         <h2>Article 6 — Livraison</h2>
         <p>
-          Les délais et frais de livraison sont précisés lors de la commande. En
-          cas de retard, le client peut, dans les conditions de l&apos;article
-          L.216-6 du Code de la consommation, demander la résolution de la vente
-          et le remboursement.
+          Les produits sont livrés à l&apos;adresse indiquée par le client lors
+          de la commande. Les délais indicatifs sont de 5 à 10 jours ouvrés à
+          compter de la confirmation du paiement.
+        </p>
+        <p>
+          {legalInfo.companyName} offre la livraison sur la première commande
+          du client. À partir de la deuxième commande, des frais de livraison de{" "}
+          {shopConfig.standardShippingPrice.toFixed(2).replace(".", ",")} € TTC
+          s&apos;appliquent, indiqués avant validation du paiement.
+        </p>
+        <p>
+          En cas de retard de livraison, le client peut, conformément à
+          l&apos;article L.216-6 du Code de la consommation, demander la
+          résolution de la vente si le produit n&apos;a pas été livré dans un
+          délai supplémentaire raisonnable après mise en demeure.
         </p>
       </section>
 
@@ -112,9 +135,14 @@ export default function TermsPage() {
       <section>
         <h2>Article 10 — Médiation</h2>
         <p>
-          En cas de litige, le client peut recourir gratuitement à un médiateur
-          de la consommation ou à la plateforme européenne de règlement en ligne
-          des litiges : {legalInfo.odrUrl}.
+          Conformément aux articles L.612-1 et suivants du Code de la
+          consommation, le client peut recourir gratuitement à un médiateur de la
+          consommation en vue de la résolution amiable d&apos;un litige :{" "}
+          {legalInfo.mediatorName} ({legalInfo.mediatorUrl}).
+        </p>
+        <p>
+          Plateforme européenne de règlement en ligne des litiges :{" "}
+          {legalInfo.odrUrl}.
         </p>
       </section>
     </ArticlePage>

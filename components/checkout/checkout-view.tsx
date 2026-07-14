@@ -106,6 +106,11 @@ export function CheckoutView() {
   const [confirmingPayment, setConfirmingPayment] = useState(false);
   const [stripeBogoDiscount, setStripeBogoDiscount] = useState(0);
   const [stripeFreeUnits, setStripeFreeUnits] = useState(0);
+  const [promoCode, setPromoCode] = useState("");
+  const [shippingPreview, setShippingPreview] = useState<{
+    fee: number;
+    label: string;
+  } | null>(null);
   const paymentRestoredRef = useRef(false);
 
   useLayoutEffect(() => {
@@ -201,7 +206,10 @@ export function CheckoutView() {
       ? stripeBogoDiscount
       : (bogoPreview?.discountTotal ?? 0);
 
-  const orderTotal = Math.max(0, subtotal - bogoDiscount);
+  const orderTotal = Math.max(
+    0,
+    subtotal - bogoDiscount + (shippingPreview?.fee ?? 0),
+  );
 
   const persistPaymentSession = useCallback(
     (
@@ -230,6 +238,12 @@ export function CheckoutView() {
     if (params.get("canceled") === "1") {
       setPaymentCanceled(true);
       window.history.replaceState({}, "", routes.checkout);
+    }
+    try {
+      const savedPromo = sessionStorage.getItem("footshop-promo-code");
+      if (savedPromo) setPromoCode(savedPromo);
+    } catch {
+      /* ignore */
     }
     void preloadStripe();
   }, []);
@@ -358,6 +372,7 @@ export function CheckoutView() {
         country: value("country"),
       },
       lines: apiLines,
+      promoCode: promoCode.trim() || undefined,
     };
 
     const stripeItems = snapshot.map((l) => ({
@@ -377,11 +392,18 @@ export function CheckoutView() {
           ...payload,
           items: stripeItems,
           applyWelcomePromo: shouldApplyWelcomePromo(welcomePromoQuery.data),
+          promoCode: promoCode.trim() || undefined,
         });
         const bogoDisc = session.bogoDiscount ?? 0;
         const freeUnits = session.freeUnits ?? 0;
         setStripeBogoDiscount(bogoDisc);
         setStripeFreeUnits(freeUnits);
+        if (session.shippingFee != null) {
+          setShippingPreview({
+            fee: session.shippingFee,
+            label: session.shippingLabel ?? "",
+          });
+        }
         if (session.bogoApplied) {
           await welcomePromoQuery.refetch();
         }
@@ -489,7 +511,23 @@ export function CheckoutView() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Prénom" name="firstName" required autoComplete="given-name" />
                 <Field label="Nom" name="lastName" required autoComplete="family-name" />
-                <Field label="Email" name="email" type="email" required autoComplete="email" className="sm:col-span-2" />
+                <Field label="Email" name="email" type="email" required autoComplete="email" className="sm:col-span-2" onBlur={async (e) => {
+                  const email = e.currentTarget.value.trim();
+                  if (!email) return;
+                  try {
+                    const res = await fetch("/api/checkout/shipping-preview", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ email }),
+                    });
+                    const data = (await res.json()) as { fee?: number; label?: string };
+                    if (typeof data.fee === "number") {
+                      setShippingPreview({ fee: data.fee, label: data.label ?? "" });
+                    }
+                  } catch {
+                    /* ignore */
+                  }
+                }} />
                 <Field label="Téléphone" name="phone" type="tel" autoComplete="tel" className="sm:col-span-2" />
               </div>
             </section>
@@ -509,6 +547,18 @@ export function CheckoutView() {
               <CheckoutFlocage />
             </div>
 
+            <section className="surface-card p-6 sm:p-8">
+              <h2 className="section-title mb-3">Code promo</h2>
+              <Field
+                label="Code promotionnel (optionnel)"
+                name="promoCode"
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                placeholder="Ex. FOODSHOP10"
+                autoComplete="off"
+              />
+            </section>
+
             {error ? (
               <p className="rounded-2xl border border-accent/20 bg-accent/5 px-4 py-3 text-sm text-accent" role="alert">
                 {error}
@@ -519,7 +569,7 @@ export function CheckoutView() {
               type="submit"
               size="lg"
               disabled={pending}
-              className="w-full bg-accent hover:bg-accent-dark sm:w-auto"
+              className="w-full bg-accent text-ink hover:bg-accent-dark hover:shadow-glow-sm sm:w-auto"
             >
               {pending ? (
                 <span className="flex items-center gap-2">
@@ -586,6 +636,8 @@ export function CheckoutView() {
           orderTotal={orderTotal}
           stripeBogoDiscount={stripeBogoDiscount}
           stripeFreeUnits={stripeFreeUnits}
+          shippingFee={shippingPreview?.fee}
+          shippingLabel={shippingPreview?.label}
         />
       </div>
     </Container>

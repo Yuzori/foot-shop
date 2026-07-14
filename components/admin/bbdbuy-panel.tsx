@@ -10,7 +10,7 @@ import type { BbdBuyOrderDraft } from "@/lib/bbdbuy/types";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { ProductImage } from "@/components/product/product-image";
-import { ProductImportSection } from "@/components/admin/product-import-section";
+import { JerseyStudioSection } from "@/components/admin/jersey-studio-section";
 
 const SECRET_KEY = "footshop-admin-secret";
 
@@ -226,6 +226,97 @@ function DraftCard({
         </Button>
       ) : null}
     </article>
+  );
+}
+
+type ArchiveRow = {
+  id: string;
+  reference: string;
+  createdAt: string;
+  paidAt: string | null;
+  status: string;
+  email: string;
+  total: number;
+  lineCount: number;
+};
+
+function OrderArchiveSection({ secret }: { secret: string }) {
+  const [records, setRecords] = useState<ArchiveRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/order-archive?limit=100", {
+        headers: { Authorization: `Bearer ${secret}` },
+      });
+      const data = (await res.json()) as { records?: ArchiveRow[]; message?: string };
+      if (!res.ok) throw new Error(data.message ?? "Chargement impossible.");
+      setRecords(data.records ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur");
+    } finally {
+      setLoading(false);
+    }
+  }, [secret]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  return (
+    <section className="mt-16 rounded-3xl border border-ink/8 bg-paper-soft/40 p-6 lg:p-8">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="font-display text-xl font-semibold">Historique des commandes</h2>
+          <p className="mt-1 text-sm text-ink/55">
+            Sauvegarde sécurisée de toutes les commandes (y compris tests) — accessible admin uniquement.
+          </p>
+        </div>
+        <Button type="button" variant="outline" size="sm" onClick={() => void load()}>
+          Actualiser
+        </Button>
+      </div>
+
+      {loading ? (
+        <div className="mt-6 flex justify-center py-8">
+          <Spinner className="h-6 w-6" />
+        </div>
+      ) : error ? (
+        <p className="mt-4 text-sm text-accent">{error}</p>
+      ) : records.length === 0 ? (
+        <p className="mt-4 text-sm text-ink/50">Aucune commande archivée pour le moment.</p>
+      ) : (
+        <div className="mt-6 overflow-x-auto rounded-2xl border border-ink/8">
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-ink/[0.03] text-xs uppercase tracking-wide text-ink/45">
+              <tr>
+                <th className="px-4 py-3">Référence</th>
+                <th className="px-4 py-3">Email</th>
+                <th className="px-4 py-3">Date</th>
+                <th className="px-4 py-3">Statut</th>
+                <th className="px-4 py-3">Total</th>
+                <th className="px-4 py-3">Lignes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {records.map((row) => (
+                <tr key={row.id} className="border-t border-ink/6">
+                  <td className="px-4 py-3 font-medium">{row.reference}</td>
+                  <td className="px-4 py-3 text-ink/65">{row.email}</td>
+                  <td className="px-4 py-3 text-ink/55">{formatDate(row.createdAt)}</td>
+                  <td className="px-4 py-3 capitalize text-ink/55">{row.status}</td>
+                  <td className="px-4 py-3 tabular-nums">{row.total.toFixed(2)} €</td>
+                  <td className="px-4 py-3">{row.lineCount}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -580,8 +671,9 @@ export function BbdBuyPanel() {
           ))}
         </div>
 
+        <OrderArchiveSection secret={secret} />
         <ShippingForm secret={secret} />
-        <ProductImportSection secret={secret} />
+        <JerseyStudioSection secret={secret} />
       </div>
     </Container>
   );

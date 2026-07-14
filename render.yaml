@@ -17,6 +17,20 @@ services:
         value: production
 
   - type: cron
+    name: foot-shop-keepalive
+    schedule: "*/10 * * * *"
+    region: frankfurt
+    plan: free
+    runtime: node
+    buildCommand: npm ci
+    startCommand: node scripts/cron-keepalive.mjs
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: CRON_TARGET_URL
+        sync: false
+
+  - type: cron
     name: foot-shop-notify
     schedule: "*/30 * * * *"
     region: frankfurt

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 16px;
+        font: 12px/1.45 "Inter", system-ui, sans-serif;
+        color: #0a0a0a;
+      }
+      h1 {
+        margin: 0 0 4px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+      p {
+        margin: 0 0 12px;
+        color: #666;
+      }
+      label {
+        display: block;
+        margin-bottom: 4px;
+        font-weight: 500;
+        font-size: 11px;
+      }
+      input {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 12px;
+        margin-bottom: 10px;
+      }
+      button {
+        width: 100%;
+        padding: 10px 12px;
+        border: none;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        background: #0a0a0a;
+        color: #fff;
+      }
+      button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      button.secondary {
+        margin-top: 8px;
+        background: #eee;
+        color: #333;
+      }
+      #status {
+        margin-top: 12px;
+        min-height: 18px;
+        font-size: 11px;
+        color: #666;
+      }
+      #status.error {
+        color: #b00020;
+      }
+      a {
+        color: #0a0a0a;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Détourer l'image</h1>
+    <p>
+      Sélectionnez un calque, puis cliquez ci-dessous. Utilise une clé
+      <a href="https://www.remove.bg/api" target="_blank" rel="noopener">remove.bg</a>
+      (50 crédits gratuits / mois).
+    </p>
+
+    <label for="apiKey">Clé API remove.bg</label>
+    <input id="apiKey" type="password" placeholder="Collez votre clé API" autocomplete="off" />
+
+    <button id="saveKey" class="secondary" type="button">Enregistrer la clé</button>
+    <button id="run" type="button">Retirer le fond</button>
+
+    <div id="status"></div>
+
+    <script>const apiKeyInput = document.getElementById("apiKey");
+const saveKeyBtn = document.getElementById("saveKey");
+const runBtn = document.getElementById("run");
+const statusEl = document.getElementById("status");
+
+let pending = null;
+
+function setStatus(text, isError) {
+  statusEl.textContent = text;
+  statusEl.className = isError ? "error" : "";
+}
+
+function setBusy(busy) {
+  runBtn.disabled = busy;
+  saveKeyBtn.disabled = busy;
+}
+
+saveKeyBtn.onclick = () => {
+  parent.postMessage(
+    { pluginMessage: { type: "save-key", apiKey: apiKeyInput.value } },
+    "*",
+  );
+  setStatus("Clé envoyée au plugin…");
+};
+
+runBtn.onclick = () => {
+  setBusy(true);
+  setStatus("Préparation…");
+  parent.postMessage(
+    { pluginMessage: { type: "remove-bg", apiKey: apiKeyInput.value } },
+    "*",
+  );
+};
+
+window.onmessage = async (event) => {
+  const msg = event.data.pluginMessage;
+  if (!msg) return;
+
+  if (msg.type === "init") {
+    if (msg.apiKey) apiKeyInput.value = msg.apiKey;
+    return;
+  }
+
+  if (msg.type === "status") {
+    setStatus(msg.message);
+    return;
+  }
+
+  if (msg.type === "error") {
+    setStatus(msg.message, true);
+    setBusy(false);
+    pending = null;
+    return;
+  }
+
+  if (msg.type === "done") {
+    setStatus("Terminé ✓");
+    setBusy(false);
+    pending = null;
+    return;
+  }
+
+  if (msg.type === "process") {
+    pending = { nodeId: msg.nodeId, nodeName: msg.nodeName };
+    setStatus("Détourage en cours (remove.bg)…");
+
+    try {
+      const bytes = new Uint8Array(msg.bytes);
+      const blob = new Blob([bytes], { type: "image/png" });
+
+      const form = new FormData();
+      form.append("image_file", blob, "layer.png");
+      form.append("size", "auto");
+      form.append("format", "png");
+
+      const res = await fetch("https://api.remove.bg/v1.0/removebg", {
+        method: "POST",
+        headers: { "X-Api-Key": msg.apiKey },
+        body: form,
+      });
+
+      if (!res.ok) {
+        const detail = await res.text();
+        throw new Error(detail.slice(0, 120) || `Erreur ${res.status}`);
+      }
+
+      const result = new Uint8Array(await res.arrayBuffer());
+
+      parent.postMessage(
+        {
+          pluginMessage: {
+            type: "apply-result",
+            nodeId: msg.nodeId,
+            nodeName: msg.nodeName,
+            bytes: Array.from(result),
+          },
+        },
+        "*",
+      );
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Échec remove.bg", true);
+      setBusy(false);
+      pending = null;
+    }
+  }
+};
+</script>
+  </body>
+</html>

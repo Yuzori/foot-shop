@@ -65,8 +65,9 @@ export default function LegalPage() {
         <p>
           Conformément à l&apos;article L.612-1 du Code de la consommation, le
           consommateur peut recourir gratuitement à un médiateur de la
-          consommation. La plateforme européenne de Règlement en Ligne des
-          Litiges est accessible à l&apos;adresse : {legalInfo.odrUrl}.
+          consommation : {legalInfo.mediatorName}. La plateforme européenne de
+          Règlement en Ligne des Litiges est accessible à l&apos;adresse :{" "}
+          {legalInfo.odrUrl}.
         </p>
       </section>
     </ArticlePage>

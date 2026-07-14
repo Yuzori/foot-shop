@@ -21,6 +21,9 @@ interface OrderSummaryProps {
   orderTotal: number;
   stripeBogoDiscount?: number;
   stripeFreeUnits?: number;
+  shippingFee?: number;
+  shippingLabel?: string;
+  promoDiscount?: number;
   showEditCart?: boolean;
 }
 
@@ -33,15 +36,21 @@ export function OrderSummary({
   orderTotal,
   stripeBogoDiscount = 0,
   stripeFreeUnits = 0,
+  shippingFee,
+  shippingLabel,
+  promoDiscount = 0,
   showEditCart = true,
 }: OrderSummaryProps) {
-  const bogoDiscount = subtotal - orderTotal;
+  const bogoDiscount =
+    stripeBogoDiscount > 0
+      ? stripeBogoDiscount
+      : Math.max(0, subtotal - orderTotal - (promoDiscount ?? 0) - (shippingFee ?? 0));
 
   return (
     <SummaryCard
       badge={
-        <p className="rounded-xl bg-emerald-50 px-3 py-2 text-center text-xs font-semibold text-emerald-800">
-          {shopConfig.freeShippingLabel}
+        <p className="rounded-xl bg-sky-50 px-3 py-2 text-center text-xs font-semibold text-sky-900">
+          {shippingLabel ?? shopConfig.freeShippingLabel}
         </p>
       }
       title="Votre commande"
@@ -91,9 +100,21 @@ export function OrderSummary({
             <span className="tabular-nums">−{formatPrice(bogoDiscount)}</span>
           </div>
         ) : null}
+        {promoDiscount > 0 ? (
+          <div className="flex justify-between text-accent">
+            <span>Code promo</span>
+            <span className="tabular-nums">−{formatPrice(promoDiscount)}</span>
+          </div>
+        ) : null}
         <div className="flex justify-between">
           <span className="text-ink/55">Livraison</span>
-          <span className="text-ink/55">Gratuite</span>
+          <span className="text-ink/55">
+            {shippingFee != null
+              ? shippingFee <= 0
+                ? "Offerte"
+                : formatPrice(shippingFee)
+              : "Calculée au paiement"}
+          </span>
         </div>
       </div>
 

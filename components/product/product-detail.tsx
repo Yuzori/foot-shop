@@ -8,14 +8,12 @@ import { FavoriteButton } from "@/components/product/favorite-button";
 import { ProductEngagementTracker } from "@/components/product/product-engagement-tracker";
 import { ProductGallery } from "@/components/product/product-gallery";
 import { ProductGrid } from "@/components/product/product-grid";
-import { ProductDescriptionBlock } from "@/components/product/product-description-block";
 import { ProductBadges } from "@/components/product/product-badges";
 import { ProductPurchase } from "@/components/product/product-purchase";
 import { StockAlertBell } from "@/components/product/stock-alert-bell";
 import { Container } from "@/components/ui/container";
 import { routes } from "@/config/site";
 import { useProducts } from "@/hooks/use-products";
-import { stripHtml } from "@/lib/utils";
 import { useRecentProductStore } from "@/store/recent-product-store";
 import type { Product } from "@/types/domain";
 
@@ -62,10 +60,6 @@ export function ProductDetail({ product }: ProductDetailProps) {
         <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
           <div>
             <ProductGallery images={product.images} name={product.name} />
-            <ProductDescriptionBlock
-              summary={stripHtml(product.summary)}
-              descriptionHtml={product.description}
-            />
           </div>
 
           <div className="flex flex-col lg:sticky lg:top-28 lg:self-start">

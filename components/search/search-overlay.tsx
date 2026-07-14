@@ -44,7 +44,6 @@ export function SearchOverlay() {
     };
   }, [open, close]);
 
-  // Reset the field shortly after closing.
   useEffect(() => {
     if (!open) {
       const t = window.setTimeout(() => setTerm(""), 250);
@@ -70,7 +69,7 @@ export function SearchOverlay() {
           aria-label="Recherche"
         >
           <div
-            className="absolute inset-0 bg-paper/85 backdrop-blur-md"
+            className="absolute inset-0 bg-ink/25 backdrop-blur-xl"
             onClick={close}
           />
 
@@ -82,47 +81,47 @@ export function SearchOverlay() {
             className="absolute inset-x-0 top-0 mx-auto max-h-full w-full max-w-3xl overflow-y-auto px-5 pb-16 pt-6 sm:pt-12"
           >
             <div className="relative">
-              <SearchIcon className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-ink/40" />
+              <SearchIcon className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-accent-dark" />
               <input
                 autoFocus
                 value={term}
                 onChange={(e) => setTerm(e.target.value)}
                 placeholder="Rechercher un maillot, un club, une équipe…"
-                className="h-16 w-full rounded-full border border-ink/10 bg-paper pl-14 pr-16 text-base shadow-soft outline-none transition-colors focus:border-ink"
+                className="h-16 w-full rounded-full border border-ink/[0.08] bg-paper/95 pl-14 pr-16 text-base shadow-panel outline-none transition-all placeholder:text-ink/35 focus:border-accent focus:shadow-glow-sm"
                 aria-label="Rechercher un produit"
               />
               <button
                 onClick={close}
                 aria-label="Fermer la recherche"
-                className="absolute right-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-ink/60 transition-colors hover:bg-paper-soft hover:text-ink"
+                className="absolute right-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-ink/50 transition-colors hover:bg-accent-muted hover:text-ink"
               >
                 <CloseIcon />
               </button>
             </div>
 
-            <div className="mt-8">
+            <div className="mt-8 rounded-3xl border border-ink/[0.06] bg-paper/90 p-2 shadow-panel backdrop-blur-md">
               {!hasQuery ? (
-                <p className="px-2 text-sm text-ink/40">
+                <p className="px-4 py-3 text-sm text-ink/40">
                   Saisissez au moins 2 caractères pour lancer la recherche.
                 </p>
               ) : isLoading ? (
-                <p className="px-2 text-sm text-ink/40">Recherche en cours…</p>
+                <p className="px-4 py-3 text-sm text-ink/40">Recherche en cours…</p>
               ) : showEmpty ? (
-                <p className="px-2 text-sm text-ink/50">
+                <p className="px-4 py-3 text-sm text-ink/50">
                   {isError
                     ? "La connexion au back office a échoué."
                     : `Aucun résultat pour « ${debounced} ».`}
                 </p>
               ) : (
-                <ul className="divide-y divide-ink/5">
+                <ul className="divide-y divide-ink/[0.05]">
                   {results.map((product) => (
                     <li key={product.id}>
                       <Link
                         href={routes.product(product.id)}
                         onClick={close}
-                        className="group flex items-center gap-4 rounded-2xl px-2 py-3 transition-colors hover:bg-paper-soft"
+                        className="group flex items-center gap-4 rounded-2xl px-3 py-3 transition-colors hover:bg-accent-muted/60"
                       >
-                        <div className="relative aspect-square w-14 shrink-0 overflow-hidden rounded-xl bg-paper-soft">
+                        <div className="relative aspect-square w-14 shrink-0 overflow-hidden rounded-xl bg-paper-soft ring-1 ring-ink/[0.05]">
                           <ProductImage
                             src={product.cover?.url ?? null}
                             alt={product.cover?.alt ?? product.name}
@@ -130,7 +129,7 @@ export function SearchOverlay() {
                           />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium">
+                          <p className="truncate text-sm font-medium group-hover:text-accent-dark">
                             {product.name}
                           </p>
                         </div>

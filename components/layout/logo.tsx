@@ -10,25 +10,26 @@ interface LogoProps {
   className?: string;
   /** Render the wordmark in light color (for dark backgrounds). */
   light?: boolean;
+  /** Footer variant — uses /logo-footer.png without color filters. */
+  variant?: "default" | "footer";
   priority?: boolean;
 }
 
 /**
  * Brand logo.
- *
- * Renders the image at `public/logo.png` (place your file there). If the asset
- * is missing or fails to load, it falls back gracefully to the site-name
- * wordmark — so the build never breaks and there's never a broken image.
+ * - Header : public/logo.png
+ * - Footer : public/logo-footer.png (votre fichier personnalisé)
  */
-export function Logo({ className, light }: LogoProps) {
+export function Logo({ className, light, variant = "default" }: LogoProps) {
   const [errored, setErrored] = useState(false);
+  const src = variant === "footer" ? "/logo-footer.png" : "/logo.png";
 
   if (errored) {
     return (
       <span
         className={cn(
           "text-xl font-bold tracking-tightest lg:text-2xl",
-          light ? "text-paper" : "text-ink",
+          light || variant === "footer" ? "text-paper" : "text-ink",
         )}
       >
         {publicConfig.siteName}
@@ -40,7 +41,7 @@ export function Logo({ className, light }: LogoProps) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src="/logo.png"
+      src={src}
       alt={publicConfig.siteName}
       onError={() => setErrored(true)}
       className={cn("h-9 w-auto object-contain", className)}

@@ -49,7 +49,7 @@ function CollectionPanel({
           "relative flex h-full min-h-[inherit] flex-col justify-between overflow-hidden rounded-3xl border p-6 sm:p-8",
           "transition-[border-color,box-shadow] duration-500",
           isAccent
-            ? "border-accent/40 bg-accent text-paper hover:border-paper/30 hover:shadow-[0_24px_60px_-20px_rgba(196,30,58,0.55)]"
+            ? "border-accent/50 bg-accent text-ink hover:border-accent-dark hover:shadow-glow"
             : isDark
               ? "border-paper/10 bg-ink text-paper hover:border-paper/25 hover:shadow-lift"
               : "border-ink/8 bg-paper text-ink hover:border-ink/20 hover:shadow-lift",
@@ -87,7 +87,7 @@ function CollectionPanel({
             <p
               className={cn(
                 "text-[11px] font-bold uppercase tracking-[0.24em]",
-                isAccent ? "text-paper/75" : isDark ? "text-paper/55" : "text-accent",
+                isAccent ? "text-ink/70" : isDark ? "text-paper/55" : "text-accent-dark",
               )}
             >
               {label}
@@ -118,7 +118,7 @@ function CollectionPanel({
             className={cn(
               "max-w-[16rem] text-sm leading-relaxed",
               isAccent
-                ? "text-paper/80"
+                ? "text-ink/75"
                 : isDark || backgroundSrc
                   ? "text-paper/65"
                   : "text-ink/55",
@@ -132,10 +132,10 @@ function CollectionPanel({
             className={cn(
               "flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors duration-300",
               isAccent
-                ? "bg-paper text-ink group-hover:bg-ink group-hover:text-paper"
+                ? "bg-ink text-paper group-hover:bg-accent group-hover:text-ink"
                 : isDark || backgroundSrc
-                  ? "bg-paper/10 text-paper group-hover:bg-accent group-hover:text-paper"
-                  : "bg-ink text-paper group-hover:bg-accent",
+                  ? "bg-paper/10 text-paper group-hover:bg-accent group-hover:text-ink"
+                  : "bg-ink text-paper group-hover:bg-accent group-hover:text-ink",
             )}
           >
             <ArrowIcon />
@@ -151,7 +151,7 @@ export function CategoryShowcase() {
   return (
     <section className="relative overflow-hidden bg-ink py-20 text-paper sm:py-28">
       <div
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(196,30,58,0.18),transparent)]"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(102,186,255,0.2),transparent)]"
         aria-hidden
       />
       <div

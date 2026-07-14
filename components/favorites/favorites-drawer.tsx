@@ -59,7 +59,7 @@ export function FavoritesDrawer() {
           aria-label="Favoris"
         >
           <div
-            className="absolute inset-0 bg-ink/40 backdrop-blur-sm"
+            className="absolute inset-0 bg-ink/30 backdrop-blur-xl"
             onClick={close}
           />
 

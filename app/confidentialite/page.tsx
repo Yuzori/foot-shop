@@ -56,8 +56,9 @@ export default function PrivacyPage() {
         <h2>Destinataires</h2>
         <p>
           Vos données sont destinées à nos services internes et à nos
-          sous-traitants (paiement, transport, hébergement) strictement pour
-          l&apos;exécution de leurs prestations. Elles ne sont jamais revendues.
+          sous-traitants (paiement Stripe, transporteurs, hébergement, envoi
+          d&apos;emails transactionnels) strictement pour l&apos;exécution de
+          leurs prestations. Elles ne sont jamais revendues.
         </p>
       </section>
 

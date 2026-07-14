@@ -1,8 +1,13 @@
 import "server-only";
 
 import { productImportConfig } from "@/config/product-import";
-import { formatProductName, detectAudience, type ProductAudience } from "@/lib/product-import/format-product-name";
+import { formatProductName, detectAudienceFromProduct, type ProductAudience } from "@/lib/product-import/format-product-name";
 import { fetchProductPageHtml } from "@/lib/product-import/fetch-page";
+import {
+  isLikelyThumbnailUrl,
+  normalizeImageDedupeKey,
+  toHighQualityImageUrl,
+} from "@/lib/product-import/image-url-quality";
 import { validateSourceUrl } from "@/lib/product-import/validate-url";
 
 export interface ScrapedProduct {
@@ -10,10 +15,12 @@ export interface ScrapedProduct {
   name: string;
   images: string[];
   audience: ProductAudience;
+  rawTitle: string;
+  description: string;
 }
 
 const BAD_URL =
-  /logo|icon|avatar|sprite|banner|payment|visa|mastercard|paypal|amex|shipping|delivery|trust|badge|star|rating|review|social|facebook|twitter|instagram|whatsapp|tiktok|flag|placeholder|spinner|loading|empty|no[_-]?image|default[_-]?image|favicon|pixel|tracking|newsletter|popup|advert|ads?[_-]|promo[_-]bar|header|footer|nav|menu|cart|wishlist|compare|share|zoom[_-]icon|play[_-]button|video|cap|casquette|hat|beanie|snapback|shoe|chaussure|sneaker|ballon|ball|sock|chaussette|pant|hoodie|sweat|jacket|veste|\.svg(\?|$)|\.gif(\?|$)/i;
+  /logo|wordmark|watermark|site[_-]?logo|store[_-]?logo|brand[_-]?logo|icon|avatar|sprite|banner|payment|visa|mastercard|paypal|amex|shipping|delivery|trust|badge[_-]?icon|star|rating|review|social|facebook|twitter|instagram|whatsapp|tiktok|flag|placeholder|spinner|loading|empty|no[_-]?image|default[_-]?image|favicon|pixel|tracking|newsletter|popup|advert|ads?[_-]|promo[_-]bar|header|footer|nav|menu|cart|wishlist|compare|share|zoom[_-]icon|play[_-]button|video|cap|casquette|hat|beanie|snapback|shoe|chaussure|sneaker|ballon|ball|sock|chaussette|pant|hoodie|sweat|jacket|veste|partner|affiliate|size[_-]?guide|measure|chart|\.svg(\?|$)|\.gif(\?|$)/i;
 
 const THUMB_IN_URL =
   /[_\-.](thumb|thumbnail|small|mini|icon|xs|sm|compact|preview)([_\-.]|$)|[_-](\d{1,2}x\d{1,2}|\d{2,3}x\d{2,3})(\.|[_-]|$)|\/thumb\/|\/cache\/|w_\d{2,3}\b|h_\d{2,3}\b|[?&](w|width|h|height)=\d{1,3}(?:&|$)/i;
@@ -97,6 +104,153 @@ function extractTitle(html: string): string | null {
   return null;
 }
 
+function extractJsonLdName(html: string): string | null {
+  const re = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = re.exec(html)) !== null) {
+    const raw = match[1]?.trim();
+    if (!raw) continue;
+    try {
+      const name = findProductNameInJsonLd(JSON.parse(raw) as unknown);
+      if (name) return name;
+    } catch {
+      // ignore invalid JSON-LD blocks
+    }
+  }
+
+  return null;
+}
+
+function findProductNameInJsonLd(node: unknown): string | null {
+  if (!node) return null;
+
+  if (Array.isArray(node)) {
+    for (const item of node) {
+      const found = findProductNameInJsonLd(item);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  if (typeof node !== "object") return null;
+  const record = node as Record<string, unknown>;
+  const type = String(record["@type"] ?? "").toLowerCase();
+
+  if (type.includes("product") && typeof record.name === "string") {
+    const name = record.name.trim();
+    if (name.length >= 2) return name;
+  }
+
+  if (record["@graph"]) {
+    const found = findProductNameInJsonLd(record["@graph"]);
+    if (found) return found;
+  }
+
+  for (const value of Object.values(record)) {
+    if (value && typeof value === "object") {
+      const found = findProductNameInJsonLd(value);
+      if (found) return found;
+    }
+  }
+
+  return null;
+}
+
+function extractTitleFromUrl(url: URL): string | null {
+  const segments = url.pathname.split("/").filter(Boolean);
+  for (let i = segments.length - 1; i >= 0; i--) {
+    const raw = segments[i] ?? "";
+    if (!raw || /^\d+$/.test(raw) || raw.length < 3) continue;
+    const decoded = decodeURIComponent(raw)
+      .replace(/\.[a-z]{2,4}$/i, "")
+      .replace(/[-_]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (decoded.length >= 3) return decoded;
+  }
+  return null;
+}
+
+function extractItempropName(html: string): string | null {
+  const patterns = [
+    /<[^>]+itemprop=["']name["'][^>]+content=["']([^"']+)["']/i,
+    /<[^>]+content=["']([^"']+)["'][^>]+itemprop=["']name["']/i,
+    /<[^>]+itemprop=["']name["'][^>]*>([\s\S]*?)<\//i,
+  ];
+  for (const re of patterns) {
+    const match = html.match(re);
+    if (match?.[1]) {
+      return decodeHtmlEntities(match[1].replace(/<[^>]+>/g, "").trim());
+    }
+  }
+  return null;
+}
+
+function isGenericSlugName(name: string): boolean {
+  const n = name.trim().toLowerCase();
+  if (!n) return true;
+  if (/^team\s+(domicile|exterieur|exterior|away|home|third)\b/.test(n)) return true;
+  if (/^(maillot|jersey|shirt|kit)\s+(domicile|exterieur|away|home)\b/.test(n) && n.length < 28) {
+    return true;
+  }
+  if (/^(product|article|item|sku)[-_]?\d+$/i.test(n)) return true;
+  return false;
+}
+
+function scoreProductNameCandidate(name: string, source: "page" | "url"): number {
+  const cleaned = name.replace(/\s+/g, " ").trim();
+  if (cleaned.length < 3) return -100;
+
+  let score = source === "page" ? 50 : 5;
+  if (isGenericSlugName(cleaned)) score -= 70;
+  if (/\b(20[2-3]\d)\b/.test(cleaned)) score += 8;
+  if (/\b(maillot|jersey|shirt|kit)\b/i.test(cleaned)) score += 6;
+  if (/\b(domicile|extérieur|exterieur|away|home|third)\b/i.test(cleaned)) score += 4;
+  if (cleaned.length >= 18) score += 10;
+  if (/[|•·]/.test(cleaned)) score += 3;
+  if (/\.(fr|com|net|de)\b/i.test(cleaned)) score -= 25;
+  if (/^(www\.|http)/i.test(cleaned)) score -= 40;
+
+  return score;
+}
+
+function extractProductName(html: string, url: URL): string {
+  const candidates: { name: string; score: number }[] = [];
+
+  const pageSources = [
+    extractItempropName(html),
+    extractJsonLdName(html),
+    extractMeta(html, "og:title"),
+    extractMeta(html, "twitter:title"),
+    extractTitle(html),
+    extractMeta(html, "product:name"),
+  ];
+
+  for (const candidate of pageSources) {
+    const cleaned = candidate?.replace(/\s+/g, " ").trim();
+    if (!cleaned || cleaned.length < 2) continue;
+    candidates.push({
+      name: cleaned,
+      score: scoreProductNameCandidate(cleaned, "page"),
+    });
+  }
+
+  const slug = extractTitleFromUrl(url);
+  if (slug) {
+    candidates.push({
+      name: slug,
+      score: scoreProductNameCandidate(slug, "url"),
+    });
+  }
+
+  candidates.sort((a, b) => b.score - a.score);
+  const best = candidates.find((c) => c.score > 0);
+  if (best) return best.name;
+
+  throw new Error("Impossible d'extraire le nom du produit depuis cette page.");
+}
+
 function absolutize(base: URL, href: string): string | null {
   try {
     const trimmed = href.trim();
@@ -107,55 +261,47 @@ function absolutize(base: URL, href: string): string | null {
   }
 }
 
-function toHighQuality(url: string): string {
-  let u = url;
-
-  u = u
-    .replace(/_small|_thumb|_thumbnail|_medium|_compact|_mini/gi, "_large")
-    .replace(/\/thumb\//gi, "/large/")
-    .replace(/\/cache\/[a-z0-9]+\//gi, "/")
-    .replace(/([?&])(w|width|h|height)=\d+/gi, "$1$2=2000")
-    .replace(
-      /([/_-])(\d{2,3})x(\d{2,3})(\.[a-z]{3,4})(\?.*)?$/i,
-      (_m, sep: string, _w: string, _h: string, ext: string, qs?: string) =>
-        `${sep}2000x2000${ext}${qs ?? ""}`,
-    );
-
-  if (/cdn\.shopify\.com/i.test(u)) {
-    u = u.replace(/_\d+x(\.|$)/, "_2000x$1");
-    if (!/[?&]width=/i.test(u)) {
-      u += (u.includes("?") ? "&" : "?") + "width=2000";
-    }
-  }
-
-  return u;
-}
-
 function imageDedupeKey(url: string): string {
-  try {
-    const u = new URL(url);
-    const path = u.pathname
-      .replace(/_\d+x\d+/gi, "")
-      .replace(/\d{2,4}x\d{2,4}/gi, "")
-      .replace(/\.(jpe?g|png|webp)$/i, "");
-    return `${u.hostname}${path}`.toLowerCase();
-  } catch {
-    return url.toLowerCase();
-  }
+  return normalizeImageDedupeKey(url);
 }
 
-function scoreImage(url: string, context = "", alt = ""): number {
+const IMG_URL_ATTRS = [
+  "data-zoom-image",
+  "data-zoom",
+  "data-original",
+  "data-large-img",
+  "data-large",
+  "data-full",
+  "data-image",
+  "data-src",
+  "data-lazy-src",
+  "src",
+] as const;
+
+function pickBestUrlFromImgTag(tag: string): string | null {
+  for (const attr of IMG_URL_ATTRS) {
+    const m = tag.match(new RegExp(`${attr}=["']([^"']+)["']`, "i"));
+    const raw = m?.[1]?.trim();
+    if (raw && !raw.startsWith("data:")) return raw;
+  }
+  return null;
+}
+
+function scoreImage(url: string, context = "", alt = "", galleryIndex = 99): number {
   const hay = `${url} ${context} ${alt}`.toLowerCase();
 
   if (BAD_URL.test(url)) return -100;
+  if (/logo|wordmark|watermark|site[_-]?logo|brand[_-]?logo|favicon|icon|sprite|partner|affiliate/i.test(hay)) {
+    return -100;
+  }
   if (MODEL_BAD.test(hay) && !JERSEY_GOOD.test(hay)) return -80;
 
   let score = 0;
-  if (THUMB_IN_URL.test(url)) score -= 25;
+  if (THUMB_IN_URL.test(url) || isLikelyThumbnailUrl(url)) score -= 60;
   if (PRODUCT_HINT.test(hay)) score += 18;
   if (JERSEY_GOOD.test(hay)) score += 28;
   if (/\.(jpe?g|webp)(\?|$)/i.test(url)) score += 8;
-  if (/\.png(\?|$)/i.test(url) && !PRODUCT_HINT.test(hay)) score -= 5;
+  if (/\.png(\?|$)/i.test(url) && !PRODUCT_HINT.test(hay)) score -= 15;
 
   const dim = url.match(/(\d{3,4})x(\d{3,4})/i);
   if (dim) score += Math.min(25, Number(dim[1]) / 40);
@@ -164,11 +310,17 @@ function scoreImage(url: string, context = "", alt = ""): number {
   if (/white|blanc|#fff|#ffffff|isolated|packshot|ghost|studio[_-]?white|fond[_-]?blanc/i.test(hay)) {
     score += 30;
   }
+  if (/og:image|twitter:image/i.test(context)) score -= 25;
   if (/og:image|twitter:image/i.test(context) && MODEL_BAD.test(hay)) score -= 30;
 
   if (/front|face|avant|recto|_f\b|_front|vue[_-]?1/i.test(hay)) score += 22;
-  else if (/back|dos|verso|rear|_b\b|_back|vue[_-]?2/i.test(hay)) score += 18;
-  else if (/side|profil|lateral|_s\b|_side|vue[_-]?3/i.test(hay)) score += 14;
+  else if (/back|dos|verso|rear|_b\b|_back|vue[_-]?2/i.test(hay)) score += 20;
+  else if (/side|profil|lateral|_s\b|_side|vue[_-]?3/i.test(hay)) score += 16;
+  else if (/detail|zoom|macro|close|texture|fabric/i.test(hay)) score += 14;
+
+  if (galleryIndex === 0) score += 12;
+  else if (galleryIndex === 1) score += 8;
+  else if (galleryIndex >= 0 && galleryIndex < 8) score += 4;
 
   return score;
 }
@@ -287,6 +439,8 @@ function extractScriptGalleryImages(html: string, base: URL): string[] {
     /"productImages"\s*:\s*\[([\s\S]*?)\]/gi,
     /"galleryImages"\s*:\s*\[([\s\S]*?)\]/gi,
     /"gallery"\s*:\s*\[([\s\S]*?)\]/gi,
+    /"picList"\s*:\s*\[([\s\S]*?)\]/gi,
+    /"imageList"\s*:\s*\[([\s\S]*?)\]/gi,
   ];
 
   for (const re of arrayPatterns) {
@@ -305,34 +459,47 @@ function extractScriptGalleryImages(html: string, base: URL): string[] {
   return urls;
 }
 
-interface ScoredImage {
+interface GalleryCandidate {
   url: string;
   score: number;
-  alt: string;
-  context: string;
+  galleryIndex: number;
+  viewRank: number;
 }
 
-function extractImages(html: string, base: URL, galleryOnly = true): string[] {
+function pushGalleryCandidate(
+  list: GalleryCandidate[],
+  seen: Set<string>,
+  raw: string,
+  base: URL,
+  context: string,
+  alt: string,
+  galleryIndex: number,
+  bonus = 0,
+): void {
+  const hq = toHighQualityImageUrl(raw);
+  const abs = absolutize(base, hq);
+  if (!abs || !/\.(jpe?g|png|webp)(\?|$)/i.test(abs)) return;
+
+  const key = imageDedupeKey(abs);
+  if (seen.has(key)) return;
+
+  const score = scoreImage(abs, context, alt, galleryIndex) + bonus;
+  if (score < 14) return;
+
+  seen.add(key);
+  list.push({
+    url: abs,
+    score,
+    galleryIndex,
+    viewRank: imageSortRank(abs, alt, context),
+  });
+}
+
+function extractImages(html: string, base: URL, galleryOnly: boolean, maxImages: number): string[] {
   const scopedHtml = galleryOnly ? extractProductGalleryHtml(html) : html;
-  const scored: ScoredImage[] = [];
-  const push = (raw: string, context = "", alt = "", bonus = 0) => {
-    const hq = toHighQuality(raw);
-    const abs = absolutize(base, hq);
-    if (!abs) return;
-    const s = scoreImage(abs, context, alt) + bonus;
-    if (s >= 14) scored.push({ url: abs, score: s, alt, context });
-  };
-
-  if (!galleryOnly) {
-    for (const url of extractAllMeta(html, "og:image")) push(url, "og:image", "", 5);
-  }
-
-  for (const url of extractJsonLdImages(html, base)) {
-    push(url, "jsonld product gallery", "", 35);
-  }
-  for (const url of extractScriptGalleryImages(scopedHtml, base)) {
-    push(url, "gallery script product", "", 32);
-  }
+  const candidates: GalleryCandidate[] = [];
+  const seen = new Set<string>();
+  let galleryIndex = 0;
 
   const imgTagRe = /<img\b[^>]*>/gi;
   let imgMatch: RegExpExecArray | null;
@@ -344,100 +511,144 @@ function extractImages(html: string, base: URL, galleryOnly = true): string[] {
     );
     const altMatch = tag.match(/\balt=["']([^"']*)["']/i);
     const alt = altMatch?.[1] ? decodeHtmlEntities(altMatch[1]) : "";
+    const order = galleryIndex++;
 
-    const attrs = [
-      "data-zoom-image",
-      "data-zoom",
-      "data-large",
-      "data-large-img",
-      "data-original",
-      "data-full",
-      "data-src",
-      "data-lazy-src",
-      "data-image",
-      "src",
-    ];
-
-    for (const attr of attrs) {
-      const re = new RegExp(`${attr}=["']([^"']+)["']`, "i");
-      const m = tag.match(re);
-      if (m?.[1]) push(m[1], context, alt, attr.startsWith("data-") ? 14 : 6);
+    const best = pickBestUrlFromImgTag(tag);
+    if (best) {
+      pushGalleryCandidate(candidates, seen, best, base, context, alt, order, 10);
     }
 
     const srcsetMatch = tag.match(/srcset=["']([^"']+)["']/i);
     if (srcsetMatch?.[1]) {
-      const best = pickLargestFromSrcset(srcsetMatch[1], base);
-      if (best) push(best, context, alt, 20);
+      const largest = pickLargestFromSrcset(srcsetMatch[1], base);
+      if (largest) {
+        pushGalleryCandidate(candidates, seen, largest, base, context, alt, order, 16);
+      }
     }
+  }
+
+  const linkRe = /<a\b[^>]+href=["']([^"']+\.(?:jpe?g|png|webp)[^"']*)["'][^>]*>/gi;
+  let linkMatch: RegExpExecArray | null;
+  let linkIndex = 0;
+  while ((linkMatch = linkRe.exec(scopedHtml)) !== null) {
+    pushGalleryCandidate(
+      candidates,
+      seen,
+      linkMatch[1] ?? "",
+      base,
+      "gallery link",
+      "",
+      linkIndex++,
+      8,
+    );
+  }
+
+  const styleRe =
+    /background-image\s*:\s*url\(["']?([^"')]+\.(?:jpe?g|png|webp)[^"')]*)["']?\)/gi;
+  let styleMatch: RegExpExecArray | null;
+  while ((styleMatch = styleRe.exec(scopedHtml)) !== null) {
+    pushGalleryCandidate(
+      candidates,
+      seen,
+      styleMatch[1] ?? "",
+      base,
+      "gallery background",
+      "",
+      galleryIndex++,
+      6,
+    );
+  }
+
+  if (!galleryOnly) {
+    for (const url of extractAllMeta(html, "og:image")) {
+      pushGalleryCandidate(candidates, seen, url, base, "og:image", "", 0, -10);
+    }
+  }
+
+  for (const [idx, url] of extractJsonLdImages(html, base).entries()) {
+    pushGalleryCandidate(candidates, seen, url, base, "jsonld product gallery", "", idx, 30);
+  }
+  for (const [idx, url] of extractScriptGalleryImages(scopedHtml, base).entries()) {
+    pushGalleryCandidate(candidates, seen, url, base, "gallery script product", "", idx, 28);
   }
 
   const sourceRe = /<source[^>]+srcset=["']([^"']+)["'][^>]*>/gi;
   let sourceMatch: RegExpExecArray | null;
-  while ((sourceMatch = sourceRe.exec(html)) !== null) {
-    const context = html.slice(
-      Math.max(0, sourceMatch.index - 200),
-      sourceMatch.index + 200,
-    );
+  let sourceIndex = 0;
+  while ((sourceMatch = sourceRe.exec(scopedHtml)) !== null) {
     const best = pickLargestFromSrcset(sourceMatch[1] ?? "", base);
-    if (best) push(best, context, "", 16);
+    if (best) {
+      pushGalleryCandidate(candidates, seen, best, base, "gallery source", "", sourceIndex++, 14);
+    }
   }
 
-  scored.sort((a, b) => {
-    const rankA = imageSortRank(a.url, a.alt, a.context);
-    const rankB = imageSortRank(b.url, b.alt, b.context);
-    if (rankA !== rankB) return rankA - rankB;
+  candidates.sort((a, b) => {
+    if (a.galleryIndex !== b.galleryIndex) return a.galleryIndex - b.galleryIndex;
+    if (a.viewRank !== b.viewRank) return a.viewRank - b.viewRank;
     return b.score - a.score;
   });
 
-  const seen = new Set<string>();
   const result: string[] = [];
+  const resultSeen = new Set<string>();
 
-  for (const { url } of scored) {
+  for (const { url } of candidates) {
     const key = imageDedupeKey(url);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    result.push(url);
-    if (result.length >= productImportConfig.maxImages) break;
+    if (resultSeen.has(key)) continue;
+    resultSeen.add(key);
+    result.push(isLikelyThumbnailUrl(url) ? toHighQualityImageUrl(url) : url);
+    if (result.length >= maxImages) break;
   }
 
   return result;
 }
 
 /** Récupère nom + images produit depuis une page. */
-export async function scrapeProductPage(rawUrl: string): Promise<ScrapedProduct> {
+export async function scrapeProductPage(
+  rawUrl: string,
+  opts?: { maxImages?: number },
+): Promise<ScrapedProduct> {
   const url = await validateSourceUrl(rawUrl);
   const html = await fetchProductPageHtml(url);
 
-  const rawName = extractTitle(html)?.replace(/\s+/g, " ").trim();
-  if (!rawName || rawName.length < 2) {
-    throw new Error("Impossible d'extraire le nom du produit depuis cette page.");
+  const rawName = extractProductName(html, url);
+
+  const maxImages = opts?.maxImages ?? productImportConfig.maxImages;
+  const seenKeys = new Set<string>();
+  const images: string[] = [];
+
+  function mergeImages(urls: string[]) {
+    for (const img of urls) {
+      const key = imageDedupeKey(img);
+      if (seenKeys.has(key)) continue;
+      seenKeys.add(key);
+      images.push(img);
+      if (images.length >= maxImages) break;
+    }
   }
 
-  const description = extractMeta(html, "description") ?? "";
-  const audience = detectAudience(`${rawName} ${description}`);
-  const name = formatProductName(rawName, description).slice(0, 250);
-
-  let images = extractImages(html, url, true);
-  if (images.length === 0) {
-    images = extractImages(html, url, false);
+  mergeImages(extractImages(html, url, true, maxImages));
+  if (images.length < maxImages) {
+    mergeImages(extractImages(html, url, false, maxImages));
   }
   if (images.length === 0) {
     for (const og of extractAllMeta(html, "og:image")) {
       const abs = absolutize(url, og);
       if (abs) {
-        images.push(abs);
+        mergeImages([abs]);
         break;
       }
     }
   }
-  if (images.length === 0) {
-    throw new Error("Aucune image maillot (fond blanc) trouvée sur cette page.");
-  }
+
+  const audience = detectAudienceFromProduct(rawName, "");
+  const name = formatProductName(rawName, url.toString()).slice(0, 250);
 
   return {
     sourceUrl: url.toString(),
     name,
     images,
     audience,
+    rawTitle: rawName,
+    description: "",
   };
 }

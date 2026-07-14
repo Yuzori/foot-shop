@@ -40,9 +40,16 @@ export const welcomePromo = {
   freeQty: 1,
 } as const;
 
+/** Code promo remerciement 1ʳᵉ commande (-10 %). */
+export const firstOrderThankYouPromo = {
+  code: "FOODSHOP10",
+  percent: 10,
+  label: "10 % sur votre prochaine commande",
+} as const;
+
 export const announcementMessages: string[] = [
   "2 achetés, 1 offert sur votre 1ʳᵉ commande — créez un compte",
-  "Livraison gratuite sur toute la boutique",
+  "Livraison offerte sur votre 1ʳᵉ commande",
   "Livraison express disponible",
   "Retours gratuits sous 30 jours",
   "Maillots & shorts officiels — flocage premium",

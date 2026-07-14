@@ -146,7 +146,7 @@ export function QuickAddDialog({ product, open, onClose }: QuickAddDialogProps) 
         aria-label={`Ajouter ${resolved.name}`}
       >
         <div
-          className="absolute inset-0 bg-ink/40 backdrop-blur-sm"
+          className="absolute inset-0 bg-ink/30 backdrop-blur-xl"
           onClick={() => {
             onClose();
             resetForm();
@@ -313,7 +313,7 @@ export function QuickAddDialog({ product, open, onClose }: QuickAddDialogProps) 
             </Button>
             <Button
               type="button"
-              className="flex-1 bg-accent hover:bg-accent-dark"
+              className="flex-1 bg-accent text-ink hover:bg-accent-dark hover:shadow-glow-sm"
               disabled={!canAdd}
               onClick={handleAdd}
             >

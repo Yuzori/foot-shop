@@ -136,7 +136,7 @@ export function RecentProductBar() {
 
                   "sm",
 
-                  "whitespace-nowrap bg-accent px-3 text-xs hover:bg-accent-dark sm:px-4 sm:text-sm",
+                  "whitespace-nowrap bg-accent px-3 text-xs text-ink hover:bg-accent-dark sm:px-4 sm:text-sm",
 
                 )}
 

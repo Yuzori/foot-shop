@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { OrderSummary, summarySubtotal } from "@/components/checkout/order-summary";
 import { ProductImage } from "@/components/product/product-image";
 import { CartLinePricing } from "@/components/cart/cart-line-pricing";
+import { Field } from "@/components/ui/field";
 import { Container } from "@/components/ui/container";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
@@ -161,6 +162,23 @@ export function CartView() {
         </ul>
 
         <div className="space-y-4">
+          <div className="surface-card p-4">
+            <Field
+              label="Code promo (optionnel)"
+              name="cartPromoCode"
+              placeholder="FOODSHOP10"
+              onChange={(e) => {
+                try {
+                  sessionStorage.setItem(
+                    "footshop-promo-code",
+                    e.target.value.toUpperCase(),
+                  );
+                } catch {
+                  /* ignore */
+                }
+              }}
+            />
+          </div>
           <OrderSummary
             lines={lines}
             freePerLine={freePerLine}
@@ -171,7 +189,7 @@ export function CartView() {
           />
           <Link
             href={routes.checkout}
-            className="flex h-14 w-full items-center justify-center rounded-full bg-accent text-sm font-semibold text-paper transition-colors hover:bg-accent-dark"
+            className="flex h-14 w-full items-center justify-center rounded-full bg-accent text-sm font-semibold text-ink transition-colors hover:bg-accent-dark hover:shadow-glow-sm"
           >
             Passer au paiement — {formatPrice(total)}
           </Link>

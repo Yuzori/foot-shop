@@ -142,13 +142,13 @@ export function FeaturedProducts() {
                   onClick={() => setTab(id)}
                   className={cn(
                     "relative shrink-0 rounded-full px-5 py-2.5 text-sm font-semibold transition-colors",
-                    tab === id ? "text-paper" : "text-ink/55 hover:text-ink",
+                    tab === id ? "text-ink" : "text-ink/55 hover:text-ink",
                   )}
                 >
                   {tab === id ? (
                     <motion.span
                       layoutId="featured-tab"
-                      className="absolute inset-0 rounded-full bg-ink"
+                      className="absolute inset-0 rounded-full bg-accent shadow-glow-sm"
                       transition={{ duration: 0.28, ease }}
                     />
                   ) : null}

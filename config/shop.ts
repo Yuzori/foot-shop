@@ -3,14 +3,19 @@
  */
 export const shopConfig = {
   /** Prix du flocage personnalisé (nom / numéro) par maillot. */
-  flocagePrice: 2.99,
+  flocagePrice: 3.99,
+  /** Frais de livraison standard (€) — offerts sur la 1ʳᵉ commande uniquement. */
+  standardShippingPrice: 2.99,
+  /** Seuil d'affichage du stock : masqué au-dessus, visible entre 0 et ce nombre inclus. */
+  stockDisplayMax: 10,
   flocageLabel: "Flocage personnalisé",
   flocageNameMax: 15,
   flocageNumberMin: 2,
   flocageNumberMax: 2,
   /** Messages sous le bouton d'achat (rotation toutes les 3 s). */
   purchaseTicker: [
-    "Livraison gratuite sur toute la boutique",
+    "Livraison offerte sur votre 1ʳᵉ commande",
+    "Livraison 2,99 € à partir de la 2ᵉ commande",
     "Livraison estimée : 5 à 10 jours ouvrés",
     "Retours gratuits sous 30 jours",
     "Flocage premium disponible sur tous les maillots",
@@ -27,8 +32,9 @@ export const shopConfig = {
   stockColorReferenceMax: 20,
   /** Ordre d'affichage des tailles (PrestaShop peut renvoyer d'autres libellés). */
   sizeOrder: ["XS", "S", "M", "L", "XL", "XXL"] as const,
-  /** Message livraison gratuite (bandeau + checkout). */
-  freeShippingLabel: "Livraison gratuite sur toute la boutique",
+  /** Message livraison 1ʳᵉ commande (bandeau + checkout). */
+  freeShippingLabel: "Livraison offerte sur votre 1ʳᵉ commande",
+  paidShippingLabel: "Livraison standard",
 } as const;
 
 /** Formate le flocage pour l'affichage et les commandes fournisseur. */

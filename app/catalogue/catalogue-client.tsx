@@ -44,8 +44,8 @@ export function CatalogueClient() {
           {kind === "short"
             ? "Shorts officiels et éditions premium."
             : kind === "jersey"
-              ? "Maillots authentiques et éditions premium."
-              : "Maillots authentiques et éditions premium. Tous nos produits proviennent directement de notre catalogue officiel."}
+              ? "Maillots et éditions premium."
+              : "Maillots et éditions premium. Tous nos produits proviennent directement de notre catalogue officiel."}
         </p>
       </header>
 

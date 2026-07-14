@@ -228,7 +228,7 @@ export function SiteModal() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-ink/50 backdrop-blur-md"
+            className="absolute inset-0 bg-ink/35 backdrop-blur-xl"
             onClick={dismiss}
             aria-hidden
           />
@@ -290,9 +290,9 @@ export function SiteModal() {
                           href={routes.product(currentNew.id)}
                           onClick={dismiss}
                           className={buttonClasses(
-                            "primary",
+                            "accent",
                             "md",
-                            "mt-6 w-full bg-accent hover:bg-accent-dark",
+                            "mt-6 w-full",
                           )}
                         >
                           Voir le produit
@@ -361,9 +361,9 @@ export function SiteModal() {
                       href={promoPopup.cta.href}
                       onClick={dismiss}
                       className={buttonClasses(
-                        "primary",
+                        "accent",
                         "lg",
-                        "mt-5 w-full bg-accent hover:bg-accent-dark",
+                        "mt-5 w-full",
                       )}
                     >
                       {promoPopup.cta.label}
@@ -385,9 +385,9 @@ export function SiteModal() {
                       href={routes.register}
                       onClick={dismiss}
                       className={buttonClasses(
-                        "primary",
+                        "accent",
                         "lg",
-                        "mt-4 w-full bg-accent hover:bg-accent-dark",
+                        "mt-4 w-full",
                       )}
                     >
                       Créer mon compte

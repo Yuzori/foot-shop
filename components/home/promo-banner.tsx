@@ -39,11 +39,7 @@ export function PromoBanner() {
               ) : null}
               <Link
                 href={promoPopup.cta.href || routes.catalogue}
-                className={buttonClasses(
-                  "primary",
-                  "lg",
-                  "bg-paper text-ink hover:bg-paper-muted",
-                )}
+                className={buttonClasses("accent", "lg")}
               >
                 {promoPopup.cta.label}
               </Link>

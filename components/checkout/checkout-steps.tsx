@@ -16,7 +16,7 @@ export function CheckoutSteps({ current }: { current: "details" | "payment" }) {
             <span
               className={cn(
                 "flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-colors",
-                i <= index ? "bg-ink text-paper" : "bg-paper-soft text-ink/35",
+                i <= index ? "bg-accent text-ink shadow-glow-sm" : "bg-paper-soft text-ink/35",
               )}
             >
               {i + 1}
@@ -34,7 +34,7 @@ export function CheckoutSteps({ current }: { current: "details" | "payment" }) {
             <span
               className={cn(
                 "hidden h-px w-8 sm:block sm:w-12",
-                i < index ? "bg-ink/25" : "bg-ink/10",
+                i < index ? "bg-accent/40" : "bg-ink/10",
               )}
               aria-hidden
             />

@@ -9,9 +9,11 @@ import { ProductGrid } from "@/components/product/product-grid";
 import { Container } from "@/components/ui/container";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
+import { catalogLeagues } from "@/config/catalog-leagues";
 import { routes } from "@/config/site";
 import { useCatalogNav } from "@/hooks/use-catalog-nav";
 import { useCategory } from "@/hooks/use-categories";
+import { getDivisionForCategoryId } from "@/lib/catalog-divisions";
 import { filterProductsByAudience } from "@/lib/catalog-tree";
 import type { Product, SortOption } from "@/types/domain";
 import {
@@ -32,11 +34,18 @@ function applyKindFilter(
   return filtered.length > 0 ? filtered : products;
 }
 
+function audienceLabel(audience: "adult" | "kids" | null): string | null {
+  if (audience === "kids") return "Enfant";
+  if (audience === "adult") return "Adulte";
+  return null;
+}
+
 /** A single category page: header + filtered catalogue. */
 export function CategoryDetailView({ id }: { id: string }) {
   const searchParams = useSearchParams();
   const kindParam = searchParams.get("kind");
   const audienceParam = searchParams.get("audience");
+  const leagueParam = searchParams.get("league");
   const forcedKind = VALID_KINDS.includes(kindParam as ProductCollectionKind)
     ? (kindParam as ProductCollectionKind)
     : null;
@@ -53,6 +62,12 @@ export function CategoryDetailView({ id }: { id: string }) {
   const category = data?.category;
   const rawProducts = data?.products ?? [];
 
+  const leagueFromUrl = catalogLeagues.find((item) => item.id === leagueParam);
+  const divisionFromCategory = getDivisionForCategoryId(
+    id,
+    catalogNav.allCategories,
+  );
+
   const collectionKind =
     forcedKind ??
     (category
@@ -65,10 +80,10 @@ export function CategoryDetailView({ id }: { id: string }) {
           : collectionKindFromCategory(
               category.name,
               category.id,
-              catalogNav.maillots.categoryId,
-              catalogNav.shorts.categoryId,
-              catalogNav.kidsMaillots.categoryId,
-              catalogNav.kidsShorts.categoryId,
+              catalogNav.categories.maillotsCategoryId,
+              catalogNav.categories.shortsCategoryId,
+              catalogNav.categories.kidsMaillotsCategoryId,
+              catalogNav.categories.kidsShortsCategoryId,
             )
       : null);
 
@@ -83,14 +98,34 @@ export function CategoryDetailView({ id }: { id: string }) {
   }, [audience, collectionKind, rawProducts]);
 
   const pageTitle = useMemo(() => {
+    const aud = audienceLabel(audience);
+    const divisionLabel =
+      leagueFromUrl?.label ?? divisionFromCategory?.label ?? null;
+
+    if (divisionLabel && aud) return `${divisionLabel} · ${aud}`;
+    if (divisionLabel) return divisionLabel;
+
     if (collectionKind === "short") {
-      return audience === "kids" ? "Shorts enfant" : "Shorts";
+      return audience === "kids" ? "Shorts · Enfant" : "Shorts";
     }
     if (collectionKind === "jersey") {
-      return audience === "kids" ? "Maillots enfant" : "Maillots";
+      return audience === "kids" ? "Maillots · Enfant" : "Maillots";
     }
     return category?.name ?? "";
-  }, [audience, category?.name, collectionKind]);
+  }, [
+    audience,
+    category?.name,
+    collectionKind,
+    divisionFromCategory?.label,
+    leagueFromUrl?.label,
+  ]);
+
+  const showCategorySubtitle = useMemo(() => {
+    if (!category?.name || category.name === pageTitle) return false;
+    if (pageTitle.includes(category.name)) return false;
+    if (audience === "adult" && /enfant/i.test(category.name)) return false;
+    return true;
+  }, [audience, category?.name, pageTitle]);
 
   if (isLoading) {
     return (
@@ -134,7 +169,7 @@ export function CategoryDetailView({ id }: { id: string }) {
         </Link>
         <p className="eyebrow mb-3">Collection</p>
         <h1 className="display-2">{pageTitle}</h1>
-        {category.name !== pageTitle ? (
+        {showCategorySubtitle ? (
           <p className="mt-3 text-sm font-medium text-ink/55">{category.name}</p>
         ) : null}
       </header>

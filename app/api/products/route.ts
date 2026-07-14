@@ -4,6 +4,7 @@ import { isAdminAuthorized } from "@/lib/admin-auth";
 
 import { filterProductsByKind, type ProductCollectionKind } from "@/lib/product-collection";
 import { maybeProcessStockAlerts } from "@/lib/stock-notify";
+import { maybeRunCatalogNotifications } from "@/lib/catalog-notify";
 
 import { prestashop } from "@/services/prestashop";
 
@@ -94,6 +95,9 @@ export async function GET(request: Request) {
 
   void maybeProcessStockAlerts().catch((err) => {
     console.error("[stock] background processing failed", err);
+  });
+  void maybeRunCatalogNotifications().catch((err) => {
+    console.error("[notify] background catalog job failed", err);
   });
 
   if (result.connectionError) {

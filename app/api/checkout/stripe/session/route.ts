@@ -14,6 +14,7 @@ import {
   validateStripeSiteUrl,
 } from "@/lib/stripe-keys";
 import { calculateWelcomeBogo } from "@/lib/welcome-bogo";
+import { applyPercentDiscount, resolvePromoCode } from "@/lib/promo-code";
 
 export const runtime = "nodejs";
 
@@ -103,11 +104,71 @@ export async function POST(request: Request) {
     }
   }
 
-  const expectedTotalCents = Math.round(
-    chargeLines.reduce(
+  const shippingFee = order.shippingFee ?? 0;
+  const promo = resolvePromoCode(body.promoCode);
+  if (body.promoCode?.trim() && !promo?.valid) {
+    return NextResponse.json({ message: "Code promo invalide." }, { status: 400 });
+  }
+  const productsSubtotal = chargeLines.reduce(
+    (sum, line) => sum + line.unitPrice * line.quantity,
+    0,
+  );
+  const promoDiscount =
+    promo?.valid === true
+      ? applyPercentDiscount(productsSubtotal, promo.percent)
+      : 0;
+
+  const stripeLineItems = chargeLines.map((it) => ({
+    quantity: it.quantity,
+    price_data: {
+      currency: paymentConfig.currency,
+      unit_amount: Math.round(it.unitPrice * 100),
+      product_data: {
+        name: it.name || "Article",
+      },
+    },
+  }));
+
+  if (shippingFee > 0) {
+    stripeLineItems.push({
+      quantity: 1,
+      price_data: {
+        currency: paymentConfig.currency,
+        unit_amount: Math.round(shippingFee * 100),
+        product_data: {
+          name: "Livraison",
+        },
+      },
+    });
+  }
+
+  if (promoDiscount > 0) {
+    const subtotal = chargeLines.reduce(
       (sum, line) => sum + line.unitPrice * line.quantity,
       0,
-    ) * 100,
+    );
+    let remaining = promoDiscount;
+    for (let i = 0; i < chargeLines.length; i++) {
+      const line = chargeLines[i]!;
+      const lineTotal = line.unitPrice * line.quantity;
+      const share =
+        i === chargeLines.length - 1
+          ? remaining
+          : Math.round(((promoDiscount * lineTotal) / subtotal) * 100) / 100;
+      remaining -= share;
+      if (share <= 0) continue;
+      const item = stripeLineItems[i];
+      if (!item) continue;
+      const newTotal = Math.max(0.01, lineTotal - share);
+      item.price_data.unit_amount = Math.round(
+        (newTotal / line.quantity) * 100,
+      );
+      item.price_data.product_data.name = `${line.name} (${promo!.code})`;
+    }
+  }
+
+  const expectedTotalCents = Math.round(
+    (productsSubtotal - promoDiscount + shippingFee) * 100,
   );
 
   try {
@@ -116,16 +177,7 @@ export async function POST(request: Request) {
       ui_mode: "elements",
       payment_method_types: ["card"],
       customer_email: body.contact.email || undefined,
-      line_items: chargeLines.map((it) => ({
-        quantity: it.quantity,
-        price_data: {
-          currency: paymentConfig.currency,
-          unit_amount: Math.round(it.unitPrice * 100),
-          product_data: {
-            name: it.name || "Article",
-          },
-        },
-      })),
+      line_items: stripeLineItems,
       metadata: {
         orderId: String(order.orderId ?? ""),
         reference: ref,
@@ -134,6 +186,9 @@ export async function POST(request: Request) {
         welcomePromo: bogoApplied ? "1" : "",
         expectedTotalCents: String(expectedTotalCents),
         bogoFreeUnits: bogoApplied ? String(freeUnits) : "",
+        promoCode: promo?.valid ? promo.code : "",
+        promoDiscountCents: promoDiscount > 0 ? String(Math.round(promoDiscount * 100)) : "",
+        shippingCents: String(Math.round(shippingFee * 100)),
       },
       return_url: returnUrl,
     });
@@ -155,6 +210,10 @@ export async function POST(request: Request) {
       bogoApplied,
       bogoDiscount,
       freeUnits,
+      shippingFee,
+      shippingLabel: order.shippingLabel,
+      promoDiscount,
+      promoCode: promo?.valid ? promo.code : null,
     });
   } catch (error) {
     console.error("[stripe] checkout.sessions.create failed", error);

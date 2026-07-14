@@ -30,7 +30,7 @@ export function Price({
             {formatPrice(compareAt, currency)}
           </span>
           {showDiscount ? (
-            <span className="text-xs font-semibold text-accent">
+            <span className="text-xs font-semibold text-accent-dark">
               −{discount}%
             </span>
           ) : null}

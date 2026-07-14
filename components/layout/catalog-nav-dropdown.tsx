@@ -102,7 +102,7 @@ export function CatalogNavDropdown({
         {open ? (
           <motion.div
             {...panelMotion}
-            className="absolute left-1/2 top-full z-50 mt-3 w-[min(92vw,22rem)] -translate-x-1/2 overflow-hidden rounded-2xl border border-ink/10 bg-paper shadow-lift"
+            className="absolute left-1/2 top-full z-50 mt-3 w-[min(92vw,22rem)] -translate-x-1/2 overflow-hidden rounded-2xl border border-ink/[0.06] bg-paper/95 shadow-panel backdrop-blur-xl"
           >
             <div className="p-3">
               <AnimatePresence mode="wait" initial={false}>
@@ -124,7 +124,7 @@ export function CatalogNavDropdown({
                           ease: [0.16, 1, 0.3, 1],
                         }}
                         onClick={() => setAudience(item)}
-                        className="group relative overflow-hidden rounded-xl border border-ink/10 px-4 py-3.5 text-left transition-colors hover:border-ink hover:bg-paper-soft"
+                        className="group relative overflow-hidden rounded-xl border border-ink/[0.08] px-4 py-3.5 text-left transition-all hover:border-accent/40 hover:bg-accent-muted"
                       >
                         <span className="relative z-10 text-sm font-semibold">
                           {item.label}

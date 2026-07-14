@@ -53,7 +53,8 @@ export async function processStockAlertEmails(): Promise<number> {
       ? `${sub.productName} — ${sub.variantLabel}`
       : sub.productName;
     const image =
-      absoluteUrl(sub.imageUrl) || absoluteUrl(product.cover?.url ?? null);
+      absoluteUrl(sub.imageUrl) ||
+      absoluteUrl(product.cover?.url ?? product.images?.[0]?.url ?? null);
 
     const result = await sendMail({
       to: sub.email,

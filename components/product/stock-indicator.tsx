@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 
 import {
   isLowStock,
+  shouldShowStockQuantity,
   stockGradient,
   stockLabel,
 } from "@/lib/stock-display";
@@ -19,6 +20,8 @@ export function StockIndicator({
   quantity,
   className,
 }: StockIndicatorProps) {
+  if (!shouldShowStockQuantity(quantity)) return null;
+
   const label = stockLabel(quantity);
 
   const low = isLowStock(quantity);

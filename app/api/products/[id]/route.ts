@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { maybeProcessStockAlerts } from "@/lib/stock-notify";
+import { maybeRunCatalogNotifications } from "@/lib/catalog-notify";
 import { prestashop } from "@/services/prestashop";
 
 export async function GET(
@@ -16,6 +17,9 @@ export async function GET(
 
   void maybeProcessStockAlerts().catch((err) => {
     console.error("[stock] background processing failed", err);
+  });
+  void maybeRunCatalogNotifications().catch((err) => {
+    console.error("[notify] background catalog job failed", err);
   });
 
   return NextResponse.json(product);

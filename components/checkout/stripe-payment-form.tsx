@@ -125,7 +125,7 @@ function PaymentForm({
         type="submit"
         size="lg"
         disabled={!ready || pending || disabled || Boolean(loadError) || !totalLabel}
-        className="w-full bg-accent hover:bg-accent-dark"
+        className="w-full bg-accent text-ink hover:bg-accent-dark hover:shadow-glow-sm"
       >
         {pending ? (
           <span className="flex h-5 w-full items-center justify-center">
@@ -175,7 +175,7 @@ export function StripePaymentForm({
           appearance: {
             theme: "stripe",
             variables: {
-              colorPrimary: "#e2001a",
+              colorPrimary: "#66BAFF",
               borderRadius: "12px",
               fontFamily: "Poppins, sans-serif",
             },

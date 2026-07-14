@@ -9,12 +9,19 @@ import { useFavoritesStore } from "@/store/favorites-store";
 interface FavoriteButtonProps {
   productId: string;
   className?: string;
+  /** Couleur dominante du produit (cœur actif + particules). */
+  accentColor?: string;
 }
 
 const BURST = Array.from({ length: 6 });
+const DEFAULT_ACCENT = "rgb(102, 186, 255)";
 
 /** Heart toggle — bouton strictement circulaire. */
-export function FavoriteButton({ productId, className }: FavoriteButtonProps) {
+export function FavoriteButton({
+  productId,
+  className,
+  accentColor = DEFAULT_ACCENT,
+}: FavoriteButtonProps) {
   const hydrated = useHydrated();
   const ids = useFavoritesStore((s) => s.ids);
   const toggle = useFavoritesStore((s) => s.toggle);
@@ -33,7 +40,7 @@ export function FavoriteButton({ productId, className }: FavoriteButtonProps) {
       aria-pressed={active}
       aria-label={active ? "Retirer des favoris" : "Ajouter aux favoris"}
       className={cn(
-        "relative flex shrink-0 items-center justify-center rounded-full bg-paper text-ink shadow-soft backdrop-blur transition-colors hover:bg-paper-soft",
+        "relative flex shrink-0 items-center justify-center rounded-full bg-paper/90 text-ink shadow-soft backdrop-blur transition-colors hover:bg-paper",
         "aspect-square h-11 w-11 min-h-11 min-w-11 p-0",
         className,
       )}
@@ -42,7 +49,8 @@ export function FavoriteButton({ productId, className }: FavoriteButtonProps) {
         {active ? (
           <motion.span
             key="ring"
-            className="pointer-events-none absolute inset-0 rounded-full border-2 border-accent"
+            className="pointer-events-none absolute inset-0 rounded-full border-2"
+            style={{ borderColor: accentColor }}
             initial={{ scale: 0.7, opacity: 0.8 }}
             animate={{ scale: 1.5, opacity: 0 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
@@ -54,7 +62,8 @@ export function FavoriteButton({ productId, className }: FavoriteButtonProps) {
         ? BURST.map((_, i) => (
             <motion.span
               key={`p-${i}`}
-              className="pointer-events-none absolute h-1 w-1 rounded-full bg-accent"
+              className="pointer-events-none absolute h-1 w-1 rounded-full"
+              style={{ backgroundColor: accentColor }}
               initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
               animate={{
                 x: Math.cos((i / BURST.length) * Math.PI * 2) * 14,
@@ -74,10 +83,8 @@ export function FavoriteButton({ productId, className }: FavoriteButtonProps) {
         fill={active ? "currentColor" : "none"}
         stroke="currentColor"
         strokeWidth="1.8"
-        className={cn(
-          "relative block shrink-0 transition-colors",
-          active && "text-accent",
-        )}
+        className="relative block shrink-0 transition-colors"
+        style={{ color: active ? accentColor : undefined }}
         aria-hidden
       >
         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />

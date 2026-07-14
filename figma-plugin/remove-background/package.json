@@ -1,0 +1,15 @@
+{
+  "name": "figma-remove-background",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Plugin Figma — détourage via remove.bg",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "watch": "node scripts/build.mjs --watch"
+  },
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.109.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.7.2"
+  }
+}

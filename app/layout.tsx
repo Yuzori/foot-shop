@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     template: `%s · ${publicConfig.siteName}`,
   },
   description:
-    "Boutique premium de maillots de football. Sélection authentique, éditions limitées et flocage personnalisé.",
+    "Boutique premium de maillots de football. Sélection soignée, éditions limitées et flocage personnalisé.",
   openGraph: {
     type: "website",
     locale: publicConfig.locale,

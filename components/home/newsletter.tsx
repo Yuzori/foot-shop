@@ -82,14 +82,15 @@ export function Newsletter() {
                 aria-label="Adresse email"
                 disabled={pending}
                 readOnly={Boolean(user?.email)}
-                className="h-12 min-w-0 flex-[2] rounded-full border border-paper/25 bg-paper/10 px-6 text-sm text-paper outline-none transition-colors placeholder:text-paper/50 focus:border-paper disabled:opacity-60 read-only:opacity-90"
+                className="h-12 min-w-0 flex-[2] rounded-full border border-paper/25 bg-paper/10 px-6 text-sm text-paper outline-none transition-colors placeholder:text-paper/50 focus:border-accent focus:bg-paper/15 disabled:opacity-60 read-only:opacity-90"
               />
 
               <Button
                 type="submit"
                 size="md"
+                variant="accent"
                 disabled={pending}
-                className="h-12 w-full shrink-0 bg-paper px-8 text-ink hover:bg-paper-muted sm:w-auto"
+                className="h-12 w-full shrink-0 sm:w-auto"
               >
                 {pending ? "…" : "S'inscrire"}
               </Button>

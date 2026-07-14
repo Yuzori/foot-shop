@@ -2,17 +2,20 @@ import { forwardRef, type ButtonHTMLAttributes } from "react";
 
 import { cn } from "@/lib/utils";
 
-export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost";
+export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "accent";
 export type ButtonSize = "sm" | "md" | "lg";
 
 const base =
-  "inline-flex items-center justify-center gap-2 font-medium tracking-wide transition-all duration-300 ease-premium disabled:pointer-events-none disabled:opacity-40 active:scale-[0.98] select-none";
+  "inline-flex items-center justify-center gap-2 font-semibold tracking-wide transition-all duration-300 ease-premium disabled:pointer-events-none disabled:opacity-40 active:scale-[0.98] select-none";
 
 const variants: Record<ButtonVariant, string> = {
-  primary: "bg-ink text-paper hover:bg-ink-soft",
-  secondary: "bg-paper-soft text-ink hover:bg-paper-muted",
-  outline: "border border-ink/15 text-ink hover:border-ink hover:bg-ink hover:text-paper",
-  ghost: "text-ink hover:bg-paper-soft",
+  primary: "bg-ink text-paper hover:bg-ink-soft shadow-sm",
+  accent:
+    "bg-accent text-ink hover:bg-accent-dark shadow-glow-sm hover:shadow-glow",
+  secondary: "bg-paper-soft text-ink hover:bg-accent-muted border border-ink/[0.06]",
+  outline:
+    "border border-ink/15 text-ink hover:border-accent hover:bg-accent/10 hover:text-ink",
+  ghost: "text-ink hover:bg-accent-muted",
 };
 
 const sizes: Record<ButtonSize, string> = {

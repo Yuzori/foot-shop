@@ -1330,6 +1330,7 @@ class PrestaShopService {
         (s, l) => s + l.unitPrice * l.quantity,
         0,
       );
+      const shippingFee = Math.max(0, input.shippingFee ?? 0);
       const orderRes = await this.post<{ order?: { id?: string; reference?: string } }>(
         "/orders",
         buildOrderXml({
@@ -1340,6 +1341,7 @@ class PrestaShopService {
           langId,
           carrierId,
           totalProducts,
+          shippingFee,
           secureKey: input.secureKey,
         }),
       );
@@ -1605,6 +1607,15 @@ class PrestaShopService {
     return undefined;
   }
 
+  /** Téléverse un buffer image (import traité ou brut). */
+  async uploadProductImageFromBuffer(
+    productId: string,
+    buffer: Buffer,
+    mime: string,
+  ): Promise<void> {
+    await this.uploadProductImageBuffer(productId, buffer, mime);
+  }
+
   private async uploadProductImageBuffer(
     productId: string,
     buffer: Buffer,
@@ -1741,6 +1752,8 @@ export interface CreateProductInput {
   price: number;
   categoryId: string;
   reference?: string;
+  description?: string;
+  summary?: string;
 }
 
 export interface CreateCategoryInput {
@@ -1773,6 +1786,7 @@ export interface CreateOrderInput {
   lines: CreateOrderLine[];
   /** Note interne (flocage, instructions fournisseur). */
   note?: string;
+  shippingFee?: number;
 }
 
 function buildAddressXml(input: {
@@ -1852,9 +1866,14 @@ function buildOrderXml(input: {
   langId: string;
   carrierId: string;
   totalProducts: number;
+  shippingFee?: number;
   secureKey: string;
 }): string {
-  const total = input.totalProducts.toFixed(2);
+  const shipping = Math.max(0, input.shippingFee ?? 0);
+  const totalPaid = input.totalProducts + shipping;
+  const products = input.totalProducts.toFixed(2);
+  const shippingStr = shipping.toFixed(2);
+  const total = totalPaid.toFixed(2);
   return `<?xml version="1.0" encoding="UTF-8"?>
 <prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
   <order>
@@ -1870,8 +1889,10 @@ function buildOrderXml(input: {
     <payment>Paiement en attente</payment>
     <total_paid>${total}</total_paid>
     <total_paid_real>0.00</total_paid_real>
-    <total_products>${total}</total_products>
-    <total_products_wt>${total}</total_products_wt>
+    <total_products>${products}</total_products>
+    <total_products_wt>${products}</total_products_wt>
+    <total_shipping>${shippingStr}</total_shipping>
+    <total_shipping_tax_incl>${shippingStr}</total_shipping_tax_incl>
     <conversion_rate>1.000000</conversion_rate>
     <secure_key>${escapeXml(input.secureKey)}</secure_key>
   </order>
@@ -1940,12 +1961,16 @@ function patchProductCategoryXml(xml: string, categoryId: string): string {
 function buildProductCreateXml(input: CreateProductInput & { langId: string }): string {
   const price = Number.isFinite(input.price) ? input.price.toFixed(6) : "0.000000";
   const reference = input.reference?.trim();
+  const summary = input.summary?.trim() ?? "";
+  const description = input.description?.trim() ?? summary;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
   <product>
     ${langFieldXml("name", input.name, input.langId)}
     ${langFieldXml("link_rewrite", input.linkRewrite, input.langId)}
+    ${langFieldXml("description_short", summary, input.langId)}
+    ${langFieldXml("description", description, input.langId)}
     <state>1</state>
     <price>${escapeXml(price)}</price>
     <active>1</active>

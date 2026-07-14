@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 14px;
+        font: 12px/1.45 "Inter", system-ui, sans-serif;
+        color: #0a0a0a;
+      }
+      h1 { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
+      p { margin: 0 0 10px; color: #666; }
+      .specs {
+        margin: 0 0 10px;
+        padding: 8px 10px;
+        background: #f5f5f5;
+        border-radius: 8px;
+        font-size: 11px;
+        color: #444;
+        line-height: 1.5;
+      }
+      label {
+        display: block;
+        margin-bottom: 4px;
+        font-weight: 500;
+        font-size: 11px;
+      }
+      select, textarea {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 12px;
+        margin-bottom: 8px;
+        font-family: inherit;
+      }
+      textarea { min-height: 88px; resize: vertical; font-size: 11px; }
+      .actions { display: grid; gap: 8px; margin-top: 4px; }
+      button {
+        width: 100%;
+        padding: 10px 12px;
+        border: none;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        background: #0a0a0a;
+        color: #fff;
+      }
+      button.secondary { background: #eee; color: #333; }
+      button.success { background: #1a7f37; color: #fff; }
+      button:disabled { opacity: 0.45; cursor: not-allowed; }
+      #pendingList {
+        margin: 10px 0;
+        max-height: 120px;
+        overflow: auto;
+        border: 1px solid #eee;
+        border-radius: 8px;
+        padding: 6px;
+        font-size: 11px;
+      }
+      .pending-item {
+        padding: 6px 4px;
+        border-bottom: 1px solid #f0f0f0;
+      }
+      .pending-item:last-child { border-bottom: none; }
+      .pending-item .meta { color: #888; font-size: 10px; margin-top: 2px; }
+      #status {
+        margin-top: 10px;
+        min-height: 18px;
+        font-size: 11px;
+        color: #666;
+      }
+      #status.error { color: #b00020; }
+      #networkPanel {
+        margin: 0 0 10px;
+        padding: 8px 10px;
+        background: #fafafa;
+        border: 1px solid #eee;
+        border-radius: 8px;
+        font-size: 10px;
+        line-height: 1.6;
+      }
+      #networkPanel .net-row.fail { color: #b00020; }
+      #networkPanel .net-row.ok { color: #1a7f37; }
+      .net-actions { display: flex; gap: 6px; margin-bottom: 8px; }
+      .net-actions button { width: auto; padding: 6px 10px; font-size: 11px; }
+    </style>
+  </head>
+  <body>
+    <h1>Import maillot → Figma → PrestaShop</h1>
+    <p>Colle un lien produit (BBDBuy, Zalando, Unisport…). Vérifie la fiche Figma puis envoie sur PrestaShop. Ne recopie pas les lignes « Erreur : … ».</p>
+    <div class="specs">
+      Plugin v3 · Serveur Foot Shop (Render) · 24,99 € · 20 stock / taille<br />
+      Le scrape produit passe par le serveur — pas besoin d'accès direct Unisport dans Figma.
+    </div>
+
+    <div class="net-actions">
+      <button id="networkTestBtn" type="button" class="secondary">Tester le réseau Figma</button>
+    </div>
+    <div id="networkPanel">Test réseau au démarrage…</div>
+
+    <label for="categoryId">Catégorie PrestaShop</label>
+    <div style="display:flex;gap:6px;margin-bottom:8px;">
+      <select id="categoryId" style="margin-bottom:0;flex:1;"><!-- CATEGORY_OPTIONS --></select>
+      <button id="reloadCategoriesBtn" type="button" class="secondary" style="width:auto;padding:8px 10px;">↻</button>
+    </div>
+
+    <label for="productUrl">Liens produit (un par ligne)</label>
+    <textarea id="productUrl" placeholder="https://www.bbdbuy.com/... ou https://www.zalando.fr/..." spellcheck="false"></textarea>
+
+    <div id="pendingList"></div>
+
+    <div class="actions">
+      <button id="prepareBtn" type="button">1. Préparer les fiches Figma</button>
+      <button id="pushBtn" class="success" type="button" disabled>2. Valider et envoyer PrestaShop</button>
+      <button id="cancelBtn" class="secondary" type="button" disabled>Annuler</button>
+    </div>
+
+    <div id="status">Prêt.</div>
+
+    <!-- INLINE_UI_JS -->
+  </body>
+</html>

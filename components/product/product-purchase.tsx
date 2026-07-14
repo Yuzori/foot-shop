@@ -276,7 +276,7 @@ export function ProductPurchase({ product }: ProductPurchaseProps) {
           onClick={handleAdd}
           disabled={!canAdd}
           size="lg"
-          className="flex-1 bg-accent hover:bg-accent-dark"
+          className="flex-1 bg-accent text-ink hover:bg-accent-dark hover:shadow-glow-sm"
         >
           <motion.span
             key={added ? "added" : needsSize ? "size" : "add"}

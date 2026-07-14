@@ -45,7 +45,7 @@ export function Editorial() {
           </p>
           <ul className="mt-8 space-y-3">
             {[
-              "Maillots authentiques contrôlés un à un",
+              "Maillots contrôlés un à un",
               "Flocage nom & numéro de qualité professionnelle",
               "Expédition rapide et soignée",
             ].map((item) => (
@@ -57,7 +57,7 @@ export function Editorial() {
           </ul>
           <Link
             href={routes.catalogue}
-            className={buttonClasses("primary", "lg", "mt-10")}
+            className={buttonClasses("accent", "lg", "mt-10")}
           >
             Composer mon maillot
           </Link>

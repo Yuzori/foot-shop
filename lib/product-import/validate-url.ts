@@ -33,6 +33,17 @@ export function isPrivateIpv6(host: string): boolean {
   );
 }
 
+function hostVariants(host: string): string[] {
+  const normalized = host.toLowerCase();
+  const variants = [normalized];
+  if (normalized.startsWith("www.")) {
+    variants.push(normalized.slice(4));
+  } else {
+    variants.push(`www.${normalized}`);
+  }
+  return [...new Set(variants)];
+}
+
 function assertPublicHost(host: string): void {
   const normalized = host.toLowerCase();
   if (BLOCKED_HOSTS.has(normalized)) {
@@ -43,21 +54,31 @@ function assertPublicHost(host: string): void {
   }
 }
 
-async function assertResolvablePublicHost(host: string): Promise<void> {
+async function lookupPublicHost(host: string): Promise<void> {
   assertPublicHost(host);
-  const resolved = await lookup(host, { verbatim: true });
-  const addr = resolved.address.toLowerCase();
-  if (
-    BLOCKED_HOSTS.has(addr) ||
-    isPrivateIpv4(addr) ||
-    isPrivateIpv6(addr)
-  ) {
-    throw new Error("L'URL résout vers une adresse non autorisée.");
+  let lastError: Error | null = null;
+
+  for (const candidate of hostVariants(host)) {
+    try {
+      const resolved = await lookup(candidate, { verbatim: true });
+      const addr = resolved.address.toLowerCase();
+      if (
+        BLOCKED_HOSTS.has(addr) ||
+        isPrivateIpv4(addr) ||
+        isPrivateIpv6(addr)
+      ) {
+        throw new Error("L'URL résout vers une adresse non autorisée.");
+      }
+      return;
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error("dns_failed");
+    }
   }
+
+  throw lastError ?? new Error(`Impossible de résoudre l'hôte ${host}.`);
 }
 
-/** Valide une URL publique (protection SSRF basique). */
-export async function validateSourceUrl(raw: string): Promise<URL> {
+function parsePublicUrl(raw: string): URL {
   const trimmed = raw.trim();
   if (!trimmed) throw new Error("URL requise.");
 
@@ -72,15 +93,33 @@ export async function validateSourceUrl(raw: string): Promise<URL> {
     throw new Error("Seules les URLs http/https sont acceptées.");
   }
 
-  await assertResolvablePublicHost(url.hostname);
   return url;
 }
 
-/** Valide chaque redirection HTTP avant de suivre le lien. */
+/** Valide une URL publique (protection SSRF basique). */
+export async function validateSourceUrl(raw: string): Promise<URL> {
+  const url = parsePublicUrl(raw);
+  await lookupPublicHost(url.hostname);
+  return url;
+}
+
+/**
+ * Valide une cible de redirection HTTP (sans relancer une résolution DNS
+ * si l'hôte est identique à la page courante).
+ */
 export async function validateRedirectUrl(
   location: string,
   base: URL,
 ): Promise<URL> {
   const next = new URL(location, base);
-  return validateSourceUrl(next.toString());
+  if (!["http:", "https:"].includes(next.protocol)) {
+    throw new Error("Redirection vers un protocole non autorisé.");
+  }
+  assertPublicHost(next.hostname);
+
+  if (next.hostname.toLowerCase() !== base.hostname.toLowerCase()) {
+    await lookupPublicHost(next.hostname);
+  }
+
+  return next;
 }

@@ -185,6 +185,7 @@ export const api = {
     input: CheckoutInput & {
       items: { name: string; unitPrice: number; quantity: number }[];
       applyWelcomePromo?: boolean;
+      promoCode?: string;
     },
   ): Promise<{
     clientSecret: string | null;
@@ -196,6 +197,10 @@ export const api = {
     bogoApplied?: boolean;
     bogoDiscount?: number;
     freeUnits?: number;
+    shippingFee?: number;
+    shippingLabel?: string;
+    promoDiscount?: number;
+    promoCode?: string | null;
   }> {
     const { data } = await http.post<{
       clientSecret: string | null;
@@ -239,4 +244,5 @@ export interface CheckoutInput {
     quantity: number;
     unitPrice: number;
   }[];
+  promoCode?: string;
 }

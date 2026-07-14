@@ -21,16 +21,22 @@ export function isLowStock(quantity: number): boolean {
   return quantity > 0 && quantity <= shopConfig.lowStockThreshold;
 }
 
-/** Ratio 0 (épuisé) → 1 (stock confortable). */
-export function stockRatio(quantity: number): number {
-  const max = Math.max(1, shopConfig.stockColorReferenceMax);
-  return Math.min(1, Math.max(0, quantity / max));
+/** Afficher le badge stock uniquement entre 0 et stockDisplayMax inclus. */
+export function shouldShowStockQuantity(quantity: number): boolean {
+  return quantity >= 0 && quantity <= shopConfig.stockDisplayMax;
 }
 
 export function stockLabel(quantity: number): string {
   if (quantity <= 0) return "Rupture de stock";
   if (isLowStock(quantity)) return `Bientôt épuisé (${quantity})`;
-  return `En stock (${quantity})`;
+  if (quantity <= shopConfig.stockDisplayMax) return `En stock (${quantity})`;
+  return "En stock";
+}
+
+/** Ratio 0 (épuisé) → 1 (stock confortable). */
+export function stockRatio(quantity: number): number {
+  const max = Math.max(1, shopConfig.stockColorReferenceMax);
+  return Math.min(1, Math.max(0, quantity / max));
 }
 
 /** Couleurs du dégradé selon le niveau de stock. */

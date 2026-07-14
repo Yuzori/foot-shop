@@ -10,13 +10,13 @@ export function emailLayout(body: string): string {
   return `<!DOCTYPE html>
 <html lang="fr">
 <head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
-<body style="margin:0;padding:0;background:#f6f6f6;font-family:'Segoe UI',Arial,Helvetica,sans-serif;color:#0a0a0a">
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:Poppins,'Segoe UI',Arial,Helvetica,sans-serif;color:#0a0a0a">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f6f6;padding:32px 16px">
     <tr><td align="center">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden">
-        <tr><td style="height:4px;background:#e2001a"></td></tr>
+        <tr><td style="height:4px;background:#66BAFF"></td></tr>
         <tr><td style="padding:32px 28px 8px">
-          <p style="margin:0;font-size:11px;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;color:#e2001a">${site}</p>
+          <p style="margin:0;font-size:11px;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;color:#3DA8F5">${site}</p>
         </td></tr>
         <tr><td style="padding:8px 28px 32px">${body}</td></tr>
         <tr><td style="padding:20px 28px;background:#0a0a0a;color:#999;font-size:11px;line-height:1.6">
@@ -36,7 +36,11 @@ export function emailButton(href: string, label: string): string {
 
 export function emailProductImage(imageUrl: string, alt: string): string {
   if (!imageUrl) return "";
-  return `<p style="margin:0 0 20px"><img src="${imageUrl}" alt="${escapeHtml(alt)}" width="200" style="display:block;max-width:200px;height:auto;border-radius:12px;background:#f6f6f6" /></p>`;
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px">
+    <tr><td align="center" style="padding:12px;background:#f4f4f5;border-radius:16px">
+      <img src="${imageUrl}" alt="${escapeHtml(alt)}" width="280" style="display:block;max-width:280px;width:100%;height:auto;border-radius:12px" />
+    </td></tr>
+  </table>`;
 }
 
 export function emailAntiSpamNote(): string {

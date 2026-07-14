@@ -4,9 +4,11 @@
 
 @layer base {
   :root {
-    /* Fallbacks avant chargement next/font — pas de polices système Apple/UI. */
     --font-sans: "Poppins", sans-serif;
     --font-display: "Kanit", sans-serif;
+    --color-accent: #66baff;
+    --color-accent-dark: #3da8f5;
+    --color-accent-glow: rgba(102, 186, 255, 0.45);
   }
 
   * {
@@ -21,15 +23,20 @@
 
   body {
     @apply bg-paper text-ink font-sans antialiased;
+    background-image: radial-gradient(
+      ellipse 120% 80% at 50% -30%,
+      rgba(102, 186, 255, 0.07),
+      transparent 55%
+    );
+    background-attachment: fixed;
   }
 
   ::selection {
-    @apply bg-ink text-paper;
+    @apply bg-accent text-ink;
   }
 
-  /* Premium focus ring */
   :focus-visible {
-    @apply outline-none ring-2 ring-ink ring-offset-2 ring-offset-paper;
+    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-paper;
   }
 
   h1,
@@ -53,7 +60,7 @@
   }
 
   .eyebrow {
-    @apply text-xs font-bold uppercase tracking-[0.28em] text-accent;
+    @apply text-xs font-bold uppercase tracking-[0.28em] text-accent-dark;
   }
 
   .link-underline {
@@ -61,7 +68,7 @@
   }
   .link-underline::after {
     content: "";
-    @apply absolute left-0 -bottom-0.5 h-px w-full origin-right scale-x-0 bg-current transition-transform duration-500 ease-premium;
+    @apply absolute left-0 -bottom-0.5 h-px w-full origin-right scale-x-0 bg-accent transition-transform duration-500 ease-premium;
   }
   .link-underline:hover::after {
     @apply origin-left scale-x-100;
@@ -69,19 +76,22 @@
 
   .surface-card {
     @apply rounded-3xl border bg-paper shadow-soft;
-    border-color: rgb(10 10 10 / 0.08);
+    border-color: rgb(10 10 10 / 0.06);
   }
 
   .surface-muted {
     @apply rounded-2xl border bg-paper-soft;
-    border-color: rgb(10 10 10 / 0.08);
+    border-color: rgb(10 10 10 / 0.06);
+  }
+
+  .surface-glass {
+    @apply border border-ink/[0.06] bg-paper/75 backdrop-blur-xl;
   }
 
   .section-title {
     @apply text-sm font-bold uppercase tracking-wide text-ink;
   }
 
-  /* Skeleton shimmer */
   .skeleton {
     @apply relative overflow-hidden bg-paper-muted;
   }
@@ -91,7 +101,7 @@
     background: linear-gradient(
       90deg,
       transparent,
-      rgba(255, 255, 255, 0.6),
+      rgba(102, 186, 255, 0.12),
       transparent
     );
     animation: shimmer 1.6s infinite;
@@ -113,9 +123,27 @@
 
   .grain {
     background-image: radial-gradient(
-      rgba(0, 0, 0, 0.03) 1px,
+      rgba(0, 0, 0, 0.025) 1px,
       transparent 1px
     );
     background-size: 4px 4px;
+  }
+
+  .accent-glow {
+    box-shadow: 0 8px 32px -8px var(--color-accent-glow);
+  }
+
+  .card-laser-spin {
+    animation: card-laser-spin 6s linear infinite;
+    will-change: transform;
+  }
+}
+
+@keyframes card-laser-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }

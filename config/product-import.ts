@@ -21,7 +21,7 @@ export const productImportConfig = {
     process.env.PRODUCT_IMPORT_PARENT_CATEGORY_ID?.trim() || "2",
   sizeAttributeGroupId: process.env.PRESTASHOP_SIZE_GROUP_ID?.trim() ?? "",
   sizes: shopConfig.sizeOrder,
-  maxImages: 10,
+  maxImages: 24,
   fetchTimeoutMs: 15_000,
   maxHtmlBytes: 2 * 1024 * 1024,
   /** Limite douce d'URLs par session d'import (côté client). */

@@ -21,13 +21,56 @@ const KIT_THIRD =
 
 const SHORT_RE = /\b(short|shorts|pantalon|pant)\b/i;
 
-const KIDS_RE = /\benfant\b/i;
+/** Titre produit : maillot enfant, junior, kids, etc. */
+const KIDS_TITLE_RE =
+  /\b(maillot|kit|short|shirt|jersey)\s+[-–]?\s*enfant\b|\benfant\s+[-–]?\s*(maillot|kit|short|shirt|jersey)\b|\b(junior|kids?|youth|garçon|garcon|fille|boys?|girls?)\b/i;
+
+/** Description : formulations explicites (pas une simple mention « enfant » ailleurs sur la page). */
+const KIDS_DESC_RE =
+  /\b(maillot|kit|short)\s+(pour\s+)?enfants?\b|\bversion\s+enfant\b|\btaille\s+enfant\b|\b\d+\s*[-–]\s*\d+\s*ans\b|\b(enfant|junior|kids?|youth)\s*:\s*\d/i;
+
+/** Nom déjà formaté par formatProductName (« Maillot Enfant … »). */
+const FORMATTED_KIDS_RE = /^(maillot|short)\s+enfant\b/i;
 
 export type ProductAudience = "adult" | "kids";
 
-/** Détecte « enfant » dans le titre source (avant nettoyage). */
+/**
+ * Détecte un maillot enfant uniquement si le titre ou la description du produit
+ * l’indique explicitement (évite les faux positifs depuis le texte de la page).
+ */
+export function detectAudienceFromProduct(
+  title: string,
+  description = "",
+): ProductAudience {
+  const t = title.trim();
+  if (!t) return "adult";
+
+  if (KIDS_TITLE_RE.test(t)) return "kids";
+  if (/\benfant\b/i.test(t) && /\b(maillot|kit|short|jersey|shirt)\b/i.test(t)) {
+    return "kids";
+  }
+
+  const d = description.slice(0, 2500);
+  if (d && KIDS_DESC_RE.test(d)) return "kids";
+  if (
+    d &&
+    /\benfant\b/i.test(d) &&
+    /\b(ce\s+(maillot|kit|short)|cet\s+article|produit|article)\b/i.test(d) &&
+    /\b(maillot|kit|short)\b/i.test(d)
+  ) {
+    return "kids";
+  }
+
+  return "adult";
+}
+
+/** Détecte l’audience sur un nom déjà formaté ou un texte brut. */
 export function detectAudience(text: string): ProductAudience {
-  return KIDS_RE.test(text) ? "kids" : "adult";
+  if (FORMATTED_KIDS_RE.test(text.trim())) return "kids";
+  const lines = text.split(/\n/);
+  const title = lines[0]?.trim() ?? text.trim();
+  const rest = lines.slice(1).join(" ").trim();
+  return detectAudienceFromProduct(title, rest);
 }
 
 export function detectProductCollectionKind(
@@ -66,6 +109,34 @@ const TEAM_ALIASES: Readonly<Record<string, string>> = {
   turkey: "Turquie",
   scotland: "Écosse",
   wales: "Pays de Galles",
+  sweden: "Suède",
+  sverige: "Suède",
+  norway: "Norvège",
+  norge: "Norvège",
+  denmark: "Danemark",
+  danmark: "Danemark",
+  finland: "Finlande",
+  suomi: "Finlande",
+  iceland: "Islande",
+  hungary: "Hongrie",
+  romania: "Roumanie",
+  czech: "République tchèque",
+  slovakia: "Slovaquie",
+  slovenia: "Slovénie",
+  canada: "Canada",
+  australia: "Australie",
+  korea: "Corée du Sud",
+  "south korea": "Corée du Sud",
+  ecuador: "Équateur",
+  chile: "Chili",
+  peru: "Pérou",
+  paraguay: "Paraguay",
+  uruguay: "Uruguay",
+  colombia: "Colombie",
+  nigeria: "Nigeria",
+  ghana: "Ghana",
+  cameroon: "Cameroun",
+  qatar: "Qatar",
   ireland: "Irlande",
 };
 
@@ -200,20 +271,38 @@ function cleanTitle(raw: string): string {
     .trim();
 }
 
+function detectTeamFromUrl(sourceUrl: string): string | null {
+  try {
+    const pathname = decodeURIComponent(new URL(sourceUrl).pathname);
+    const hay = `${pathname} ${new URL(sourceUrl).search}`.replace(/[-_/]+/g, " ");
+    return detectTeam(hay);
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Formate un titre : « Maillot Maroc Domicile 2025 »
  * Uniquement type + équipe/pays + domicile/extérieur + année.
+ * L'équipe est déduite du titre et de l'URL (pas du texte de page entier).
  */
-export function formatProductName(rawTitle: string, extraText = ""): string {
-  const source = `${rawTitle} ${extraText}`.trim();
-  if (!source) return "Maillot";
+export function formatProductName(rawTitle: string, sourceUrl = ""): string {
+  const title = rawTitle.trim();
+  if (!title && !sourceUrl) return "Maillot";
 
-  const audience = detectAudience(source);
-  const productType = detectProductType(source);
-  const kitType = detectKitType(source);
+  const audience = detectAudienceFromProduct(title, "");
+  const productType = detectProductType(`${title} ${sourceUrl}`);
+  const kitType = detectKitType(title);
   const year =
-    detectYear(source) ?? detectYear(cleanTitle(source)) ?? String(new Date().getFullYear());
-  const team = detectTeam(source) ?? detectTeam(cleanTitle(source)) ?? "Équipe";
+    detectYear(title) ??
+    detectYear(sourceUrl) ??
+    detectYear(cleanTitle(title)) ??
+    String(new Date().getFullYear());
+  const team =
+    detectTeam(title) ??
+    detectTeam(cleanTitle(title)) ??
+    detectTeamFromUrl(sourceUrl) ??
+    "Équipe";
 
   const audienceTag = audience === "kids" ? "Enfant " : "";
   return `${productType} ${audienceTag}${team} ${kitType} ${year}`

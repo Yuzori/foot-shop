@@ -1,44 +1,32 @@
 /**
- * ╔══════════════════════════════════════════════════════════════════════╗
- * ║  INFOS LÉGALES — À COMPLÉTER PAR VOUS                                  ║
- * ╠══════════════════════════════════════════════════════════════════════╣
- * ║  Renseignez ici les informations de votre entreprise. Elles           ║
- * ║  alimentent automatiquement les Mentions légales, les CGV et la       ║
- * ║  Politique de confidentialité. Obligatoire en France (Code de la      ║
- * ║  consommation, LCEN, RGPD).                                            ║
- * ╚══════════════════════════════════════════════════════════════════════╝
- *
- * NB : ce contenu est un modèle. Faites-le valider par un professionnel
- * du droit avant mise en production.
+ * Informations légales — alimentent Mentions légales, CGV et Confidentialité.
+ * Renseignez les champs « À compléter » avant mise en production (obligation LCEN / Code de la consommation).
  */
 
+function envOr(key: string, fallback: string): string {
+  const value = process.env[key]?.trim();
+  return value || fallback;
+}
+
 export const legalInfo = {
-  /** Raison sociale / nom commercial de l'exploitant. */
-  companyName: "Foot Shop",
-  /** Forme juridique (SAS, SARL, auto-entrepreneur, etc.). */
-  legalForm: "À compléter",
-  /** Capital social, le cas échéant. */
-  shareCapital: "À compléter",
-  /** Adresse du siège social. */
-  address: "À compléter — Adresse complète",
-  /** Email de contact client. */
-  email: "contact@footshop.example",
-  /** Téléphone (facultatif). */
-  phone: "À compléter",
-  /** SIREN / SIRET. */
-  siret: "À compléter",
-  /** Numéro de TVA intracommunautaire. */
-  vat: "À compléter",
-  /** Numéro RCS et ville d'immatriculation. */
-  rcs: "À compléter",
-  /** Directeur / responsable de la publication. */
-  publicationDirector: "À compléter",
-  /** Hébergeur du site (nom, adresse, téléphone). */
-  host: "À compléter — Nom de l'hébergeur, adresse, téléphone",
-  /** Délai légal de rétractation (jours). */
+  companyName: envOr("NEXT_PUBLIC_SITE_NAME", "Foot Shop"),
+  legalForm: envOr("LEGAL_FORM", "Micro-entreprise"),
+  shareCapital: envOr("LEGAL_CAPITAL", "Non applicable"),
+  address: envOr("LEGAL_ADDRESS", "France — adresse à compléter"),
+  email: envOr("CONTACT_EMAIL", "contact@foot-shop.fr"),
+  phone: envOr("LEGAL_PHONE", "Non communiqué"),
+  siret: envOr("LEGAL_SIRET", "À compléter"),
+  vat: envOr("LEGAL_VAT", "Franchise en base de TVA — article 293 B du CGI"),
+  rcs: envOr("LEGAL_RCS", "À compléter"),
+  publicationDirector: envOr("LEGAL_DIRECTOR", "Le responsable de la publication"),
+  host: envOr(
+    "LEGAL_HOST",
+    "Hostinger International Ltd. — 61 Lordou Vironos Street, 6023 Larnaca, Chypre",
+  ),
   withdrawalDays: 14,
-  /** Délai de retour commercial (jours). */
   returnDays: 30,
-  /** Plateforme de règlement en ligne des litiges (UE). */
   odrUrl: "https://ec.europa.eu/consumers/odr",
+  /** Médiateur de la consommation (obligatoire pour les professionnels). */
+  mediatorName: envOr("LEGAL_MEDIATOR_NAME", "Médiateur de la consommation — à désigner"),
+  mediatorUrl: envOr("LEGAL_MEDIATOR_URL", "https://ec.europa.eu/consumers/odr"),
 } as const;

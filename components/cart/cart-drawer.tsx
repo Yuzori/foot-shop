@@ -69,7 +69,7 @@ export function CartDrawer() {
           aria-label="Panier"
         >
           <div
-            className="absolute inset-0 bg-ink/40 backdrop-blur-sm"
+            className="absolute inset-0 bg-ink/30 backdrop-blur-xl"
             onClick={close}
           />
 
@@ -78,7 +78,7 @@ export function CartDrawer() {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ duration: 0.45, ease: EASE }}
-            className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col bg-paper shadow-lift"
+            className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col bg-paper shadow-panel"
           >
             <header className="flex items-center justify-between border-b border-ink/8 px-6 py-5">
               <h2 className="text-lg font-semibold tracking-tightest">
@@ -232,7 +232,7 @@ export function CartDrawer() {
                   <Link
                     href={routes.checkout}
                     onClick={close}
-                    className={buttonClasses("primary", "lg", "mt-5 w-full")}
+                    className={buttonClasses("accent", "lg", "mt-5 w-full")}
                   >
                     Passer au paiement
                   </Link>

@@ -1,6 +1,8 @@
 import { routes } from "@/config/site";
 import { worldCupConfig } from "@/config/world-cup";
 import {
+  catalogDivisionFromLeague,
+  findAdultDivisionCategoryId,
   findKidsDivisionCategoryId,
   getDivisionForCategoryId,
 } from "@/lib/catalog-divisions";
@@ -31,7 +33,7 @@ export const catalogAudiences: { id: CatalogAudience; label: string }[] = [
 export const catalogLeagues: CatalogLeague[] = [
   {
     id: "world-cup",
-    label: "Coupe du monde",
+    label: "World Cup",
     icon: "/leagues/world-cup.png",
     categoryId: worldCupConfig.categoryId,
   },
@@ -74,38 +76,45 @@ export function buildCatalogHref(
 
   const params = new URLSearchParams();
   params.set("kind", kind);
+  params.set("league", league.id);
+  params.set("audience", audience);
+
+  const division =
+    (league.categoryId
+      ? getDivisionForCategoryId(league.categoryId, allCategories)
+      : null) ?? catalogDivisionFromLeague(league);
 
   if (audience === "kids") {
-    params.set("audience", "kids");
-
-    if (league.categoryId && allCategories.length > 0 && kidsBase) {
-      const division = getDivisionForCategoryId(league.categoryId, allCategories);
-      if (division) {
-        const kidsDivisionId = findKidsDivisionCategoryId(
-          allCategories,
-          kidsBase,
-          division,
-        );
-        if (kidsDivisionId) {
-          return `${routes.category(kidsDivisionId)}?${params.toString()}`;
-        }
+    if (allCategories.length > 0 && kidsBase) {
+      const kidsDivisionId = findKidsDivisionCategoryId(
+        allCategories,
+        kidsBase,
+        division,
+      );
+      if (kidsDivisionId) {
+        return `${routes.category(kidsDivisionId)}?${params.toString()}`;
       }
     }
 
     const base = kidsBase ? routes.category(kidsBase) : routes.catalogue;
-    params.set("league", league.id);
     return `${base}?${params.toString()}`;
   }
 
-  const base = league.categoryId
-    ? routes.category(league.categoryId)
-    : adultBase
-      ? routes.category(adultBase)
-      : routes.catalogue;
+  if (league.categoryId) {
+    return `${routes.category(league.categoryId)}?${params.toString()}`;
+  }
 
-  params.set("audience", "adult");
-  if (!league.categoryId) params.set("league", league.id);
+  if (allCategories.length > 0 && adultBase) {
+    const adultDivisionId = findAdultDivisionCategoryId(
+      allCategories,
+      adultBase,
+      division,
+    );
+    if (adultDivisionId) {
+      return `${routes.category(adultDivisionId)}?${params.toString()}`;
+    }
+  }
 
-  const qs = params.toString();
-  return qs ? `${base}?${qs}` : base;
+  const base = adultBase ? routes.category(adultBase) : routes.catalogue;
+  return `${base}?${params.toString()}`;
 }

@@ -52,8 +52,8 @@ export function Header() {
         className={cn(
           "sticky top-0 z-40 transition-all duration-500",
           scrolled
-            ? "border-b border-ink/5 bg-paper/80 backdrop-blur-xl"
-            : "bg-transparent",
+            ? "border-b border-ink/[0.06] bg-paper/85 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.08)] backdrop-blur-2xl"
+            : "bg-paper/40 backdrop-blur-md",
         )}
       >
         <Container className="relative flex h-16 items-center lg:h-[4.5rem]">
@@ -108,8 +108,8 @@ export function Header() {
                 href={link.href}
                 prefetch={false}
                 className={cn(
-                  "link-underline text-sm font-medium text-ink/70 transition-colors hover:text-ink",
-                  pathname === link.href && "text-ink",
+                  "link-underline text-sm font-medium text-ink/65 transition-colors hover:text-ink",
+                  pathname === link.href && "text-ink after:scale-x-100",
                 )}
               >
                 {link.label}
@@ -168,9 +168,9 @@ function WorldCupNavLink({
       href={href}
       className={cn(
         "group relative mr-1 hidden items-center gap-2 overflow-hidden rounded-full bg-ink px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-paper transition-[transform,background-color,box-shadow] duration-300 ease-premium lg:flex",
-        "hover:scale-[1.04] hover:bg-accent active:scale-[0.97]",
-        "hover:shadow-[0_10px_28px_-6px_rgba(226,0,26,0.45)]",
-        active && "bg-accent ring-2 ring-accent/30 ring-offset-2",
+        "hover:scale-[1.04] hover:bg-accent hover:text-ink active:scale-[0.97]",
+        "hover:shadow-glow-sm",
+        active && "bg-accent text-ink ring-2 ring-accent/40 ring-offset-2",
       )}
     >
       <span
@@ -184,12 +184,12 @@ function WorldCupNavLink({
 }
 
 const iconBase =
-  "relative flex h-10 w-10 items-center justify-center rounded-full text-ink transition-colors hover:bg-paper-soft";
+  "relative flex h-10 w-10 items-center justify-center rounded-full text-ink transition-all duration-300 hover:bg-accent-muted hover:text-accent-dark";
 
 function Badge({ badge }: { badge?: number }) {
   if (!badge || badge <= 0) return null;
   return (
-    <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-white">
+    <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-ink shadow-glow-sm">
       {badge > 99 ? "99+" : badge}
     </span>
   );

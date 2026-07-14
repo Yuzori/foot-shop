@@ -12,12 +12,12 @@ export default function AboutPage() {
     <ArticlePage
       eyebrow="Notre histoire"
       title="La passion du maillot"
-      intro="Nous sommes une boutique spécialisée dédiée aux maillots de football. Notre obsession : l'authenticité, la qualité et une expérience d'achat à la hauteur des plus grandes marques."
+      intro="Nous sommes une boutique spécialisée dédiée aux maillots de football. Notre obsession : la qualité et une expérience d'achat à la hauteur des plus grandes marques."
     >
       <section>
         <h2>Une sélection exigeante</h2>
         <p>
-          Chaque pièce est choisie pour sa qualité et son authenticité. Nous
+          Chaque pièce est choisie pour sa qualité. Nous
           travaillons à proposer une sélection claire, lisible et toujours à
           jour, directement issue de notre catalogue officiel.
         </p>

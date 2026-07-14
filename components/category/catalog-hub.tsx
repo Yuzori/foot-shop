@@ -253,7 +253,7 @@ export function CatalogHub() {
                       <span className="flex-1 text-left font-semibold tracking-tight">
                         {league.label}
                       </span>
-                      <span className="rounded-full bg-paper-soft px-3 py-1 text-xs font-medium text-ink/50 transition-colors group-hover:bg-accent group-hover:text-paper">
+                      <span className="rounded-full bg-paper-soft px-3 py-1 text-xs font-medium text-ink/50 transition-colors group-hover:bg-accent group-hover:text-ink">
                         Voir
                       </span>
                     </Link>
