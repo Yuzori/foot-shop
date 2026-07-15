@@ -30,7 +30,6 @@ import {
   removeOutlineStudioBleed,
   solidifyJerseyColors,
   stripNeutralOutlineFringe,
-  stripNeutralOutlineFringe,
   touchesTransparentNeighbor,
 } from "@/lib/jersey-studio/pixel-utils";
 

@@ -260,7 +260,8 @@ export function removeOutlineStudioBleed(
         const r = data[i] ?? 0;
         const g = data[i + 1] ?? 0;
         const b = data[i + 2] ?? 0;
-        const sat = Math.max(r, g, b) - Math.min(r, g, b);
+        const min = Math.min(r, g, b);
+        const sat = Math.max(r, g, b) - min;
 
         if (isAccentStripePixel(r, g, b)) continue;
         if (isJerseyFabricPixel(r, g, b) && sat >= 22 && a >= 220) continue;

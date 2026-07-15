@@ -4,11 +4,13 @@ import sharp from "sharp";
 
 import {
   CARD_BG,
+  CARD_H,
+  CARD_W,
+  HALO_BLUR_SIGMA,
+  HALO_OPACITY,
   LOSSLESS_PNG,
   WORK_CARD_H,
   WORK_CARD_W,
-  WORK_HALO_BLUR_SIGMA,
-  HALO_OPACITY,
 } from "@/lib/jersey-studio/constants";
 import { isProtectedJerseyPixel, isJerseyFabricPixel, isStudioBackgroundPixel } from "@/lib/jersey-studio/pixel-utils";
 import { applyOpacity, rawRgba, rgbaToPng } from "@/lib/jersey-studio/image-prep";
@@ -65,8 +67,11 @@ export async function buildColoredHalo(jerseyLayer: Buffer): Promise<Buffer> {
   }
 
   const sanitized = await rgbaToPng(data, width, height);
+  // Flou à résolution export (×4 moins de pixels) puis upscale — évite timeout serveur.
   const blurred = await sharp(sanitized)
-    .blur(WORK_HALO_BLUR_SIGMA)
+    .resize(CARD_W, CARD_H, { fit: "fill", kernel: sharp.kernel.lanczos3 })
+    .blur(HALO_BLUR_SIGMA)
+    .resize(WORK_CARD_W, WORK_CARD_H, { kernel: sharp.kernel.lanczos3 })
     .png(LOSSLESS_PNG)
     .toBuffer();
   return applyOpacity(blurred, HALO_OPACITY);

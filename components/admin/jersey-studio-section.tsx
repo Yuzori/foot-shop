@@ -259,6 +259,42 @@ function toggleScrapedImage(product: StudioProduct, url: string): StudioImageSel
   ];
 }
 
+async function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") resolve(reader.result);
+      else reject(new Error("Lecture du rendu impossible."));
+    };
+    reader.onerror = () => reject(new Error("Lecture du rendu impossible."));
+    reader.readAsDataURL(blob);
+  });
+}
+
+/** Réponse render : PNG binaire (succès) ou JSON (erreur). */
+async function parseRenderResponse(res: Response): Promise<string> {
+  const contentType = res.headers.get("content-type") ?? "";
+
+  if (contentType.includes("image/png")) {
+    if (!res.ok) {
+      throw new Error(`Rendu échoué (${res.status}).`);
+    }
+    return blobToDataUrl(await res.blob());
+  }
+
+  const data = await readApiJson<{
+    ok?: boolean;
+    message?: string;
+    imageBase64?: string;
+  }>(res);
+
+  if (res.ok && data.imageBase64) {
+    return `data:image/png;base64,${data.imageBase64}`;
+  }
+
+  throw new Error(data.message ?? `Rendu échoué (${res.status}).`);
+}
+
 /** Parse JSON depuis une Response — évite « Unexpected end of JSON input ». */
 async function readApiJson<T>(res: Response): Promise<T> {
   const text = await res.text();
@@ -697,19 +733,12 @@ export function JerseyStudioSection({ secret }: { secret: string }) {
           },
           body: JSON.stringify(body),
         });
-        const data = await readApiJson<{
-          ok?: boolean;
-          message?: string;
-          imageBase64?: string;
-        }>(res);
-        if (!res.ok || !data.imageBase64) {
-          throw new Error(data.message ?? "Rendu échoué.");
-        }
+        const renderPreview = await parseRenderResponse(res);
 
         touchProduct(job.productId, (p) => ({
           ...p,
           selections: updateSelection(p.selections, job.selectionId, {
-            renderPreview: `data:image/png;base64,${data.imageBase64}`,
+            renderPreview,
             renderError: null,
           }),
         }));

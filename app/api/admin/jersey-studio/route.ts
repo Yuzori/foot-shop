@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import sharp from "sharp";
 
 import { productImportConfig } from "@/config/product-import";
 import {
@@ -12,9 +11,12 @@ import { DEFAULT_STOCK } from "@/lib/jersey-studio/constants";
 import { detectRenderModeFromBuffer } from "@/lib/jersey-studio/detect-render-mode-server";
 import { fetchImageBuffer } from "@/lib/jersey-studio/fetch-image";
 import {
-  renderJerseyProductCardBase64,
+  renderJerseyProductCard,
 } from "@/lib/jersey-studio/process-image";
-import { type JerseyRenderMode } from "@/lib/jersey-studio/render-mode";
+import {
+  guessRenderModeFromUrl,
+  type JerseyRenderMode,
+} from "@/lib/jersey-studio/render-mode";
 import { scrapeStudioProducts } from "@/lib/jersey-studio/scrape-batch";
 import { parseSourceUrls } from "@/lib/product-import/parse-urls";
 import { pickImportDefaultCategoryId } from "@/lib/product-import/pick-default-category";
@@ -23,6 +25,7 @@ import { sendInstantNewProductEmail } from "@/lib/instant-product-email";
 import { prestashop } from "@/services/prestashop";
 
 export const maxDuration = 120;
+export const runtime = "nodejs";
 
 function isAuthorized(request: Request): boolean {
   return isAdminAuthorized(request);
@@ -150,34 +153,31 @@ export async function POST(request: Request) {
   if (body.action === "render") {
     try {
       let buffer: Buffer;
-      let sourceSize: { width: number; height: number } | undefined;
 
       if (body.imageBase64?.trim()) {
         buffer = Buffer.from(body.imageBase64.trim(), "base64");
-        const meta = await sharp(buffer).metadata();
-        sourceSize = { width: meta.width ?? 0, height: meta.height ?? 0 };
       } else if (body.imageUrl?.trim()) {
         const fetched = await fetchImageBuffer(
           body.imageUrl.trim(),
           body.referer?.trim(),
         );
         buffer = fetched.buffer;
-        sourceSize = { width: fetched.width, height: fetched.height };
       } else {
         return NextResponse.json({ message: "image_required" }, { status: 400 });
       }
 
-      const mode: JerseyRenderMode = "uniform";
-      const imageBase64 = await renderJerseyProductCardBase64(buffer);
-      return NextResponse.json({
-        ok: true,
-        imageBase64,
-        mimeType: "image/png",
-        renderMode: mode,
-        sourceSize,
+      const png = await renderJerseyProductCard(buffer);
+      return new Response(new Uint8Array(png), {
+        status: 200,
+        headers: {
+          "Content-Type": "image/png",
+          "Cache-Control": "no-store",
+          "X-Render-Mode": "uniform",
+        },
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "render_failed";
+      console.error("[jersey-studio] render failed:", err);
       return NextResponse.json({ ok: false, message }, { status: 422 });
     }
   }

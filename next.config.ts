@@ -23,6 +23,7 @@ const remotePatterns = imageHosts.flatMap((hostname) => [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  serverExternalPackages: ["sharp"],
   images: {
     // When no host is configured yet, fall back to unoptimized images so the
     // app keeps building/running. Configure PRESTASHOP_IMAGE_HOSTS in prod.
