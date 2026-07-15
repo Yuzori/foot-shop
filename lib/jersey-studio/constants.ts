@@ -27,11 +27,13 @@ export const WORK_JERSEY_TARGET_HEIGHT = JERSEY_TARGET_HEIGHT * INTERNAL_EXPORT_
 export const WORK_JERSEY_MAX_WIDTH = JERSEY_MAX_WIDTH * INTERNAL_EXPORT_SCALE;
 export const ALPHA_THRESHOLD = 14;
 export const WHITE_THRESHOLD = 246;
-export const CARD_BG = { r: 238, g: 238, b: 238 };
+export const CARD_BG = { r: 22, g: 22, b: 22 };
+/** Fond photo studio typique (blanc / gris clair) — distinct du fond carte #161616. */
+export const STUDIO_PHOTO_BG = { r: 238, g: 238, b: 238 };
 /** Figma: LAYER_BLUR 119 @ 328px → ~50 sigma @ 656px (2×). */
 export const HALO_BLUR_SIGMA = 50;
 export const WORK_HALO_BLUR_SIGMA = HALO_BLUR_SIGMA * INTERNAL_EXPORT_SCALE;
-export const HALO_OPACITY = 0.37;
+export const HALO_OPACITY = 0.44;
 export const FEATHER_HARD_TOL = 36;
 export const JERSEY_CUTOUT_TOL = 32;
 export const JERSEY_BINARY_ALPHA = 140;

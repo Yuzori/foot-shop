@@ -1,7 +1,7 @@
 import "server-only";
 
 import { productImportConfig } from "@/config/product-import";
-import { formatProductName, detectAudienceFromProduct, type ProductAudience } from "@/lib/product-import/format-product-name";
+import { formatProductName, detectAudienceFromProduct, extractTeamFromSlugTokens, type ProductAudience } from "@/lib/product-import/format-product-name";
 import { fetchProductPageHtml } from "@/lib/product-import/fetch-page";
 import {
   isLikelyThumbnailUrl,
@@ -190,12 +190,18 @@ function extractItempropName(html: string): string | null {
 function isGenericSlugName(name: string): boolean {
   const n = name.trim().toLowerCase();
   if (!n) return true;
+  if (/\b(équipe|equipe|team)\b/.test(n) && !detectTeamInText(n)) return true;
   if (/^team\s+(domicile|exterieur|exterior|away|home|third)\b/.test(n)) return true;
   if (/^(maillot|jersey|shirt|kit)\s+(domicile|exterieur|away|home)\b/.test(n) && n.length < 28) {
     return true;
   }
+  if (/^(maillot|jersey|shirt|kit)\s+(équipe|equipe|team)\b/.test(n)) return true;
   if (/^(product|article|item|sku)[-_]?\d+$/i.test(n)) return true;
   return false;
+}
+
+function detectTeamInText(text: string): boolean {
+  return extractTeamFromSlugTokens(`https://x/${text.replace(/\s+/g, "-")}`) !== null;
 }
 
 function scoreProductNameCandidate(name: string, source: "page" | "url"): number {
@@ -204,10 +210,12 @@ function scoreProductNameCandidate(name: string, source: "page" | "url"): number
 
   let score = source === "page" ? 50 : 5;
   if (isGenericSlugName(cleaned)) score -= 70;
+  if (/\b(équipe|equipe|team)\b/i.test(cleaned) && !detectTeamInText(cleaned)) score -= 45;
   if (/\b(20[2-3]\d)\b/.test(cleaned)) score += 8;
   if (/\b(maillot|jersey|shirt|kit)\b/i.test(cleaned)) score += 6;
   if (/\b(domicile|extérieur|exterieur|away|home|third)\b/i.test(cleaned)) score += 4;
   if (cleaned.length >= 18) score += 10;
+  if (detectTeamInText(cleaned)) score += 22;
   if (/[|•·]/.test(cleaned)) score += 3;
   if (/\.(fr|com|net|de)\b/i.test(cleaned)) score -= 25;
   if (/^(www\.|http)/i.test(cleaned)) score -= 40;
@@ -238,10 +246,18 @@ function extractProductName(html: string, url: URL): string {
 
   const slug = extractTitleFromUrl(url);
   if (slug) {
+    const slugTeam = extractTeamFromSlugTokens(url.toString());
+    const slugScore = scoreProductNameCandidate(slug, "url");
     candidates.push({
       name: slug,
-      score: scoreProductNameCandidate(slug, "url"),
+      score: slugScore + (slugTeam ? 18 : 0),
     });
+    if (slugTeam && isGenericSlugName(slug)) {
+      candidates.push({
+        name: `${slug} ${slugTeam}`,
+        score: slugScore + 35,
+      });
+    }
   }
 
   candidates.sort((a, b) => b.score - a.score);

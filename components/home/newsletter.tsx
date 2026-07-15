@@ -71,7 +71,7 @@ export function Newsletter() {
           ) : (
             <form
               onSubmit={onSubmit}
-              className="mx-auto mt-8 flex w-full max-w-3xl flex-col gap-3 sm:flex-row"
+              className="mx-auto mt-8 flex w-full max-w-3xl flex-col gap-3 sm:flex-row sm:items-stretch"
             >
               <input
                 type="email"
@@ -82,15 +82,15 @@ export function Newsletter() {
                 aria-label="Adresse email"
                 disabled={pending}
                 readOnly={Boolean(user?.email)}
-                className="h-12 min-w-0 flex-[2] rounded-full border border-paper/25 bg-paper/10 px-6 text-sm text-paper outline-none transition-colors placeholder:text-paper/50 focus:border-accent focus:bg-paper/15 disabled:opacity-60 read-only:opacity-90"
+                className="h-14 min-h-[3.5rem] w-full min-w-0 flex-1 rounded-full border border-paper/25 bg-paper/10 px-6 text-base text-paper outline-none transition-colors placeholder:text-paper/50 focus:border-accent focus:bg-paper/15 disabled:opacity-60 read-only:opacity-90 sm:flex-[2]"
               />
 
               <Button
                 type="submit"
-                size="md"
+                size="lg"
                 variant="accent"
                 disabled={pending}
-                className="h-12 w-full shrink-0 sm:w-auto"
+                className="h-14 w-full shrink-0 sm:w-auto"
               >
                 {pending ? "…" : "S'inscrire"}
               </Button>

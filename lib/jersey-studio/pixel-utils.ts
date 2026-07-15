@@ -270,7 +270,7 @@ export function removeOutlineStudioBleed(
           isNeutralOutlinePixel(r, g, b) ||
           (sat < 28 && r >= 210 && g >= 210 && b >= 205);
 
-        const semiBlend = a < 235 && sat < 32 && r >= 200;
+        const semiBlend = a < 248 && sat < 36 && min >= 190;
 
         if ((neutralFringe || semiBlend) && hasInwardFabricNeighbor(data, width, height, x, y)) {
           data[i] = 0;
@@ -829,6 +829,90 @@ export function stripNeutralOutlineFringe(
       }
     }
   }
+}
+
+/**
+ * Retire les franges claires visibles sur fond sombre (#161616) — contour uniquement.
+ * Ne touche pas l'intérieur opaque du maillot (y compris blanc).
+ */
+export function removeExteriorLightFringe(
+  data: Uint8Array,
+  width: number,
+  height: number,
+  cardBg: { r: number; g: number; b: number } = { r: 22, g: 22, b: 22 },
+): void {
+  for (let pass = 0; pass < 6; pass++) {
+    let changed = false;
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const p = y * width + x;
+        const i = p * 4;
+        const a = data[i + 3] ?? 0;
+        if (a === 0) continue;
+        if (!touchesTransparentNeighbor(data, width, height, x, y)) continue;
+
+        const r = data[i] ?? 0;
+        const g = data[i + 1] ?? 0;
+        const b = data[i + 2] ?? 0;
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        const sat = max - min;
+
+        if (isAccentStripePixel(r, g, b)) continue;
+
+        const studioBleed =
+          isStudioBackgroundPixel(r, g, b) ||
+          isNeutralOutlinePixel(r, g, b) ||
+          (sat < 32 && min >= 200 && a < 252);
+
+        const semiWhiteHalo = a < 245 && min >= 215 && sat < 28;
+
+        const inwardOpaque = hasInwardOpaqueNeighbor(
+          data,
+          width,
+          height,
+          x,
+          y,
+          200,
+        );
+
+        if ((studioBleed || semiWhiteHalo) && inwardOpaque) {
+          data[i] = cardBg.r;
+          data[i + 1] = cardBg.g;
+          data[i + 2] = cardBg.b;
+          data[i + 3] = 0;
+          changed = true;
+        }
+      }
+    }
+
+    if (!changed) break;
+  }
+}
+
+function hasInwardOpaqueNeighbor(
+  data: Uint8Array,
+  width: number,
+  height: number,
+  x: number,
+  y: number,
+  minAlpha: number,
+): boolean {
+  const cardinals: [number, number][] = [
+    [x - 1, y],
+    [x + 1, y],
+    [x, y - 1],
+    [x, y + 1],
+  ];
+
+  for (const [nx, ny] of cardinals) {
+    if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+    const ni = (ny * width + nx) * 4;
+    if ((data[ni + 3] ?? 0) >= minAlpha) return true;
+  }
+
+  return false;
 }
 
 /**

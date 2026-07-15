@@ -1,18 +1,25 @@
 import "server-only";
 
 import { productImportConfig } from "@/config/product-import";
+import {
+  clearFetchSession,
+  cookieHeaderForUrl,
+  storeResponseCookies,
+} from "@/lib/product-import/fetch-session";
 import { validateRedirectUrl, validateSourceUrl } from "@/lib/product-import/validate-url";
 
 const USER_AGENTS = [
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3 Safari/605.1.15",
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0",
+  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
 ];
 
 const MAX_REDIRECT_HOPS = 12;
 
 function browserHeaders(url: URL, attempt: number): HeadersInit {
   const origin = url.origin;
+  const cookie = cookieHeaderForUrl(url);
   return {
     "User-Agent": USER_AGENTS[attempt % USER_AGENTS.length]!,
     Accept:
@@ -24,13 +31,60 @@ function browserHeaders(url: URL, attempt: number): HeadersInit {
     Origin: origin,
     "Sec-Fetch-Dest": "document",
     "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-Site": "same-origin",
+    "Sec-Fetch-Site": attempt % 2 === 0 ? "same-origin" : "none",
     "Upgrade-Insecure-Requests": "1",
+    ...(cookie ? { Cookie: cookie } : {}),
   };
 }
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isCloudflareChallenge(html: string, headers: Headers): boolean {
+  if (headers.get("cf-mitigated")) return true;
+  if (/__cf_chl|cf-browser-verification|challenge-platform|cdn-cgi\/challenge/i.test(html)) {
+    return true;
+  }
+  if (/just a moment|checking your browser|enable javascript and cookies/i.test(html)) {
+    return true;
+  }
+  return false;
+}
+
+function isCookieConsentWall(html: string): boolean {
+  const sample = html.slice(0, 80_000).toLowerCase();
+  if (!/cookie|consent|gdpr|tarteaucitron|onetrust|didomi|iubenda/.test(sample)) {
+    return false;
+  }
+  return /accept.*cookie|cookie.*accept|tout accepter|accept all|agree and proceed/i.test(
+    sample,
+  );
+}
+
+function lacksProductSignals(html: string): boolean {
+  const hasJsonLd = /application\/ld\+json/i.test(html) && /"@type"\s*:\s*"Product"/i.test(html);
+  const hasOg = /property=["']og:(title|image)["']/i.test(html);
+  const hasGallery = /(product|gallery|pdp|maillot|jersey)/i.test(html);
+  return !hasJsonLd && !hasOg && !hasGallery;
+}
+
+function validateFetchedHtml(html: string, headers: Headers): void {
+  if (isCloudflareChallenge(html, headers)) {
+    throw new Error(
+      "Page protégée (Cloudflare / anti-bot). Essayez une autre source ou collez l'URL d'image directe.",
+    );
+  }
+
+  if (isCookieConsentWall(html) && lacksProductSignals(html)) {
+    throw new Error(
+      "Page bloquée par un bandeau cookies — le contenu produit n'est pas accessible sans navigateur.",
+    );
+  }
+
+  if (html.length < 400 && lacksProductSignals(html)) {
+    throw new Error("Page trop courte ou vide — redirection sécurisée non résolue.");
+  }
 }
 
 async function readHtmlResponse(response: Response): Promise<string> {
@@ -74,6 +128,8 @@ async function fetchWithManualRedirects(
       redirect: "manual",
     });
 
+    storeResponseCookies(current, response);
+
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get("location");
       if (!location) throw new Error("Redirection invalide (Location manquante).");
@@ -95,7 +151,9 @@ async function fetchWithManualRedirects(
       throw new Error(`La page a répondu avec le code ${response.status}.`);
     }
 
-    return readHtmlResponse(response);
+    const html = await readHtmlResponse(response);
+    validateFetchedHtml(html, response.headers);
+    return html;
   }
 
   throw new Error("Trop de redirections.");
@@ -112,6 +170,8 @@ async function fetchWithFollowRedirects(
     redirect: "follow",
   });
 
+  storeResponseCookies(startUrl, response);
+
   if (response.status === 403 || response.status === 429) {
     throw new Error(
       `Accès refusé (${response.status}). Réessayez plus tard ou changez de source.`,
@@ -122,7 +182,9 @@ async function fetchWithFollowRedirects(
     throw new Error(`La page a répondu avec le code ${response.status}.`);
   }
 
-  return readHtmlResponse(response);
+  const html = await readHtmlResponse(response);
+  validateFetchedHtml(html, response.headers);
+  return html;
 }
 
 /** Télécharge une page HTML avec retries (403, 429, 5xx) et redirections validées. */
@@ -159,3 +221,6 @@ export async function fetchProductPageHtml(url: URL): Promise<string> {
 
   throw new Error(lastError);
 }
+
+/** Réinitialise les cookies entre deux imports distincts (optionnel). */
+export { clearFetchSession };

@@ -42,13 +42,11 @@ async function normalizeJerseyPng(cutout: Buffer): Promise<Buffer> {
     throw new Error("Aucun contour de maillot détecté après détourage.");
   }
 
-  let targetH = WORK_JERSEY_TARGET_HEIGHT;
-  let targetW = Math.max(1, Math.round(bounds.width * (WORK_JERSEY_TARGET_HEIGHT / bounds.height)));
-
-  if (targetW > WORK_JERSEY_MAX_WIDTH) {
-    targetW = WORK_JERSEY_MAX_WIDTH;
-    targetH = Math.max(1, Math.round(bounds.height * (WORK_JERSEY_MAX_WIDTH / bounds.width)));
-  }
+  const scaleH = WORK_JERSEY_TARGET_HEIGHT / bounds.height;
+  const scaleW = WORK_JERSEY_MAX_WIDTH / bounds.width;
+  const scale = Math.min(scaleH, scaleW);
+  const targetW = Math.max(1, Math.round(bounds.width * scale));
+  const targetH = Math.max(1, Math.round(bounds.height * scale));
 
   const resized = await sharp(cutout)
     .extract({
@@ -85,7 +83,7 @@ async function normalizeJerseyPng(cutout: Buffer): Promise<Buffer> {
     .then(polishCutoutDetail);
 }
 
-/** Pipeline maillot uniforme : trim → détourage → normalisation → fond #EEEEEE + halo. */
+/** Pipeline maillot uniforme : trim → détourage → normalisation → fond #161616 + halo. */
 export async function renderJerseyProductCard(input: Buffer): Promise<Buffer> {
   const prepared = await prepareInput(input);
   const trimmed = await trimWhiteMargins(prepared);

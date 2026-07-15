@@ -4,10 +4,12 @@ import sharp from "sharp";
 
 import {
   ALPHA_THRESHOLD,
+  CARD_BG,
   FEATHER_HARD_TOL,
   JERSEY_BINARY_ALPHA,
   JERSEY_CUTOUT_TOL,
   LOSSLESS_PNG,
+  STUDIO_PHOTO_BG,
   WHITE_THRESHOLD,
 } from "@/lib/jersey-studio/constants";
 import {
@@ -16,15 +18,18 @@ import {
   detectBackgroundRefs,
   finalizeSilhouetteAlpha,
   floodFillBackground,
+  defringeAgainstBackground,
   getContentBounds,
   getAlphaBounds,
   isAccentStripePixel,
   isJerseyFabricPixel,
   pruneOutlineHalos,
+  removeExteriorLightFringe,
   repairAccentHighlights,
   repairEnclosedTransparentHoles,
   removeOutlineStudioBleed,
   solidifyJerseyColors,
+  stripNeutralOutlineFringe,
   stripNeutralOutlineFringe,
   touchesTransparentNeighbor,
 } from "@/lib/jersey-studio/pixel-utils";
@@ -141,6 +146,7 @@ async function removeBackgroundInternal(
   }
 
   pruneOutlineHalos(work, width, height);
+  removeExteriorLightFringe(work, width, height, CARD_BG);
   solidifyJerseyColors(work, width, height);
   finalizeSilhouetteAlpha(work, width, height);
 
@@ -207,8 +213,19 @@ export async function polishCutoutDetail(png: Buffer): Promise<Buffer> {
   const { data, width, height } = await rawRgba(png);
   repairEnclosedTransparentHoles(data, width, height);
   removeOutlineStudioBleed(data, width, height);
+  stripNeutralOutlineFringe(data, width, height);
+  defringeAgainstBackground(
+    data,
+    width,
+    height,
+    STUDIO_PHOTO_BG.r,
+    STUDIO_PHOTO_BG.g,
+    STUDIO_PHOTO_BG.b,
+    { protectSaturated: true },
+  );
   pruneOutlineHalos(data, width, height);
   cleanColorFringeLight(data, width, height);
+  removeExteriorLightFringe(data, width, height, CARD_BG);
   repairAccentHighlights(data, width, height);
   solidifyJerseyColors(data, width, height);
   finalizeSilhouetteAlpha(data, width, height);

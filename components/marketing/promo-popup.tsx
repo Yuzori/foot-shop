@@ -35,6 +35,18 @@ export function PromoPopup() {
     return () => window.clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    if (!visible) return;
+    const original = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && dismiss();
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = original;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [visible]);
+
   function dismiss() {
     setVisible(false);
     try {
@@ -60,74 +72,90 @@ export function PromoPopup() {
     <AnimatePresence>
       {visible ? (
         <motion.div
-          initial={{ opacity: 0, y: 24, scale: 0.96 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 24, scale: 0.96 }}
-          transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-          className="fixed bottom-4 left-4 right-4 z-[60] mx-auto max-w-sm overflow-hidden rounded-3xl border border-ink/10 bg-paper p-6 shadow-lift sm:left-6 sm:right-auto"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="overlay-root z-[60]"
           role="dialog"
+          aria-modal
           aria-label={promoPopup.title}
         >
-          <button
+          <div
+            className="absolute inset-0 bg-ink/30 backdrop-blur-xl"
             onClick={dismiss}
-            aria-label="Fermer"
-            className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-ink/50 transition-colors hover:bg-paper-soft hover:text-ink"
+            aria-hidden
+          />
+
+          <motion.div
+            initial={{ opacity: 0, y: 24, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 24, scale: 0.96 }}
+            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+            className="overlay-panel max-w-sm p-5 sm:p-6"
           >
-            <CloseIcon className="h-4 w-4" />
-          </button>
+            <button
+              onClick={dismiss}
+              aria-label="Fermer"
+              className="overlay-close absolute right-3 top-3 text-ink/50 transition-colors hover:bg-paper-soft hover:text-ink"
+            >
+              <CloseIcon className="h-5 w-5" />
+            </button>
 
-          <p className="eyebrow text-accent">{promoPopup.eyebrow}</p>
-          <h3 className="mt-2 pr-6 text-xl font-semibold tracking-tightest">
-            {promoPopup.title}
-          </h3>
-          <p className="mt-2 text-sm leading-relaxed text-ink/60">
-            {promoPopup.message}
-          </p>
-
-          {isLoggedIn ? (
-            <>
-              {promoPopup.code ? (
-                <button
-                  onClick={copyCode}
-                  className="group mt-5 flex w-full items-center justify-between rounded-2xl border border-dashed border-ink/25 bg-paper-soft px-4 py-3 transition-colors hover:border-ink/50"
-                >
-                  <span className="text-sm font-semibold tracking-wider">
-                    {promoPopup.code}
-                  </span>
-                  <span className="text-xs font-medium text-ink/50 group-hover:text-ink">
-                    {copied ? "Copié ✓" : "Copier"}
-                  </span>
-                </button>
-              ) : null}
-              <Link
-                href={promoPopup.cta.href}
-                onClick={dismiss}
-                className={buttonClasses("primary", "md", "mt-4 w-full")}
-              >
-                {promoPopup.cta.label}
-              </Link>
-            </>
-          ) : (
-            <>
-              <p className="mt-4 rounded-2xl bg-paper-soft px-4 py-3 text-xs text-ink/60">
-                Créez un compte pour débloquer ce code promo.
+            <div className="overlay-scroll pr-8">
+              <p className="eyebrow text-accent">{promoPopup.eyebrow}</p>
+              <h3 className="mt-2 text-xl font-semibold tracking-tightest">
+                {promoPopup.title}
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-ink/60">
+                {promoPopup.message}
               </p>
-              <Link
-                href={routes.register}
-                onClick={dismiss}
-                className={buttonClasses("primary", "md", "mt-4 w-full")}
-              >
-                Créer un compte
-              </Link>
-              <Link
-                href={routes.login}
-                onClick={dismiss}
-                className="mt-3 block text-center text-xs text-ink/55 hover:text-ink"
-              >
-                J&apos;ai déjà un compte
-              </Link>
-            </>
-          )}
+
+              {isLoggedIn ? (
+                <>
+                  {promoPopup.code ? (
+                    <button
+                      onClick={copyCode}
+                      className="group mt-5 flex w-full items-center justify-between rounded-2xl border border-dashed border-ink/25 bg-paper-soft px-4 py-3 transition-colors hover:border-ink/50"
+                    >
+                      <span className="text-sm font-semibold tracking-wider">
+                        {promoPopup.code}
+                      </span>
+                      <span className="text-xs font-medium text-ink/50 group-hover:text-ink">
+                        {copied ? "Copié ✓" : "Copier"}
+                      </span>
+                    </button>
+                  ) : null}
+                  <Link
+                    href={promoPopup.cta.href}
+                    onClick={dismiss}
+                    className={buttonClasses("primary", "md", "mt-4 w-full")}
+                  >
+                    {promoPopup.cta.label}
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <p className="mt-4 rounded-2xl bg-paper-soft px-4 py-3 text-xs text-ink/60">
+                    Créez un compte pour débloquer ce code promo.
+                  </p>
+                  <Link
+                    href={routes.register}
+                    onClick={dismiss}
+                    className={buttonClasses("primary", "md", "mt-4 w-full")}
+                  >
+                    Créer un compte
+                  </Link>
+                  <Link
+                    href={routes.login}
+                    onClick={dismiss}
+                    className="mt-3 block text-center text-xs text-ink/55 hover:text-ink"
+                  >
+                    J&apos;ai déjà un compte
+                  </Link>
+                </>
+              )}
+            </div>
+          </motion.div>
         </motion.div>
       ) : null}
     </AnimatePresence>

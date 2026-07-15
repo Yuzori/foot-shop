@@ -8,7 +8,7 @@ const CARD_W = 328;
 const CARD_H = 411;
 const CARD_GAP = 20;
 const CARD_COLS = 3;
-const CARD_BG = { r: 0xee / 255, g: 0xee / 255, b: 0xee / 255 };
+const CARD_BG = { r: 0x16 / 255, g: 0x16 / 255, b: 0x16 / 255 };
 const HALO_BLUR = 119.1;
 
 async function sendInit() {

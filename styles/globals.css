@@ -137,6 +137,39 @@
     animation: card-laser-spin 6s linear infinite;
     will-change: transform;
   }
+
+  .overlay-root {
+    @apply fixed inset-0 flex items-end justify-center px-3 pt-3 sm:items-center sm:p-6;
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+  }
+
+  .overlay-panel {
+    @apply relative flex w-full flex-col overflow-hidden rounded-3xl border border-ink/10 bg-paper shadow-lift;
+    max-height: min(
+      88dvh,
+      calc(
+        100svh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) -
+          1.5rem
+      )
+    );
+  }
+
+  .overlay-scroll {
+    @apply min-h-0 flex-1 overflow-y-auto overscroll-contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .overlay-close {
+    @apply z-20 flex h-11 w-11 shrink-0 items-center justify-center rounded-full;
+  }
+
+  .drawer-safe-top {
+    padding-top: max(1.25rem, env(safe-area-inset-top, 0px));
+  }
+
+  .drawer-safe-bottom {
+    padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
+  }
 }
 
 @keyframes card-laser-spin {

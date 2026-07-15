@@ -1,7 +1,9 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+import { CloseIcon } from "@/components/layout/icons";
 
 import { ProductFlocagePicker } from "@/components/product/product-flocage-picker";
 import { ProductImage } from "@/components/product/product-image";
@@ -132,6 +134,25 @@ export function QuickAddDialog({ product, open, onClose }: QuickAddDialogProps) 
     resetForm();
   }
 
+  const handleClose = useCallback(() => {
+    onClose();
+    resetForm();
+  }, [onClose]);
+
+  useEffect(() => {
+    if (!open) return;
+    const original = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = original;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open, handleClose]);
+
   if (!open) return null;
 
   return (
@@ -140,26 +161,33 @@ export function QuickAddDialog({ product, open, onClose }: QuickAddDialogProps) 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[80] flex items-end justify-center p-4 sm:items-center"
+        className="overlay-root z-[80]"
         role="dialog"
         aria-modal
         aria-label={`Ajouter ${resolved.name}`}
       >
         <div
           className="absolute inset-0 bg-ink/30 backdrop-blur-xl"
-          onClick={() => {
-            onClose();
-            resetForm();
-          }}
+          onClick={handleClose}
           aria-hidden
         />
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 16 }}
-          className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-3xl border border-ink/10 bg-paper p-6 shadow-lift"
+          className="overlay-panel max-w-md"
         >
-          <div className="flex gap-4">
+          <div className="overlay-scroll p-5 sm:p-6">
+            <button
+              type="button"
+              onClick={handleClose}
+              aria-label="Fermer"
+              className="overlay-close absolute right-3 top-3 text-ink/50 transition-colors hover:bg-paper-soft hover:text-ink"
+            >
+              <CloseIcon className="h-5 w-5" />
+            </button>
+
+          <div className="flex gap-4 pr-10">
             <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-paper-soft">
               <ProductImage
                 src={resolved.cover?.url ?? null}
@@ -304,10 +332,7 @@ export function QuickAddDialog({ product, open, onClose }: QuickAddDialogProps) 
               type="button"
               variant="outline"
               className="flex-1"
-              onClick={() => {
-                onClose();
-                resetForm();
-              }}
+              onClick={handleClose}
             >
               Annuler
             </Button>
@@ -327,6 +352,7 @@ export function QuickAddDialog({ product, open, onClose }: QuickAddDialogProps) 
                       ? "Indisponible"
                       : "Ajouter au panier"}
             </Button>
+          </div>
           </div>
         </motion.div>
       </motion.div>

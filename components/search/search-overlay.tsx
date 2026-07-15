@@ -78,7 +78,8 @@ export function SearchOverlay() {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -24, opacity: 0 }}
             transition={{ duration: 0.4, ease: EASE }}
-            className="absolute inset-x-0 top-0 mx-auto max-h-full w-full max-w-3xl overflow-y-auto px-5 pb-16 pt-6 sm:pt-12"
+            className="absolute inset-x-0 top-0 mx-auto max-h-full w-full max-w-3xl overflow-y-auto overscroll-contain px-4 pb-16 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5 sm:pt-12"
+            style={{ maxHeight: "100dvh" }}
           >
             <div className="relative">
               <SearchIcon className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-accent-dark" />

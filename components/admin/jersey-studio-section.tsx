@@ -10,11 +10,13 @@ import {
   flattenAdminCategoryOptGroups,
   type AdminCategoryOptGroup,
 } from "@/lib/admin/import-category-tree";
+import { type JerseyRenderMode } from "@/lib/jersey-studio/render-mode";
 import {
-  guessRenderModeFromDataUrl,
-  guessRenderModeFromUrl,
-  type JerseyRenderMode,
-} from "@/lib/jersey-studio/render-mode";
+  hydrateManualSelections,
+  deleteManualImage,
+  putManualImage,
+  pruneManualImages,
+} from "@/lib/jersey-studio/studio-manual-images";
 import {
   loadStudioDraft,
   saveStudioDraft,
@@ -204,8 +206,20 @@ async function importImagesFromFiles(
   for (const file of imageFiles) {
     try {
       const { base64, preview } = await readImageFile(file);
-      const mode = await guessRenderModeFromDataUrl(preview);
-      nextSelections = addManualSelection(nextSelections, base64, preview, mode);
+      const selectionId = newSelectionId();
+      await putManualImage(selectionId, base64, preview);
+      nextSelections = [
+        ...nextSelections,
+        {
+          id: selectionId,
+          kind: "manual",
+          manualBase64: base64,
+          manualPreview: preview,
+          mode: "uniform",
+          renderPreview: null,
+          renderError: null,
+        },
+      ];
     } catch (err) {
       setError(err instanceof Error ? err.message : "Import impossible.");
       break;
@@ -238,59 +252,30 @@ function toggleScrapedImage(product: StudioProduct, url: string): StudioImageSel
       id: newSelectionId(),
       kind: "scraped",
       url,
-      mode: "uniform",
+      mode: "uniform" as const,
       renderPreview: null,
       renderError: null,
     },
   ];
 }
 
-function addManualSelection(
-  selections: StudioImageSelection[],
-  base64: string,
-  preview: string,
-  mode: JerseyRenderMode = "uniform",
-): StudioImageSelection[] {
-  return [
-    ...selections,
-    {
-      id: newSelectionId(),
-      kind: "manual",
-      manualBase64: base64,
-      manualPreview: preview,
-      mode,
-      renderPreview: null,
-      renderError: null,
-    },
-  ];
-}
-
-async function detectRenderModeFromApi(
-  secret: string,
-  opts: { imageUrl?: string; imageBase64?: string; referer?: string },
-): Promise<JerseyRenderMode> {
-  try {
-    const res = await fetch("/api/admin/jersey-studio", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${secret}`,
-      },
-      body: JSON.stringify({
-        action: "detect_mode",
-        imageUrl: opts.imageUrl,
-        imageBase64: opts.imageBase64,
-        referer: opts.referer,
-      }),
-    });
-    const data = (await res.json()) as { mode?: JerseyRenderMode };
-    if (res.ok && data.mode) return data.mode;
-  } catch {
-    // fallback below
+/** Parse JSON depuis une Response — évite « Unexpected end of JSON input ». */
+async function readApiJson<T>(res: Response): Promise<T> {
+  const text = await res.text();
+  if (!text.trim()) {
+    throw new Error(
+      res.status === 413
+        ? "Image trop volumineuse pour le serveur."
+        : res.status >= 500
+          ? "Erreur serveur — réessayez."
+          : "Réponse serveur vide.",
+    );
   }
-
-  if (opts.imageUrl) return guessRenderModeFromUrl(opts.imageUrl);
-  return "uniform";
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error("Réponse serveur invalide.");
+  }
 }
 
 function updateSelection(
@@ -350,10 +335,10 @@ function draftToProduct(product: PersistedStudioProduct): StudioProduct {
       id: selection.id,
       kind: selection.kind,
       url: selection.url,
-      mode: selection.mode,
+      mode: "uniform",
       manualBase64: undefined,
-      manualPreview: selection.manualPreview ?? undefined,
-      renderPreview: selection.renderPreview ?? null,
+      manualPreview: undefined,
+      renderPreview: null,
       renderError: selection.renderError ?? null,
     })),
   };
@@ -371,10 +356,9 @@ function productToDraft(product: StudioProduct): PersistedStudioProduct {
       id: selection.id,
       kind: selection.kind,
       url: selection.url,
-      mode: selection.mode,
-      renderPreview: selection.renderPreview,
+      mode: "uniform",
+      renderPreview: null,
       renderError: selection.renderError,
-      manualPreview: selection.manualPreview,
     })),
     categoryGroupId: product.categoryGroupId,
     categoryDivisionId: product.categoryDivisionId,
@@ -417,31 +401,51 @@ export function JerseyStudioSection({ secret }: { secret: string }) {
   const parsedUrls = useMemo(() => parseSourceUrls(urlsText), [urlsText]);
 
   useEffect(() => {
-    const draft = loadStudioDraft();
-    if (draft) {
-      restoredDraftRef.current = true;
-      setUrlsText(draft.urlsText);
-      setPrice(draft.price);
-      setStock(draft.stock);
-      setDefaultCategoryId(draft.defaultCategoryId);
-      setBrokenLinks(draft.brokenLinks);
-      setProducts(draft.products.map(draftToProduct));
-      setLastModifiedProductId(draft.lastModifiedProductId);
-      setDraftSavedAt(draft.savedAt);
-      const count = draft.products.length;
-      if (count > 0) {
-        setRestoreNotice(
-          `Session restaurée — ${count} produit(s), sélections et réglages conservés.`,
+    void (async () => {
+      const draft = loadStudioDraft();
+      if (draft) {
+        restoredDraftRef.current = true;
+        setUrlsText(draft.urlsText);
+        setPrice(draft.price);
+        setStock(draft.stock);
+        setDefaultCategoryId(draft.defaultCategoryId);
+        setBrokenLinks(draft.brokenLinks);
+        const restored = await Promise.all(
+          draft.products.map(async (product) => {
+            const base = draftToProduct(product);
+            const selections = await hydrateManualSelections(base.selections);
+            return { ...base, selections };
+          }),
         );
+        setProducts(restored);
+        setLastModifiedProductId(draft.lastModifiedProductId);
+        setDraftSavedAt(draft.savedAt);
+        const count = draft.products.length;
+        const manualCount = restored.reduce(
+          (n, p) => n + p.selections.filter((s) => s.kind === "manual").length,
+          0,
+        );
+        if (count > 0) {
+          setRestoreNotice(
+            manualCount > 0
+              ? `Session restaurée — ${count} produit(s), ${manualCount} import(s) local(aux) rechargé(s).`
+              : `Session restaurée — ${count} produit(s), sélections et réglages conservés.`,
+          );
+        }
       }
-    }
-    setDraftHydrated(true);
+      setDraftHydrated(true);
+    })();
   }, []);
 
   useEffect(() => {
     if (!draftHydrated) return;
 
     const timer = window.setTimeout(() => {
+      const manualIds = products.flatMap((p) =>
+        p.selections.filter((s) => s.kind === "manual").map((s) => s.id),
+      );
+      void pruneManualImages(manualIds);
+
       const result = saveStudioDraft({
         version: 1,
         savedAt: Date.now(),
@@ -600,27 +604,6 @@ export function JerseyStudioSection({ secret }: { secret: string }) {
         setBrokenLinks([...broken]);
       }
 
-      void (async () => {
-        for (const product of accumulated) {
-          for (const selection of product.selections) {
-            if (selection.kind !== "scraped" || !selection.url) continue;
-            const mode = await detectRenderModeFromApi(secret, {
-              imageUrl: selection.url,
-              referer: product.sourceUrl,
-            });
-            setProducts((current) =>
-              current.map((p) =>
-                p.id !== product.id
-                  ? p
-                  : {
-                      ...p,
-                      selections: updateSelection(p.selections, selection.id, { mode }),
-                    },
-              ),
-            );
-          }
-        }
-      })();
 
       if (!accumulated.length && broken.length) {
         setError(
@@ -695,7 +678,7 @@ export function JerseyStudioSection({ secret }: { secret: string }) {
       try {
         const body: Record<string, string> = {
           action: "render",
-          renderMode: job.selection.mode,
+          renderMode: "uniform",
         };
         if (job.selection.manualBase64) {
           body.imageBase64 = job.selection.manualBase64;
@@ -714,11 +697,11 @@ export function JerseyStudioSection({ secret }: { secret: string }) {
           },
           body: JSON.stringify(body),
         });
-        const data = (await res.json()) as {
+        const data = await readApiJson<{
           ok?: boolean;
           message?: string;
           imageBase64?: string;
-        };
+        }>(res);
         if (!res.ok || !data.imageBase64) {
           throw new Error(data.message ?? "Rendu échoué.");
         }
@@ -883,7 +866,7 @@ export function JerseyStudioSection({ secret }: { secret: string }) {
       </p>
       <p className="mt-2 text-sm text-ink/55">
         Collez des liens produit, sélectionnez une ou plusieurs images (clic = basculer),
-        rendez-les (fond <code className="text-xs">#EEEEEE</code> + halo · 656×822 px), vérifiez
+        rendez-les (fond <code className="text-xs">#161616</code> + halo · 656×822 px), vérifiez
         le nom et la catégorie, puis envoyez sur PrestaShop. Le type <strong>Maillot</strong> ou{" "}
         <strong>Short</strong> est détecté automatiquement. La catégorie est suggérée depuis le{" "}
         <strong>titre</strong> et l&apos;<strong>URL</strong> (ligue, CDM 2026, sélection…).
@@ -1167,39 +1150,14 @@ export function JerseyStudioSection({ secret }: { secret: string }) {
                           key={scrapedSelectionKey(url)}
                           type="button"
                           onClick={() => {
-                            const wasSelected = isScrapedSelected(product, url);
-                            const productId = product.id;
-                            const sourceUrl = product.sourceUrl;
-
                             touchProduct(product.id, (p) => ({
                               ...p,
                               selections: toggleScrapedImage(p, url),
                               pushResult: null,
                             }));
-
-                            if (!wasSelected) {
-                              void (async () => {
-                                const mode = await detectRenderModeFromApi(secret, {
-                                  imageUrl: url,
-                                  referer: sourceUrl,
-                                });
-                                touchProduct(productId, (p) => {
-                                  const selection = p.selections.find(
-                                    (s) => s.kind === "scraped" && s.url === url,
-                                  );
-                                  if (!selection) return p;
-                                  return {
-                                    ...p,
-                                    selections: updateSelection(p.selections, selection.id, {
-                                      mode,
-                                    }),
-                                  };
-                                });
-                              })();
-                            }
                           }}
                           className={cn(
-                            "relative aspect-[4/5] overflow-hidden rounded-lg border-2 bg-[#eee]",
+                            "relative aspect-[4/5] overflow-hidden rounded-lg border-2 bg-[#161616]",
                             selected
                               ? "border-accent ring-2 ring-accent/30"
                               : "border-transparent opacity-80 hover:opacity-100",
@@ -1290,7 +1248,7 @@ export function JerseyStudioSection({ secret }: { secret: string }) {
                       className="rounded-xl border border-ink/8 bg-white/80 p-3"
                     >
                       <div className="flex flex-wrap items-start gap-3">
-                        <div className="relative w-20 shrink-0 overflow-hidden rounded-lg border border-ink/10 bg-[#eee]">
+                        <div className="relative w-20 shrink-0 overflow-hidden rounded-lg border border-ink/10 bg-[#161616]">
                           <span className="absolute left-1 top-1 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-white shadow">
                             {order}
                           </span>
@@ -1299,11 +1257,18 @@ export function JerseyStudioSection({ secret }: { secret: string }) {
                             src={
                               selection.manualPreview ??
                               selection.url ??
-                              ""
+                              undefined
                             }
                             alt=""
                             className="aspect-[4/5] w-full object-contain"
                           />
+                          {selection.kind === "manual" &&
+                          !selection.manualPreview &&
+                          !selection.manualBase64 ? (
+                            <span className="absolute inset-0 flex items-center justify-center bg-ink/5 px-1 text-center text-[10px] text-ink/45">
+                              Image locale introuvable — réimportez
+                            </span>
+                          ) : null}
                         </div>
 
                         <div className="min-w-0 flex-1">
@@ -1340,56 +1305,20 @@ export function JerseyStudioSection({ secret }: { secret: string }) {
                             >
                               ↓
                             </button>
-                            <span className="text-[11px] text-ink/45">Mode :</span>
+                            <span className="text-[11px] text-ink/45">Rendu :</span>
+                            <span className="rounded-lg bg-accent px-2.5 py-1 text-xs font-medium text-white">
+                              Maillot uniforme
+                            </span>
                             <button
                               type="button"
                               disabled={busy}
-                              onClick={() =>
-                                updateProduct(product.id, {
-                                  selections: updateSelection(product.selections, selection.id, {
-                                    mode: "uniform",
-                                  }),
-                                  pushResult: null,
-                                })
-                              }
-                              className={cn(
-                                "rounded-lg px-2.5 py-1 text-xs font-medium",
-                                selection.mode === "uniform"
-                                  ? "bg-accent text-white"
-                                  : "bg-ink/5 text-ink/60 hover:bg-ink/10",
-                              )}
-                            >
-                              Maillot
-                            </button>
-                            <button
-                              type="button"
-                              disabled={busy}
-                              onClick={() =>
-                                updateProduct(product.id, {
-                                  selections: updateSelection(product.selections, selection.id, {
-                                    mode: "detail",
-                                  }),
-                                  pushResult: null,
-                                })
-                              }
-                              className={cn(
-                                "rounded-lg px-2.5 py-1 text-xs font-medium",
-                                selection.mode === "detail"
-                                  ? "bg-accent text-white"
-                                  : "bg-ink/5 text-ink/60 hover:bg-ink/10",
-                              )}
-                            >
-                              Détail / zoom
-                            </button>
-                            <button
-                              type="button"
-                              disabled={busy}
-                              onClick={() =>
+                              onClick={() => {
+                                void deleteManualImage(selection.id);
                                 updateProduct(product.id, {
                                   selections: removeSelection(product.selections, selection.id),
                                   pushResult: null,
-                                })
-                              }
+                                });
+                              }}
                               className="ml-auto text-xs text-accent underline-offset-2 hover:underline"
                             >
                               Retirer
@@ -1405,7 +1334,7 @@ export function JerseyStudioSection({ secret }: { secret: string }) {
                         {selection.renderPreview ? (
                           <div className="w-full sm:w-auto">
                             <p className="mb-1 text-[11px] text-ink/45">Aperçu rendu</p>
-                            <div className="inline-flex overflow-hidden rounded-lg border border-ink/10 bg-[#eee] p-2">
+                            <div className="inline-flex overflow-hidden rounded-lg border border-ink/10 bg-[#161616] p-2">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
                                 src={selection.renderPreview}

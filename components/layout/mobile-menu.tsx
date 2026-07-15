@@ -97,7 +97,7 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
 
             transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
 
-            className="absolute right-0 top-0 flex h-full w-[85%] max-w-sm flex-col bg-paper p-6 pb-10"
+            className="absolute right-0 top-0 flex h-full w-[85%] max-w-sm flex-col bg-paper p-5 pb-10 drawer-safe-top drawer-safe-bottom sm:p-6"
 
           >
 
@@ -105,7 +105,11 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
 
               <span className="text-lg font-semibold tracking-tightest">Menu</span>
 
-              <button onClick={onClose} aria-label="Fermer le menu">
+              <button
+                onClick={onClose}
+                aria-label="Fermer le menu"
+                className="overlay-close text-ink/60 transition-colors hover:bg-paper-soft hover:text-ink"
+              >
 
                 <CloseIcon />
 

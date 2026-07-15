@@ -104,6 +104,8 @@ const TEAM_ALIASES: Readonly<Record<string, string>> = {
   tunisia: "Tunisie",
   egypt: "Égypte",
   poland: "Pologne",
+  curacao: "Curaçao",
+  "curaçao": "Curaçao",
   switzerland: "Suisse",
   austria: "Autriche",
   turkey: "Turquie",
@@ -272,10 +274,48 @@ function cleanTitle(raw: string): string {
 }
 
 function detectTeamFromUrl(sourceUrl: string): string | null {
+  return extractTeamFromSlugTokens(sourceUrl);
+}
+
+/** Analyse chaque segment d'URL (slug) pour retrouver le pays / club. */
+export function extractTeamFromSlugTokens(sourceUrl: string): string | null {
   try {
-    const pathname = decodeURIComponent(new URL(sourceUrl).pathname);
-    const hay = `${pathname} ${new URL(sourceUrl).search}`.replace(/[-_/]+/g, " ");
-    return detectTeam(hay);
+    const url = new URL(sourceUrl);
+    const segments = url.pathname.split("/").filter(Boolean);
+    const tokens: string[] = [];
+
+    for (const seg of segments) {
+      const decoded = decodeURIComponent(seg).replace(/\.[a-z0-9]{2,5}$/i, "");
+      tokens.push(
+        ...decoded
+          .split(/[-_+]+/)
+          .map((t) => t.trim())
+          .filter((t) => t.length >= 2),
+      );
+    }
+
+    const hay = tokens.join(" ");
+    const fromHay = detectTeam(hay);
+    if (fromHay) return fromHay;
+
+    const sortedTeams = [...KNOWN_TEAMS].sort((a, b) => b.length - a.length);
+    for (const team of sortedTeams) {
+      const re = new RegExp(
+        `\\b${team.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`,
+        "i",
+      );
+      if (re.test(hay)) return team === "PSG" ? "PSG" : team;
+    }
+
+    for (const token of tokens) {
+      if (token.length < 3 || /^\d+$/.test(token)) continue;
+      const found = detectTeam(token);
+      if (found) return found;
+    }
+
+    return detectTeam(
+      decodeURIComponent(url.pathname).replace(/[-_/]+/g, " "),
+    );
   } catch {
     return null;
   }
@@ -301,6 +341,7 @@ export function formatProductName(rawTitle: string, sourceUrl = ""): string {
   const team =
     detectTeam(title) ??
     detectTeam(cleanTitle(title)) ??
+    extractTeamFromSlugTokens(sourceUrl) ??
     detectTeamFromUrl(sourceUrl) ??
     "Équipe";
 

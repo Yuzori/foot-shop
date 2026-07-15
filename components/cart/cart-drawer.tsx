@@ -78,16 +78,16 @@ export function CartDrawer() {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ duration: 0.45, ease: EASE }}
-            className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col bg-paper shadow-panel"
+            className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col bg-paper shadow-panel drawer-safe-top drawer-safe-bottom"
           >
-            <header className="flex items-center justify-between border-b border-ink/8 px-6 py-5">
+            <header className="flex items-center justify-between border-b border-ink/8 px-5 py-4 sm:px-6 sm:py-5">
               <h2 className="text-lg font-semibold tracking-tightest">
                 Panier{hydrated && count > 0 ? ` (${count})` : ""}
               </h2>
               <button
                 onClick={close}
                 aria-label="Fermer le panier"
-                className="flex h-9 w-9 items-center justify-center rounded-full text-ink/60 transition-colors hover:bg-paper-soft hover:text-ink"
+                className="overlay-close text-ink/60 transition-colors hover:bg-paper-soft hover:text-ink"
               >
                 <CloseIcon />
               </button>

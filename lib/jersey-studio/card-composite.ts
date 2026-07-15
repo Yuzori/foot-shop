@@ -35,6 +35,9 @@ export async function buildColoredHalo(jerseyLayer: Buffer): Promise<Buffer> {
     const g = data[i + 1] ?? 0;
     const b = data[i + 2] ?? 0;
     const a = data[i + 3] ?? 0;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const sat = max - min;
 
     if (a < 24) {
       data[i + 3] = 0;
@@ -48,7 +51,9 @@ export async function buildColoredHalo(jerseyLayer: Buffer): Promise<Buffer> {
 
     const nearWhite = r >= 248 && g >= 248 && b >= 248;
     const paleFringe =
-      a < 210 && !isProtectedJerseyPixel(r, g, b) && nearWhite;
+      a < 220 &&
+      !isProtectedJerseyPixel(r, g, b) &&
+      (nearWhite || (min >= 200 && sat < 24));
 
     if (paleFringe) {
       data[i] = CARD_BG.r;

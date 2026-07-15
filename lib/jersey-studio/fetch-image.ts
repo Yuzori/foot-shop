@@ -2,6 +2,7 @@ import "server-only";
 
 import sharp from "sharp";
 
+import { cookieHeaderForUrl, storeResponseCookies } from "@/lib/product-import/fetch-session";
 import { buildImageUrlCandidates } from "@/lib/product-import/image-url-quality";
 import { validateRedirectUrl, validateSourceUrl } from "@/lib/product-import/validate-url";
 
@@ -33,9 +34,14 @@ async function fetchImageResponse(
           Accept: "image/jpeg,image/png,image/webp,image/apng,image/*;q=0.95",
           "Accept-Encoding": "identity",
           ...(referer ? { Referer: referer } : {}),
+          ...(cookieHeaderForUrl(current)
+            ? { Cookie: cookieHeaderForUrl(current)! }
+            : {}),
         },
         redirect: "manual",
       });
+
+      storeResponseCookies(current, response);
 
       if (response.status >= 300 && response.status < 400) {
         const location = response.headers.get("location");

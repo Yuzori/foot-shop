@@ -186,6 +186,18 @@ export function SiteModal() {
     setMode(null);
   }, [mode, catalog?.items]);
 
+  useEffect(() => {
+    if (!mode) return;
+    const original = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && dismiss();
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = original;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [mode, dismiss]);
+
   async function copyCode() {
     const code = promoCode ?? welcomePromo.code;
     try {
@@ -220,7 +232,7 @@ export function SiteModal() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[70] flex items-center justify-center p-4 sm:p-6"
+          className="overlay-root z-[70]"
           role="dialog"
           aria-modal="true"
         >
@@ -238,22 +250,22 @@ export function SiteModal() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98, y: 12 }}
             transition={{ type: "spring", stiffness: 400, damping: 34 }}
-            className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-ink/10 bg-paper text-ink shadow-lift"
+            className="overlay-panel max-w-lg text-ink"
           >
-            <div className="h-1 w-full bg-accent" />
+            <div className="h-1 w-full shrink-0 bg-accent" />
 
             <button
               onClick={dismiss}
               aria-label="Fermer"
-              className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-paper-soft text-ink/50 transition-colors hover:bg-ink hover:text-paper"
+              className="overlay-close absolute right-3 top-3 bg-paper-soft text-ink/50 transition-colors hover:bg-ink hover:text-paper"
             >
               <CloseIcon className="h-5 w-5" />
             </button>
 
             {mode === "new-releases" && currentNew ? (
-              <div className="p-6 sm:p-8">
+              <div className="overlay-scroll p-5 sm:p-8">
                 <p className="eyebrow text-accent">Nouveauté</p>
-                <h2 className="display-2 mt-2">{releaseTitle}</h2>
+                <h2 className="display-2 mt-2 text-2xl sm:text-3xl">{releaseTitle}</h2>
                 <p className="mt-2 text-sm text-ink/55">
                   {newProducts.length} article{newProducts.length > 1 ? "s" : ""}{" "}
                   depuis votre dernière visite
@@ -267,16 +279,16 @@ export function SiteModal() {
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -32 }}
                       transition={{ duration: 0.3 }}
-                      className="grid grid-cols-1 sm:grid-cols-2"
+                      className="grid grid-cols-1"
                     >
-                      <div className="relative aspect-square bg-paper">
+                      <div className="relative aspect-[4/3] max-h-48 bg-paper sm:aspect-square sm:max-h-none">
                         <ProductImage
                           src={currentNew.cover?.url ?? null}
                           alt={currentNew.name}
                           className="object-contain p-4"
                         />
                       </div>
-                      <div className="flex flex-col justify-center p-6">
+                      <div className="flex flex-col justify-center p-4 sm:p-6">
                         <h3 className="text-lg font-semibold leading-tight">
                           {currentNew.name}
                         </h3>
@@ -310,7 +322,7 @@ export function SiteModal() {
                             (s) => (s - 1 + newProducts.length) % newProducts.length,
                           )
                         }
-                        className="flex h-8 w-8 items-center justify-center rounded-full bg-paper-soft text-sm hover:bg-ink hover:text-paper"
+                        className="overlay-close bg-paper-soft text-sm hover:bg-ink hover:text-paper"
                         aria-label="Précédent"
                       >
                         ‹
@@ -323,7 +335,7 @@ export function SiteModal() {
                         onClick={() =>
                           setSlide((s) => (s + 1) % newProducts.length)
                         }
-                        className="flex h-8 w-8 items-center justify-center rounded-full bg-paper-soft text-sm hover:bg-ink hover:text-paper"
+                        className="overlay-close bg-paper-soft text-sm hover:bg-ink hover:text-paper"
                         aria-label="Suivant"
                       >
                         ›
@@ -335,9 +347,9 @@ export function SiteModal() {
             ) : null}
 
             {mode === "promo" ? (
-              <div className="p-6 sm:p-8">
+              <div className="overlay-scroll p-5 sm:p-8">
                 <p className="eyebrow text-accent">{promoPopup.eyebrow}</p>
-                <h2 className="display-2 mt-3">{promoPopup.title}</h2>
+                <h2 className="display-2 mt-3 text-2xl sm:text-3xl">{promoPopup.title}</h2>
                 <p className="mt-4 text-sm leading-relaxed text-ink/60">
                   {promoPopup.message}
                 </p>

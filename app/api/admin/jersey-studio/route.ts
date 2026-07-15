@@ -12,15 +12,9 @@ import { DEFAULT_STOCK } from "@/lib/jersey-studio/constants";
 import { detectRenderModeFromBuffer } from "@/lib/jersey-studio/detect-render-mode-server";
 import { fetchImageBuffer } from "@/lib/jersey-studio/fetch-image";
 import {
-  renderDetailProductCardBase64,
-} from "@/lib/jersey-studio/process-image-detail";
-import {
   renderJerseyProductCardBase64,
 } from "@/lib/jersey-studio/process-image";
-import {
-  guessRenderModeFromUrl,
-  type JerseyRenderMode,
-} from "@/lib/jersey-studio/render-mode";
+import { type JerseyRenderMode } from "@/lib/jersey-studio/render-mode";
 import { scrapeStudioProducts } from "@/lib/jersey-studio/scrape-batch";
 import { parseSourceUrls } from "@/lib/product-import/parse-urls";
 import { pickImportDefaultCategoryId } from "@/lib/product-import/pick-default-category";
@@ -173,12 +167,8 @@ export async function POST(request: Request) {
         return NextResponse.json({ message: "image_required" }, { status: 400 });
       }
 
-      const mode: JerseyRenderMode =
-        body.renderMode === "detail" ? "detail" : "uniform";
-      const imageBase64 =
-        mode === "detail"
-          ? await renderDetailProductCardBase64(buffer)
-          : await renderJerseyProductCardBase64(buffer);
+      const mode: JerseyRenderMode = "uniform";
+      const imageBase64 = await renderJerseyProductCardBase64(buffer);
       return NextResponse.json({
         ok: true,
         imageBase64,

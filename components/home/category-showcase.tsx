@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowIcon, TrophyIcon } from "@/components/layout/icons";
 import { ResponsiveBackground } from "@/components/ui/responsive-background";
 import { Container } from "@/components/ui/container";
+import { collectionShowcaseImages } from "@/config/collection-showcase";
 import { routes } from "@/config/site";
 import { worldCupConfig } from "@/config/world-cup";
 import { cn } from "@/lib/utils";
@@ -189,7 +190,8 @@ export function CategoryShowcase() {
             title="Maillots"
             description="Domicile, extérieur, third — par championnat, taille adulte ou enfant."
             index="01"
-            variant="accent"
+            variant="dark"
+            backgroundSrc={collectionShowcaseImages.jersey}
           />
 
           <CollectionPanel
@@ -200,6 +202,7 @@ export function CategoryShowcase() {
             description="Shorts officiels, même parcours guidé par division."
             index="02"
             variant="dark"
+            backgroundSrc={collectionShowcaseImages.short}
           />
 
           {worldCupConfig.enabled ? (
@@ -211,8 +214,8 @@ export function CategoryShowcase() {
               description="La collection CDM — sélection adulte, prête à explorer."
               index="03"
               variant="wc"
-              backgroundSrc={worldCupConfig.bannerDesktop}
-              mobileBackgroundSrc={worldCupConfig.bannerMobile}
+              backgroundSrc={collectionShowcaseImages.worldCup}
+              mobileBackgroundSrc={collectionShowcaseImages.worldCup}
               icon={
                 <TrophyIcon className="h-6 w-6 text-paper/80" />
               }
