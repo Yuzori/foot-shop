@@ -10,7 +10,7 @@ import { formatFlocageLabel } from "@/config/shop";
 
 import { getSession } from "@/lib/auth";
 import { archiveOrder } from "@/lib/order-archive-store";
-import { applyPercentDiscount, resolvePromoCode } from "@/lib/promo-code";
+import { validatePromoCodeForCheckout } from "@/lib/validate-promo-code";
 import { resolveCartLines } from "@/lib/resolve-cart-lines";
 import { resolveShippingFee } from "@/lib/shipping-fee";
 import { prestashop } from "@/services/prestashop";
@@ -320,9 +320,30 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
     (sum, line) => sum + line.unitPrice * line.quantity,
     0,
   );
-  const promo = resolvePromoCode(body.promoCode);
+  const promoValidation = await validatePromoCodeForCheckout({
+    code: body.promoCode,
+    email: contact.email,
+    customerId,
+    subtotal,
+  });
+  if (body.promoCode?.trim() && promoValidation && !promoValidation.valid) {
+    return {
+      ok: false,
+      status: 400,
+      message: promoValidation.message,
+    };
+  }
+  const promo =
+    promoValidation?.valid === true
+      ? {
+          valid: true as const,
+          code: promoValidation.code,
+          percent: promoValidation.percent,
+          label: promoValidation.label,
+        }
+      : null;
   const promoDiscount =
-    promo?.valid === true ? applyPercentDiscount(subtotal, promo.percent) : 0;
+    promo?.valid === true ? promoValidation.discount : 0;
 
   const result = await prestashop.createOrder({
 

@@ -8,15 +8,10 @@ import {
   type ProductAudience,
 } from "@/lib/product-import/format-product-name";
 import type { ProductCollectionKind } from "@/lib/product-collection";
-import { catalogConfig } from "@/config/catalog";
 import { encodeImageForPrestaShop } from "@/lib/product-import/encode-image-for-upload";
 import { buildCategoryAssociationIds } from "@/lib/product-import/category-associations";
-import {
-  detectDivisionFromProductText,
-  getDivisionForCategoryId,
-  findKidsDivisionCategoryId,
-} from "@/lib/catalog-divisions";
 import { resolveImportCategoryForProduct } from "@/lib/product-import/resolve-import-category";
+import { normalizeCategoryId } from "@/lib/product-import/normalize-category-id";
 import { scrapeProductPage } from "@/lib/product-import/scraper";
 import { prestashop } from "@/services/prestashop";
 
@@ -78,7 +73,8 @@ export async function runFigmaProductImport(
   const stock = input.stock ?? FIGMA_STOCK;
   const audience = detectAudience(name);
   const collectionKind = detectProductCollectionKind(name);
-  const fallbackCategoryId = input.categoryId ?? productImportConfig.defaultCategoryId;
+  const fallbackCategoryId =
+    normalizeCategoryId(input.categoryId) || productImportConfig.defaultCategoryId;
   if (!fallbackCategoryId) {
     throw new Error("Aucune catégorie de destination configurée.");
   }
@@ -102,15 +98,10 @@ export async function runFigmaProductImport(
     linkRewrite: slugify(name),
     price,
     categoryId,
+    associationIds: categoryAssociationIds,
     description: input.description?.trim() || undefined,
     summary: input.description?.trim().slice(0, 400) || undefined,
   });
-
-  await prestashop.assignProductCategory(
-    productId,
-    categoryId,
-    categoryAssociationIds,
-  );
 
   await prestashop.uploadProductImageFromBuffer(productId, buffer, uploadMime);
 
@@ -167,13 +158,16 @@ async function resolveStudioImportCategoryId(params: {
   fallbackCategoryId: string;
   useExactCategory: boolean;
 }): Promise<string> {
-  const {
-    name,
-    audience,
-    collectionKind,
-    fallbackCategoryId,
-    useExactCategory,
-  } = params;
+  const { audience, collectionKind, fallbackCategoryId, useExactCategory } = params;
+
+  if (audience === "kids") {
+    return resolveImportCategoryForProduct(
+      collectionKind,
+      audience,
+      fallbackCategoryId,
+      params.name,
+    );
+  }
 
   if (!useExactCategory) {
     return resolveImportCategoryForProduct(
@@ -183,29 +177,7 @@ async function resolveStudioImportCategoryId(params: {
     );
   }
 
-  if (audience !== "kids") return fallbackCategoryId;
-
-  const categories = await prestashop.getCategories();
-  const division =
-    getDivisionForCategoryId(fallbackCategoryId, categories) ??
-    detectDivisionFromProductText(name);
-  if (!division) return fallbackCategoryId;
-
-  const kidsBaseId =
-    collectionKind === "short"
-      ? catalogConfig.kidsShorts.categoryId
-      : catalogConfig.kidsMaillots.categoryId;
-  if (!kidsBaseId) return fallbackCategoryId;
-
-  const selected = categories.find((item) => item.id === fallbackCategoryId);
-  if (selected?.parentId === kidsBaseId) return fallbackCategoryId;
-
-  const kidsDivisionId = findKidsDivisionCategoryId(
-    categories,
-    kidsBaseId,
-    division,
-  );
-  return kidsDivisionId || fallbackCategoryId;
+  return fallbackCategoryId;
 }
 
 async function fetchProductImageBytes(

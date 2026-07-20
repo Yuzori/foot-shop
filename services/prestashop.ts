@@ -642,24 +642,96 @@ class PrestaShopService {
    * which is far more accurate than filtering products by `id_category_default`.
    * Falls back to the default-category filter if the association is empty.
    */
-  async getCategoryProducts(id: string, limit = 48): Promise<Product[]> {
+  async getCategoryProducts(id: string, limit = 500): Promise<Product[]> {
+    const categoryId = String(id).trim();
+    const merged = new Map<string, Product>();
+
+    const belongsToCategory = (product: Product, targetId: string): boolean => {
+      const cat = String(targetId).trim();
+      if (String(product.defaultCategoryId ?? "").trim() === cat) return true;
+      return product.categoryIds.some((cid) => String(cid).trim() === cat);
+    };
+
+    const push = (items: Product[]) => {
+      for (const product of items) {
+        if (belongsToCategory(product, categoryId)) {
+          merged.set(product.id, product);
+        }
+      }
+    };
+
+    const pushIds = async (ids: string[]) => {
+      if (ids.length === 0) return;
+      const chunkSize = 50;
+      for (let offset = 0; offset < ids.length; offset += chunkSize) {
+        push(
+          await this.getProductsByIds(ids.slice(offset, offset + chunkSize)),
+        );
+      }
+    };
+
     const { data } = await this.request<Record<string, unknown>>(
-      `/categories/${id}`,
+      `/categories/${categoryId}`,
       { display: "full" },
     );
     const ps =
       (data?.category as PsCategory | undefined) ??
       asArray<PsCategory>(data as never, "categories")[0];
 
-    const ids =
-      ps?.associations?.products?.map((p) => p.id).filter(Boolean) ?? [];
+    const associationIds =
+      ps?.associations?.products?.map((p) => String(p.id).trim()).filter(Boolean) ??
+      [];
 
-    if (ids.length > 0) {
-      return this.getProductsByIds(ids.slice(0, limit));
+    await pushIds(associationIds);
+
+    const byDefault = await this.getProducts({
+      category: categoryId,
+      limit: Math.min(limit, 200),
+      page: 1,
+    });
+    push(byDefault.items);
+
+    const parentId = String(ps?.id_parent ?? "").trim();
+    if (merged.size === 0 && parentId && parentId !== "0" && parentId !== "1" && parentId !== "2") {
+      const { data: parentData } = await this.request<Record<string, unknown>>(
+        `/categories/${parentId}`,
+        { display: "full" },
+      );
+      const parentPs =
+        (parentData?.category as PsCategory | undefined) ??
+        asArray<PsCategory>(parentData as never, "categories")[0];
+      const parentAssociationIds =
+        parentPs?.associations?.products
+          ?.map((p) => String(p.id).trim())
+          .filter(Boolean) ?? [];
+      await pushIds(parentAssociationIds);
     }
 
-    const fallback = await this.getProducts({ category: id, limit, page: 1 });
-    return fallback.items;
+    if (merged.size === 0) {
+      let page = 1;
+      let hasMore = true;
+      while (hasMore && page <= 30) {
+        const batch = await this.getProducts({ limit: 100, page });
+        for (const product of batch.items) {
+          if (belongsToCategory(product, categoryId)) {
+            merged.set(product.id, product);
+          }
+        }
+        hasMore = batch.hasMore;
+        page += 1;
+      }
+    }
+
+    if (merged.size > 0) {
+      const enriched = await this.getProductsByIds([...merged.keys()]);
+      const byId = new Map(enriched.map((product) => [product.id, product]));
+      return [...merged.keys()]
+        .map((productId) => byId.get(productId) ?? merged.get(productId)!)
+        .filter((product) => belongsToCategory(product, categoryId))
+        .slice(0, limit);
+    }
+
+    return [];
   }
 
   // ─────────────────────────────────────────────
@@ -1422,7 +1494,9 @@ class PrestaShopService {
     }
     const id = extractCreatedId(data, "product");
     if (!id) throw new Error("Produit créé mais identifiant introuvable.");
-    await this.assignProductCategory(id, input.categoryId);
+    await this.assignProductCategory(id, input.categoryId, input.associationIds, {
+      price: input.price,
+    });
     return id;
   }
 
@@ -1431,17 +1505,39 @@ class PrestaShopService {
     productId: string,
     categoryId: string,
     associationIds?: string[],
+    options?: { price?: number },
   ): Promise<void> {
+    const defaultCategoryId = String(categoryId ?? "").trim();
+    if (!defaultCategoryId) {
+      throw new Error("Catégorie produit invalide.");
+    }
+
     const ids = associationIds?.length
-      ? [...new Set(associationIds.map((id) => String(id).trim()).filter(Boolean))]
-      : [categoryId];
+      ? [
+          ...new Set(
+            associationIds.map((id) => String(id).trim()).filter(Boolean),
+          ),
+        ]
+      : [defaultCategoryId];
+
     const raw = await this.getProductRawXml(productId);
+    let price =
+      options?.price !== undefined && Number.isFinite(options.price)
+        ? options.price.toFixed(6)
+        : null;
+    if (!price && raw) {
+      price = extractXmlScalarField(raw, "price");
+    }
+    if (!price) {
+      price = "0.000000";
+    }
+
     if (raw) {
-      const patched = patchProductCategoryXml(raw, categoryId, ids);
+      const patched = patchProductCategoryXml(raw, defaultCategoryId, ids);
       const { status, error } = await this.put(`/products/${productId}`, patched);
       if (status !== null && status < 400) return;
       console.warn(
-        `[prestashop] category raw-xml PUT failed product=${productId} category=${categoryId}`,
+        `[prestashop] category raw-xml PUT failed product=${productId} category=${defaultCategoryId}`,
         error,
       );
     }
@@ -1450,7 +1546,8 @@ class PrestaShopService {
 <prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
   <product>
     <id>${escapeXml(productId)}</id>
-    <id_category_default>${escapeXml(categoryId)}</id_category_default>
+    <price>${escapeXml(price)}</price>
+    <id_category_default>${escapeXml(defaultCategoryId)}</id_category_default>
     <associations>
       <categories>
 ${ids
@@ -1467,9 +1564,8 @@ ${ids
 
     const { status, error } = await this.put(`/products/${productId}`, xml);
     if (status !== null && status >= 400) {
-      console.warn(
-        `[prestashop] category minimal PUT failed product=${productId} category=${categoryId}`,
-        error,
+      throw new Error(
+        `Impossible d'assigner la catégorie ${defaultCategoryId} au produit ${productId} : ${error ?? status}`,
       );
     }
   }
@@ -1489,6 +1585,73 @@ ${ids
     } catch {
       return null;
     }
+  }
+
+  /** Met à jour le nom affiché + link_rewrite d'un produit (XML complet). */
+  async updateProductName(productId: string, name: string): Promise<void> {
+    const raw = await this.getProductRawXml(productId);
+    if (!raw) {
+      throw new Error(`Produit ${productId} introuvable pour renommage.`);
+    }
+
+    const { slugify } = await import("@/lib/product-import/slug");
+    const langId = serverConfig.langId;
+    let patched = patchLangFieldXml(raw, "name", name, langId);
+    patched = patchLangFieldXml(
+      patched,
+      "link_rewrite",
+      slugify(name),
+      langId,
+    );
+
+    const { status, error } = await this.put(`/products/${productId}`, patched);
+    if (status !== null && status >= 400) {
+      throw new Error(
+        `Renommage produit ${productId} échoué : ${error ?? status}`,
+      );
+    }
+  }
+
+  /** Liste tous les produits (noms bruts PrestaShop) pour migrations batch. */
+  async listAllProductNames(
+    options: { includeInactive?: boolean } = {},
+  ): Promise<{ id: string; name: string }[]> {
+    const includeInactive =
+      options.includeInactive ?? process.env.PRESTASHOP_INCLUDE_INACTIVE === "1";
+    const items: { id: string; name: string }[] = [];
+    let page = 1;
+    const limit = 100;
+
+    while (true) {
+      const offset = (page - 1) * limit;
+      const params: Record<string, string | number> = {
+        display: "[id,name]",
+        limit: offset > 0 ? `${offset},${limit + 1}` : `${limit + 1}`,
+      };
+      if (!includeInactive) {
+        params["filter[active]"] = "1";
+      }
+
+      const { data } = await this.request<{ products?: PsProduct[] }>(
+        "/products",
+        params,
+      );
+      const raw = asArray<PsProduct>(data as never, "products");
+      const hasMore = raw.length > limit;
+      const batch = raw.slice(0, limit);
+
+      for (const product of batch) {
+        items.push({
+          id: psStr(product.id),
+          name: resolveLang(product.name),
+        });
+      }
+
+      if (!hasMore) break;
+      page += 1;
+    }
+
+    return items;
   }
 
   /** Téléverse une image distante vers un produit PrestaShop. */
@@ -1762,6 +1925,8 @@ export interface CreateProductInput {
   linkRewrite: string;
   price: number;
   categoryId: string;
+  /** Chaîne feuille → parents pour les associations PrestaShop. */
+  associationIds?: string[];
   reference?: string;
   description?: string;
   summary?: string;
@@ -1978,11 +2143,48 @@ ${ids
   return out;
 }
 
-function buildProductCreateXml(input: CreateProductInput & { langId: string }): string {
+function patchLangFieldXml(
+  xml: string,
+  tag: string,
+  value: string,
+  langId: string,
+): string {
+  const fieldRe = new RegExp(`<${tag}>[\\s\\S]*?</${tag}>`, "i");
+  const replacement = langFieldXml(tag, value, langId);
+  if (fieldRe.test(xml)) {
+    return xml.replace(fieldRe, replacement);
+  }
+  return xml.replace(/<\/product>/i, `  ${replacement}\n  </product>`);
+}
+
+/** Lit un champ scalaire simple dans le XML produit PrestaShop. */
+function extractXmlScalarField(xml: string, field: string): string | null {
+  const match = xml.match(
+    new RegExp(
+      `<${field}>(?:<!\\[CDATA\\[)?([^<\\]]+)(?:\\]\\]>)?<\\/${field}>`,
+      "i",
+    ),
+  );
+  return match?.[1]?.trim() ?? null;
+}
+
+function buildProductCreateXml(
+  input: CreateProductInput & { langId: string },
+): string {
   const price = Number.isFinite(input.price) ? input.price.toFixed(6) : "0.000000";
   const reference = input.reference?.trim();
   const summary = input.summary?.trim() ?? "";
   const description = input.description?.trim() ?? summary;
+  const defaultCategoryId = String(input.categoryId ?? "").trim();
+  const associationIds = input.associationIds?.length
+    ? [
+        ...new Set(
+          input.associationIds.map((id) => String(id).trim()).filter(Boolean),
+        ),
+      ]
+    : defaultCategoryId
+      ? [defaultCategoryId]
+      : [];
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
@@ -1997,13 +2199,17 @@ function buildProductCreateXml(input: CreateProductInput & { langId: string }): 
     <show_price>1</show_price>
     <available_for_order>1</available_for_order>
     <visibility>both</visibility>
-    <id_category_default>${escapeXml(input.categoryId)}</id_category_default>
+    <id_category_default>${escapeXml(defaultCategoryId)}</id_category_default>
     ${reference ? `<reference>${escapeXml(reference)}</reference>` : ""}
     <associations>
       <categories>
-        <category>
-          <id>${escapeXml(input.categoryId)}</id>
-        </category>
+${associationIds
+  .map(
+    (id) => `        <category>
+          <id>${escapeXml(id)}</id>
+        </category>`,
+  )
+  .join("\n")}
       </categories>
     </associations>
   </product>

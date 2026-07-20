@@ -1,314 +1,137 @@
 /// <reference types="@figma/plugin-typings" />
 
-import { scrapeProductUrl } from "./scrape-main.js";
+const AUTO_DEBOUNCE_MS = 450;
 
-const STORAGE_CATEGORY = "footshop_category_id";
+let busy = false;
+let autoTimer: ReturnType<typeof setTimeout> | undefined;
 
-const CARD_W = 328;
-const CARD_H = 411;
-const CARD_GAP = 20;
-const CARD_COLS = 3;
-const CARD_BG = { r: 0x16 / 255, g: 0x16 / 255, b: 0x16 / 255 };
-const HALO_BLUR = 119.1;
-
-async function sendInit() {
-  const categoryId = await figma.clientStorage.getAsync(STORAGE_CATEGORY);
-  const networkChecks = await probeNetworkAccess();
-  figma.ui.postMessage({
-    type: "init",
-    categoryId: typeof categoryId === "string" ? categoryId : "",
-    networkChecks,
-  });
-}
+figma.showUI(__html__, { width: 320, height: 200, themeColors: true });
 
 figma.ui.onmessage = async (msg: UiMessage) => {
   if (msg.type === "ui-ready") {
-    await sendInit();
+    figma.ui.postMessage({ type: "init" });
+    scheduleAutoRemove();
     return;
   }
 
-  if (msg.type === "network-test") {
-    const checks = await probeNetworkAccess();
-    figma.ui.postMessage({
-      type: "network-test-result",
-      requestId: msg.requestId,
-      checks,
-    });
-    return;
-  }
-
-  if (msg.type === "api-request") {
-    const origins = uniqueOrigins(__PLUGIN_API_ORIGINS__, __PLUGIN_API_ORIGIN__);
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${__PLUGIN_ADMIN_SECRET__}`,
-      "x-admin-secret": __PLUGIN_ADMIN_SECRET__,
-      ...(msg.headers ?? {}),
-    };
-    if (msg.body && !headers["Content-Type"]) {
-      headers["Content-Type"] = "application/json";
-    }
-
-    let lastError = "Network error";
-    for (const origin of origins) {
-      const url = `${origin.replace(/\/$/, "")}${msg.path}`;
-      try {
-        const res = await fetch(url, {
-          method: msg.method ?? "GET",
-          headers,
-          body: msg.body,
-        });
-        const body = await res.text();
-        figma.ui.postMessage({
-          type: "api-response",
-          requestId: msg.requestId,
-          ok: res.ok,
-          status: res.status,
-          body,
-        });
-        return;
-      } catch (err) {
-        lastError =
-          err instanceof Error && err.message ? err.message : "Network error";
-      }
-    }
-
-    figma.ui.postMessage({
-      type: "api-response",
-      requestId: msg.requestId,
-      ok: false,
-      status: 0,
-      body: "",
-      error: lastError,
-    });
-    return;
-  }
-
-  if (msg.type === "save-category") {
-    await figma.clientStorage.setAsync(STORAGE_CATEGORY, msg.categoryId.trim());
-    return;
-  }
-
-  if (msg.type === "scrape-product") {
-    try {
-      const result = await scrapeProductUrl(msg.url);
-      figma.ui.postMessage({
-        type: "scrape-done",
-        requestId: msg.requestId,
-        name: result.name,
-        mimeType: result.mimeType,
-        bytes: Array.from(result.bytes),
-      });
-    } catch (err) {
-      figma.ui.postMessage({
-        type: "scrape-error",
-        requestId: msg.requestId,
-        message: err instanceof Error ? err.message : "Scrape impossible.",
-      });
-    }
-    return;
-  }
-
-  if (msg.type === "export-frame") {
-    try {
-      const node = await figma.getNodeByIdAsync(msg.frameId);
-      if (!node || !("exportAsync" in node) || typeof node.exportAsync !== "function") {
-        throw new Error("Fiche Figma introuvable.");
-      }
-
-      const bytes = await node.exportAsync({
-        format: "PNG",
-        constraint: { type: "SCALE", value: 2 },
-      });
-
-      figma.ui.postMessage({
-        type: "frame-exported",
-        requestId: msg.requestId,
-        bytes: Array.from(bytes),
-      });
-    } catch (err) {
-      figma.ui.postMessage({
-        type: "export-error",
-        requestId: msg.requestId,
-        message: err instanceof Error ? err.message : "Export impossible.",
-      });
-    }
+  if (msg.type === "remove-bg") {
+    await runRemoveBg();
     return;
   }
 
   if (msg.type === "apply-result") {
     try {
-      const { x, y } = resolveCardPosition(msg);
-      const frame = buildProductCard(new Uint8Array(msg.bytes), msg.nodeName, x, y);
-      figma.ui.postMessage({
-        type: "card-created",
-        requestId: msg.requestId,
-        frameId: frame.id,
-        nodeName: msg.nodeName,
-        sourceUrl: msg.sourceUrl ?? "",
-      });
+      await applyCutout(msg.nodeId, msg.nodeName, msg.bytes);
+      figma.ui.postMessage({ type: "done" });
     } catch (err) {
       figma.ui.postMessage({
-        type: "card-error",
-        requestId: msg.requestId,
-        message: err instanceof Error ? err.message : "Impossible de créer la fiche.",
+        type: "error",
+        message: err instanceof Error ? err.message : "Impossible d'appliquer l'image.",
+      });
+    } finally {
+      busy = false;
+    }
+  }
+};
+
+figma.on("selectionchange", () => {
+  scheduleAutoRemove();
+});
+
+function scheduleAutoRemove() {
+  clearTimeout(autoTimer);
+  autoTimer = setTimeout(() => {
+    void runRemoveBg({ auto: true });
+  }, AUTO_DEBOUNCE_MS);
+}
+
+async function runRemoveBg(opts?: { auto?: boolean }) {
+  if (busy) return;
+
+  const selection = figma.currentPage.selection;
+  if (selection.length !== 1) {
+    if (!opts?.auto) {
+      figma.ui.postMessage({
+        type: "error",
+        message: "Sélectionnez un seul calque (image, frame, rectangle…).",
+      });
+    } else {
+      figma.ui.postMessage({ type: "status", message: "Sélectionnez une image…" });
+    }
+    return;
+  }
+
+  const node = selection[0]!;
+  if (!("exportAsync" in node) || typeof node.exportAsync !== "function") {
+    if (!opts?.auto) {
+      figma.ui.postMessage({
+        type: "error",
+        message: "Ce type de calque ne peut pas être exporté.",
       });
     }
     return;
   }
-};
 
-figma.showUI(__html__, { width: 380, height: 480 });
+  busy = true;
+  figma.ui.postMessage({
+    type: "status",
+    message: opts?.auto ? "Détourage automatique…" : "Export du calque…",
+  });
 
-function resolveCardPosition(msg: Extract<UiMessage, { type: "apply-result" }>) {
-  const total = Math.max(1, msg.batchTotal ?? 1);
-  const index = msg.placementIndex ?? 0;
-  const rows = Math.ceil(total / CARD_COLS);
-  const cols = Math.min(total, CARD_COLS);
-  const gridW = cols * CARD_W + (cols - 1) * CARD_GAP;
-  const gridH = rows * CARD_H + (rows - 1) * CARD_GAP;
+  try {
+    const bytes = await node.exportAsync({
+      format: "PNG",
+      constraint: { type: "SCALE", value: 2 },
+    });
 
-  const originX = figma.viewport.center.x - gridW / 2;
-  const originY = figma.viewport.center.y - gridH / 2;
-  const col = index % CARD_COLS;
-  const row = Math.floor(index / CARD_COLS);
-
-  return {
-    x: originX + col * (CARD_W + CARD_GAP),
-    y: originY + row * (CARD_H + CARD_GAP),
-  };
+    figma.ui.postMessage({
+      type: "process",
+      nodeId: node.id,
+      nodeName: node.name,
+      bytes: Array.from(bytes),
+    });
+  } catch (err) {
+    busy = false;
+    figma.ui.postMessage({
+      type: "error",
+      message: err instanceof Error ? err.message : "Export impossible.",
+    });
+  }
 }
 
-function buildProductCard(imageBytes: Uint8Array, name: string, x: number, y: number): FrameNode {
-  const image = figma.createImage(imageBytes);
-  const imageFill: ImagePaint = {
+async function applyCutout(nodeId: string, nodeName: string, bytes: number[]) {
+  const node = await figma.getNodeByIdAsync(nodeId);
+  if (!node || !("fills" in node)) {
+    throw new Error("Calque introuvable.");
+  }
+
+  const image = figma.createImage(new Uint8Array(bytes));
+  const fills = Array.isArray(node.fills) ? [...node.fills] : [];
+  const imageIndex = fills.findIndex((fill) => fill.type === "IMAGE");
+  const newFill: ImagePaint = {
     type: "IMAGE",
-    scaleMode: "FILL",
+    scaleMode: "FIT",
     imageHash: image.hash,
   };
 
-  const frame = figma.createFrame();
-  frame.name = name || "Maillot";
-  frame.resize(CARD_W, CARD_H);
-  frame.x = x;
-  frame.y = y;
-  frame.fills = [{ type: "SOLID", color: CARD_BG }];
-  frame.clipsContent = true;
+  if (imageIndex >= 0) {
+    fills[imageIndex] = newFill;
+  } else {
+    fills.unshift(newFill);
+  }
 
-  const halo = figma.createRectangle();
-  halo.name = "Halo";
-  halo.resize(CARD_W, CARD_H);
-  halo.opacity = 0.37;
-  halo.fills = [imageFill];
-  halo.effects = [
-    { type: "LAYER_BLUR", radius: HALO_BLUR, visible: true, blurType: "NORMAL" },
-  ];
-
-  const jersey = figma.createRectangle();
-  jersey.name = "Maillot";
-  jersey.resize(CARD_W, CARD_H);
-  jersey.fills = [{ type: "IMAGE", scaleMode: "FILL", imageHash: image.hash }];
-
-  frame.appendChild(halo);
-  frame.appendChild(jersey);
-  figma.currentPage.appendChild(frame);
-
-  return frame;
+  node.fills = fills;
+  figma.notify(`Fond retiré — ${nodeName}`);
 }
 
 type UiMessage =
   | { type: "ui-ready" }
-  | { type: "network-test"; requestId: string }
-  | {
-      type: "api-request";
-      requestId: string;
-      path: string;
-      method?: string;
-      headers?: Record<string, string>;
-      body?: string;
-    }
-  | { type: "save-category"; categoryId: string }
+  | { type: "remove-bg" }
   | {
       type: "apply-result";
-      requestId: string;
+      nodeId: string;
       nodeName: string;
-      sourceUrl?: string;
-      placementIndex?: number;
-      batchTotal?: number;
       bytes: number[];
-    }
-  | { type: "export-frame"; requestId: string; frameId: string }
-  | { type: "scrape-product"; requestId: string; url: string };
+    };
 
 declare const __html__: string;
-declare const __PLUGIN_API_ORIGIN__: string;
-declare const __PLUGIN_API_ORIGINS__: string;
-declare const __PLUGIN_ADMIN_SECRET__: string;
-
-function uniqueOrigins(originsJson: string, fallbackOrigin: string): string[] {
-  const origins: string[] = [];
-  const add = (value: string) => {
-    const normalized = value.replace(/\/$/, "");
-    if (normalized && !origins.includes(normalized)) origins.push(normalized);
-  };
-
-  try {
-    const parsed = JSON.parse(originsJson) as unknown;
-    if (Array.isArray(parsed)) {
-      for (const item of parsed) {
-        if (typeof item === "string") add(item);
-      }
-    }
-  } catch {
-    // ignore invalid JSON
-  }
-
-  add("https://foot-shop.onrender.com");
-  add(fallbackOrigin);
-  add("https://foot-shop.fr");
-  add("https://www.foot-shop.fr");
-  return origins;
-}
-
-type NetworkCheck = {
-  label: string;
-  ok: boolean;
-  status: number;
-  error?: string;
-};
-
-async function probeNetworkAccess(): Promise<NetworkCheck[]> {
-  const origins = uniqueOrigins(__PLUGIN_API_ORIGINS__, __PLUGIN_API_ORIGIN__);
-  const authHeaders = {
-    Authorization: `Bearer ${__PLUGIN_ADMIN_SECRET__}`,
-    "x-admin-secret": __PLUGIN_ADMIN_SECRET__,
-  };
-  const checks: NetworkCheck[] = [];
-
-  const tasks: { label: string; url: string; headers?: Record<string, string> }[] = [
-    { label: "internet", url: "https://httpbin.org/get" },
-  ];
-
-  for (const origin of origins.slice(0, 3)) {
-    tasks.push({
-      label: origin.replace(/^https:\/\//, ""),
-      url: `${origin.replace(/\/$/, "")}/api/admin/product-import?pluginSecret=${encodeURIComponent(__PLUGIN_ADMIN_SECRET__)}`,
-      headers: authHeaders,
-    });
-  }
-
-  for (const task of tasks) {
-    try {
-      const res = await fetch(task.url, { headers: task.headers });
-      checks.push({ label: task.label, ok: true, status: res.status });
-    } catch (err) {
-      checks.push({
-        label: task.label,
-        ok: false,
-        status: 0,
-        error: err instanceof Error ? err.message : "failed to fetch",
-      });
-    }
-  }
-
-  return checks;
-}

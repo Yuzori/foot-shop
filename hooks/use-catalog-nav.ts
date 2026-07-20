@@ -3,59 +3,18 @@
 import { useMemo } from "react";
 
 import { catalogConfig } from "@/config/catalog";
-import type { CatalogNavCategories } from "@/config/catalog-leagues";
-import {
-  findCategoryIdByMatcher,
-  matchKidsMaillotsCategory,
-  matchKidsShortsCategory,
-} from "@/lib/catalog-category-match";
 import { routes } from "@/config/site";
 import { useCategories } from "@/hooks/use-categories";
-import type { Category } from "@/types/domain";
-
-function findCategoryId(
-  categories: Category[],
-  patterns: string[],
-  excludeIds: string[] = [],
-): string {
-  const match = categories.find((c) => {
-    if (excludeIds.includes(c.id)) return false;
-    const name = c.name.toLowerCase();
-    return patterns.some((p) => new RegExp(`\\b${p}\\b`, "i").test(name));
-  });
-  return match?.id ?? "";
-}
+import { resolveCatalogNavCategories } from "@/lib/resolve-catalog-nav";
 
 /** Liens Maillots / Shorts pour la navigation et l'accueil. */
 export function useCatalogNav() {
   const { data: categories = [], isLoading } = useCategories();
 
   return useMemo(() => {
-    const maillotsId =
-      catalogConfig.maillots.categoryId ||
-      findCategoryId(categories, ["maillot", "jersey", "kit"]);
-    const shortsId =
-      catalogConfig.shorts.categoryId ||
-      findCategoryId(categories, ["short", "shorts"], maillotsId ? [maillotsId] : []);
-    const kidsMaillotsId =
-      catalogConfig.kidsMaillots.categoryId ||
-      findCategoryIdByMatcher(categories, matchKidsMaillotsCategory, shortsId
-        ? [shortsId]
-        : []);
-    const kidsShortsId =
-      catalogConfig.kidsShorts.categoryId ||
-      findCategoryIdByMatcher(
-        categories,
-        matchKidsShortsCategory,
-        [maillotsId, kidsMaillotsId].filter(Boolean),
-      );
-
-    const navCategories: CatalogNavCategories = {
-      maillotsCategoryId: maillotsId,
-      shortsCategoryId: shortsId,
-      kidsMaillotsCategoryId: kidsMaillotsId,
-      kidsShortsCategoryId: kidsShortsId,
-    };
+    const navCategories = resolveCatalogNavCategories(categories);
+    const { maillotsCategoryId: maillotsId, shortsCategoryId: shortsId } =
+      navCategories;
 
     return {
       isLoading,
@@ -73,12 +32,12 @@ export function useCatalogNav() {
       },
       kidsMaillots: {
         label: catalogConfig.kidsMaillots.label,
-        categoryId: kidsMaillotsId,
+        categoryId: navCategories.kidsMaillotsCategoryId,
         href: routes.catalogHub({ kind: "jersey", audience: "kids" }),
       },
       kidsShorts: {
         label: catalogConfig.kidsShorts.label,
-        categoryId: kidsShortsId,
+        categoryId: navCategories.kidsShortsCategoryId,
         href: routes.catalogHub({ kind: "short", audience: "kids" }),
       },
     };

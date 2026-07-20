@@ -269,7 +269,7 @@ function extractProductName(html: string, url: URL): string {
 
 function absolutize(base: URL, href: string): string | null {
   try {
-    const trimmed = href.trim();
+    const trimmed = decodeHtmlEntities(href.trim());
     if (!trimmed || trimmed.startsWith("data:")) return null;
     return new URL(trimmed, base).toString();
   } catch {

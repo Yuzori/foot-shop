@@ -1,0 +1,32 @@
+# Rapport résolution Unisport
+
+## Liens finaux (45 maillots uniques)
+Voir unisport-resolved-links.txt
+
+## Déjà Unisport (conservés tels quels)
+- Espagne domicile 2025/26 → 430383
+- Norvège domicile CDM 2026 → 461740
+- Angleterre extérieur CDM 2026 → 462371
+- Italie extérieur 2026/27 Authentic → 430302
+- Maroc domicile CDM 2026 (FRMF) → 434047
+
+## Non trouvés sur Unisport (pas d’équivalent fiable)
+- Japon domicile 2026 (Footcenter) — seul l’extérieur est listé chez Unisport
+- Portugal édition spéciale Eusébio (Foot-Sport)
+- France pré-match Jacquemus (Footsoccerpro)
+- RD Congo domicile / extérieur / third (Footcenter, Foot-Sport)
+- Corée du Sud extérieur (Intersport)
+- Costa Rica extérieur (Intersport) — domicile seulement sur Unisport
+- Chili extérieur 2026/27 (Footcenter) — domicile seulement sur Unisport
+- Curaçao domicile adulte/enfant (Elite-Maillot, Adidas)
+- Maroc extérieur CDM 2026 (Foot-Store) — pas de maillot away FRMF listé
+
+## Notes de correspondance
+- Brésil extérieur Sports Direct (authentic) → version Authentic Unisport (438153)
+- Nigeria extérieur authentique → 462508 (Authentic Aero-FIT)
+- Mexique away Jerseydor → maillot extérieur replica (431368), pas le 3e maillot
+- USA extérieur authentique Footcenter → Aero-FIT Authentic (438029)
+- Brésil gardien Prodirect → gardien Authentic Hollywood (427231)
+- USA gardien Footyheadlines → gardien Authentic Hollywood (427228)
+- Portugal domicile/extérieur Puma → slugs FPF replica (t-shirts/)
+- Belgique away en double dans ta liste → un seul lien 430354

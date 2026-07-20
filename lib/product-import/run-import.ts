@@ -12,6 +12,7 @@ import {
   type CategoryImportInput,
 } from "@/lib/product-import/resolve-category";
 import { scrapeProductPage, type ScrapedProduct } from "@/lib/product-import/scraper";
+import { buildCategoryAssociationIds } from "@/lib/product-import/category-associations";
 import { prestashop } from "@/services/prestashop";
 
 export interface ImportProductInput {
@@ -58,16 +59,24 @@ export async function runProductImport(
           collectionKind,
           audience,
           fallbackCategoryId,
+          name,
         )
       : fallbackCategoryId;
   const stock = input.stock ?? productImportConfig.defaultStock;
   const sizes = input.sizes ?? productImportConfig.sizes;
+
+  const allCategories = await prestashop.getCategories();
+  const categoryAssociationIds = buildCategoryAssociationIds(
+    categoryId,
+    allCategories,
+  );
 
   const productId = await prestashop.createProduct({
     name,
     linkRewrite: slugify(name),
     price,
     categoryId,
+    associationIds: categoryAssociationIds,
   });
 
   let imagesUploaded = 0;

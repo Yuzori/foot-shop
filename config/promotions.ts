@@ -15,7 +15,8 @@ export interface PromoPopup {
 }
 
 export const promoPopup: PromoPopup = {
-  enabled: true,
+  /** Désactivé : la promo 2+1 s’applique automatiquement au checkout. */
+  enabled: false,
   id: "welcome-bogo-2026",
   eyebrow: "Offre de bienvenue",
   title: "2 achetés, 1 offert",
@@ -42,7 +43,7 @@ export const welcomePromo = {
 
 /** Code promo remerciement 1ʳᵉ commande (-10 %). */
 export const firstOrderThankYouPromo = {
-  code: "FOODSHOP10",
+  code: "FOOTSHOP10",
   percent: 10,
   label: "10 % sur votre prochaine commande",
 } as const;

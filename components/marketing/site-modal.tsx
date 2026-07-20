@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
 
@@ -10,19 +10,13 @@ import { CloseIcon } from "@/components/layout/icons";
 import { ProductImage } from "@/components/product/product-image";
 import { buttonClasses } from "@/components/ui/button";
 import { Price } from "@/components/ui/price";
-import { promoPopup, welcomePromo } from "@/config/promotions";
 import { routes } from "@/config/site";
-import { useSession } from "@/hooks/use-auth";
-import { useWelcomePromo } from "@/components/checkout/welcome-promo-banner";
 import { api } from "@/lib/api";
 import type { Product } from "@/types/domain";
 
 const CATALOG_KEY = "footshop_catalog_ids";
 const CREATED_KEY = "footshop_product_created";
 const ABSENT_KEY = "footshop_absent_ids";
-const PROMO_SESSION_KEY = (id: string) => `promo-seen:${id}`;
-
-type ModalMode = "new-releases" | "promo";
 
 function readKnownIds(): string[] {
   try {
@@ -123,12 +117,68 @@ function persistCatalog(items: Product[]) {
   saveAbsentIds(absent.filter((id) => !ids.includes(id)));
 }
 
+const SWIPE_MIN_PX = 48;
+
+function useCarouselSwipe(
+  enabled: boolean,
+  onPrev: () => void,
+  onNext: () => void,
+) {
+  const startRef = useRef<{ x: number; y: number } | null>(null);
+
+  const onTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      if (!enabled) return;
+      const t = e.touches[0];
+      if (!t) return;
+      startRef.current = { x: t.clientX, y: t.clientY };
+    },
+    [enabled],
+  );
+
+  const onTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      if (!enabled || !startRef.current) return;
+      const t = e.changedTouches[0];
+      if (!t) return;
+      const dx = t.clientX - startRef.current.x;
+      const dy = t.clientY - startRef.current.y;
+      startRef.current = null;
+      if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+      if (dx < 0) onNext();
+      else onPrev();
+    },
+    [enabled, onNext, onPrev],
+  );
+
+  const onPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (!enabled || e.pointerType === "touch") return;
+      startRef.current = { x: e.clientX, y: e.clientY };
+    },
+    [enabled],
+  );
+
+  const onPointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      if (!enabled || e.pointerType === "touch" || !startRef.current) return;
+      const dx = e.clientX - startRef.current.x;
+      const dy = e.clientY - startRef.current.y;
+      startRef.current = null;
+      if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+      if (dx < 0) onNext();
+      else onPrev();
+    },
+    [enabled, onNext, onPrev],
+  );
+
+  return { onTouchStart, onTouchEnd, onPointerDown, onPointerUp };
+}
+
 /**
- * Modale centrale sport (noir / blanc) — nouveautés en carrousel + promo.
+ * Modale nouveautés — popup unique quand un nouveau maillot est publié.
  */
 export function SiteModal() {
-  const { data: user } = useSession();
-  const { data: welcomePromoStatus } = useWelcomePromo();
   const { data: catalog } = useQuery({
     queryKey: ["catalog-watch"],
     queryFn: () => api.getProducts({ sort: "newest", limit: 40, page: 1 }),
@@ -137,10 +187,23 @@ export function SiteModal() {
     refetchOnWindowFocus: true,
   });
 
-  const [mode, setMode] = useState<ModalMode | null>(null);
+  const [open, setOpen] = useState(false);
   const [newProducts, setNewProducts] = useState<Product[]>([]);
   const [slide, setSlide] = useState(0);
-  const [copied, setCopied] = useState(false);
+
+  const goPrev = useCallback(() => {
+    setSlide((s) => (s - 1 + newProducts.length) % Math.max(newProducts.length, 1));
+  }, [newProducts.length]);
+
+  const goNext = useCallback(() => {
+    setSlide((s) => (s + 1) % Math.max(newProducts.length, 1));
+  }, [newProducts.length]);
+
+  const swipe = useCarouselSwipe(
+    newProducts.length > 1,
+    goPrev,
+    goNext,
+  );
 
   useEffect(() => {
     if (!catalog?.items?.length) return;
@@ -148,46 +211,19 @@ export function SiteModal() {
     const fresh = detectNewProducts(catalog.items);
     if (fresh.length > 0) {
       setNewProducts(fresh);
-      setMode("new-releases");
+      setOpen(true);
       setSlide(0);
-      return;
     }
-
-    if (mode === "new-releases") return;
-
-    if (promoPopup.enabled && !sessionStorage.getItem(PROMO_SESSION_KEY(promoPopup.id))) {
-      const timer = window.setTimeout(() => setMode("promo"), promoPopup.delayMs);
-      return () => window.clearTimeout(timer);
-    }
-  }, [catalog?.items, mode]);
+  }, [catalog?.items]);
 
   const dismiss = useCallback(() => {
-    if (mode === "new-releases") {
-      if (catalog?.items) persistCatalog(catalog.items);
-      setNewProducts([]);
-
-      if (
-        promoPopup.enabled &&
-        !sessionStorage.getItem(PROMO_SESSION_KEY(promoPopup.id))
-      ) {
-        setMode("promo");
-        return;
-      }
-    }
-
-    if (mode === "promo") {
-      try {
-        sessionStorage.setItem(PROMO_SESSION_KEY(promoPopup.id), "1");
-      } catch {
-        /* ignore */
-      }
-    }
-
-    setMode(null);
-  }, [mode, catalog?.items]);
+    if (catalog?.items) persistCatalog(catalog.items);
+    setNewProducts([]);
+    setOpen(false);
+  }, [catalog?.items]);
 
   useEffect(() => {
-    if (!mode) return;
+    if (!open) return;
     const original = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && dismiss();
@@ -196,28 +232,10 @@ export function SiteModal() {
       document.body.style.overflow = original;
       window.removeEventListener("keydown", onKey);
     };
-  }, [mode, dismiss]);
+  }, [open, dismiss]);
 
-  async function copyCode() {
-    const code = promoCode ?? welcomePromo.code;
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1800);
-    } catch {
-      /* ignore */
-    }
-  }
+  if (!open) return null;
 
-  if (!mode) return null;
-
-  const isLoggedIn = Boolean(user);
-  const promoCode =
-    isLoggedIn && welcomePromoStatus?.status === "eligible"
-      ? welcomePromo.code
-      : isLoggedIn
-        ? null
-        : promoPopup.code;
   const currentNew = newProducts[slide];
   const hasMultiple = newProducts.length > 1;
   const releaseTitle = hasMultiple
@@ -226,7 +244,7 @@ export function SiteModal() {
 
   return (
     <AnimatePresence>
-      {mode ? (
+      {open && currentNew ? (
         <motion.div
           key="site-modal-backdrop"
           initial={{ opacity: 0 }}
@@ -262,7 +280,7 @@ export function SiteModal() {
               <CloseIcon className="h-5 w-5" />
             </button>
 
-            {mode === "new-releases" && currentNew ? (
+            {currentNew ? (
               <div className="overlay-scroll p-5 sm:p-8">
                 <p className="eyebrow text-accent">Nouveauté</p>
                 <h2 className="display-2 mt-2 text-2xl sm:text-3xl">{releaseTitle}</h2>
@@ -271,32 +289,39 @@ export function SiteModal() {
                   depuis votre dernière visite
                 </p>
 
-                <div className="relative mt-6 overflow-hidden rounded-2xl border border-ink/8 bg-paper-soft">
+                <div
+                  className="relative mt-5 touch-pan-y overflow-hidden rounded-2xl border border-ink/8 bg-paper-soft sm:mt-6"
+                  onTouchStart={swipe.onTouchStart}
+                  onTouchEnd={swipe.onTouchEnd}
+                  onPointerDown={swipe.onPointerDown}
+                  onPointerUp={swipe.onPointerUp}
+                >
                   <AnimatePresence mode="wait">
                     <motion.div
                       key={currentNew.id}
-                      initial={{ opacity: 0, x: 32 }}
+                      initial={{ opacity: 0, x: 28 }}
                       animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -32 }}
-                      transition={{ duration: 0.3 }}
+                      exit={{ opacity: 0, x: -28 }}
+                      transition={{ duration: 0.28 }}
                       className="grid grid-cols-1"
                     >
-                      <div className="relative aspect-[4/3] max-h-48 bg-paper sm:aspect-square sm:max-h-none">
+                      <div className="relative aspect-square w-full overflow-hidden rounded-t-2xl bg-[#161616]">
                         <ProductImage
                           src={currentNew.cover?.url ?? null}
                           alt={currentNew.name}
-                          className="object-contain p-4"
+                          sizes="(max-width: 640px) 92vw, 480px"
+                          className="object-contain p-1.5 sm:p-2"
                         />
                       </div>
                       <div className="flex flex-col justify-center p-4 sm:p-6">
-                        <h3 className="text-lg font-semibold leading-tight">
+                        <h3 className="text-base font-semibold leading-snug sm:text-lg">
                           {currentNew.name}
                         </h3>
                         <Price
                           amount={currentNew.price}
                           compareAt={currentNew.compareAtPrice}
                           currency={currentNew.currency}
-                          className="mt-4 text-xl"
+                          className="mt-3 text-lg sm:mt-4 sm:text-xl"
                         />
                         <Link
                           href={routes.product(currentNew.id)}
@@ -304,7 +329,7 @@ export function SiteModal() {
                           className={buttonClasses(
                             "accent",
                             "md",
-                            "mt-6 w-full",
+                            "mt-4 w-full sm:mt-6",
                           )}
                         >
                           Voir le produit
@@ -314,14 +339,14 @@ export function SiteModal() {
                   </AnimatePresence>
 
                   {hasMultiple ? (
-                    <div className="flex items-center justify-center gap-4 border-t border-ink/8 py-3">
+                    <div className="border-t border-ink/8 py-3">
+                      <p className="text-center text-[10px] text-ink/40 sm:hidden">
+                        Glissez sur la carte pour voir l&apos;article suivant
+                      </p>
+                      <div className="mt-2 flex items-center justify-center gap-4 sm:mt-0">
                       <button
                         type="button"
-                        onClick={() =>
-                          setSlide(
-                            (s) => (s - 1 + newProducts.length) % newProducts.length,
-                          )
-                        }
+                        onClick={goPrev}
                         className="overlay-close bg-paper-soft text-sm hover:bg-ink hover:text-paper"
                         aria-label="Précédent"
                       >
@@ -332,87 +357,16 @@ export function SiteModal() {
                       </span>
                       <button
                         type="button"
-                        onClick={() =>
-                          setSlide((s) => (s + 1) % newProducts.length)
-                        }
+                        onClick={goNext}
                         className="overlay-close bg-paper-soft text-sm hover:bg-ink hover:text-paper"
                         aria-label="Suivant"
                       >
                         ›
                       </button>
+                      </div>
                     </div>
                   ) : null}
                 </div>
-              </div>
-            ) : null}
-
-            {mode === "promo" ? (
-              <div className="overlay-scroll p-5 sm:p-8">
-                <p className="eyebrow text-accent">{promoPopup.eyebrow}</p>
-                <h2 className="display-2 mt-3 text-2xl sm:text-3xl">{promoPopup.title}</h2>
-                <p className="mt-4 text-sm leading-relaxed text-ink/60">
-                  {promoPopup.message}
-                </p>
-
-                {isLoggedIn ? (
-                  <>
-                    {promoCode ? (
-                      <button
-                        onClick={copyCode}
-                        className="group mt-6 flex w-full items-center justify-between rounded-2xl border border-ink/10 bg-paper-soft px-5 py-4 transition-colors hover:border-accent"
-                      >
-                        <span className="text-lg font-bold tracking-[0.2em] text-ink">
-                          {promoCode}
-                        </span>
-                        <span className="text-xs font-medium uppercase tracking-widest text-ink/45 group-hover:text-accent">
-                          {copied ? "Copié ✓" : "Copier"}
-                        </span>
-                      </button>
-                    ) : null}
-                    <Link
-                      href={promoPopup.cta.href}
-                      onClick={dismiss}
-                      className={buttonClasses(
-                        "accent",
-                        "lg",
-                        "mt-5 w-full",
-                      )}
-                    >
-                      {promoPopup.cta.label}
-                    </Link>
-                  </>
-                ) : (
-                  <>
-                    <div className="mt-6 rounded-2xl border border-ink/8 bg-paper-soft px-5 py-4">
-                      <p className="text-sm font-medium text-ink">
-                        Créez un compte et recevez{" "}
-                        <strong className="text-accent">{welcomePromo.label}</strong>{" "}
-                        sur votre première commande.
-                      </p>
-                      <p className="mt-2 text-xs text-ink/50">
-                        {welcomePromo.checkoutLabel} au paiement dès 3 articles.
-                      </p>
-                    </div>
-                    <Link
-                      href={routes.register}
-                      onClick={dismiss}
-                      className={buttonClasses(
-                        "accent",
-                        "lg",
-                        "mt-4 w-full",
-                      )}
-                    >
-                      Créer mon compte
-                    </Link>
-                    <Link
-                      href={routes.login}
-                      onClick={dismiss}
-                      className="mt-4 block text-center text-sm text-ink/50 hover:text-ink"
-                    >
-                      Déjà inscrit ? Se connecter
-                    </Link>
-                  </>
-                )}
               </div>
             ) : null}
           </motion.div>

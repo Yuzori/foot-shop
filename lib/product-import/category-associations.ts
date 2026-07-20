@@ -1,15 +1,17 @@
 import "server-only";
 
+import { normalizeCategoryId } from "@/lib/product-import/normalize-category-id";
+
 type CategoryRow = { id: string; parentId?: string | null };
 
 /** Chaîne catégorie → parents (feuille d'abord) pour les associations PrestaShop. */
 export function buildCategoryAssociationIds(
-  categoryId: string,
+  categoryId: string | number,
   categories: readonly CategoryRow[],
 ): string[] {
   const ids: string[] = [];
   const seen = new Set<string>();
-  let current = categoryId.trim();
+  let current = normalizeCategoryId(categoryId);
 
   while (current && !seen.has(current)) {
     seen.add(current);

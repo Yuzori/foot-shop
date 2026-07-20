@@ -14,7 +14,6 @@ import {
 import { downscaleCardForExport } from "@/lib/jersey-studio/export-card";
 import {
   prepareInput,
-  polishCutoutDetail,
   rawRgba,
   removeBackgroundForDetail,
   rgbaToPng,
@@ -79,8 +78,7 @@ async function normalizeJerseyPng(cutout: Buffer): Promise<Buffer> {
   })
     .composite([{ input: resized, left, top }])
     .png(LOSSLESS_PNG)
-    .toBuffer()
-    .then(polishCutoutDetail);
+    .toBuffer();
 }
 
 /** Pipeline maillot uniforme : trim → détourage → normalisation → fond #161616 + halo. */

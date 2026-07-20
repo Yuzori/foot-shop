@@ -6,9 +6,9 @@ import {
   findAdultDivisionCategoryId,
   findKidsDivisionCategoryId,
 } from "@/lib/catalog-divisions";
+import { resolveCatalogNavCategories } from "@/lib/resolve-catalog-nav";
 import {
   filterProductsByAudience,
-  filterProductsByCategoryScope,
   getCategoryDescendantIds,
 } from "@/lib/catalog-tree";
 import { maybeRunCatalogNotifications } from "@/lib/catalog-notify";
@@ -49,35 +49,35 @@ export async function GET(
 
   let products = await prestashop.getCategoryProducts(id);
   const allCategories = await prestashop.getCategories();
-  products = filterProductsByCategoryScope(products, id, allCategories);
 
   if (leagueParam) {
     const league = catalogLeagues.find((item) => item.id === leagueParam);
     if (league) {
       const division = catalogDivisionFromLeague(league);
+      const nav = resolveCatalogNavCategories(allCategories);
       const kidsBase =
         kindParam === "short"
-          ? process.env.NEXT_PUBLIC_ENFANT_SHORTS_CATEGORY_ID ??
-            process.env.NEXT_PUBLIC_KIDS_SHORTS_CATEGORY_ID ??
-            ""
-          : process.env.NEXT_PUBLIC_ENFANT_MAILLOTS_CATEGORY_ID ??
-            process.env.NEXT_PUBLIC_KIDS_MAILLOTS_CATEGORY_ID ??
-            "";
+          ? nav.kidsShortsCategoryId
+          : nav.kidsMaillotsCategoryId;
       const adultBase =
-        kindParam === "short"
-          ? process.env.NEXT_PUBLIC_SHORTS_CATEGORY_ID ?? ""
-          : process.env.NEXT_PUBLIC_MAILLOTS_CATEGORY_ID ?? "";
+        kindParam === "short" ? nav.shortsCategoryId : nav.maillotsCategoryId;
 
       const divisionCategoryId =
         audienceParam === "kids"
-          ? findKidsDivisionCategoryId(allCategories, kidsBase, division)
-          : findAdultDivisionCategoryId(allCategories, adultBase, division);
+          ? league.kidsCategoryId ||
+            findKidsDivisionCategoryId(allCategories, kidsBase, division)
+          : league.categoryId ||
+            findAdultDivisionCategoryId(allCategories, adultBase, division);
 
       if (divisionCategoryId) {
         const scope = getCategoryDescendantIds(allCategories, divisionCategoryId);
-        products = products.filter((product) =>
-          product.categoryIds.some((cid) => scope.has(String(cid))),
-        );
+        products = products.filter((product) => {
+          const def = String(product.defaultCategoryId ?? "").trim();
+          if (def && scope.has(def)) return true;
+          return product.categoryIds.some((cid) =>
+            scope.has(String(cid).trim()),
+          );
+        });
       }
     }
   }

@@ -1,10 +1,17 @@
 const DB_NAME = "maillot-store-jersey-studio";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE = "manual-images";
+const RENDER_STORE = "render-previews";
 
 type ManualImageRecord = {
   id: string;
   base64: string;
+  preview: string;
+  savedAt: number;
+};
+
+type RenderPreviewRecord = {
+  id: string;
   preview: string;
   savedAt: number;
 };
@@ -23,6 +30,9 @@ function openDb(): Promise<IDBDatabase> {
       const db = request.result;
       if (!db.objectStoreNames.contains(STORE)) {
         db.createObjectStore(STORE, { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains(RENDER_STORE)) {
+        db.createObjectStore(RENDER_STORE, { keyPath: "id" });
       }
     };
   });
@@ -111,6 +121,77 @@ export async function hydrateManualSelections<
         manualBase64: stored.base64,
         manualPreview: stored.preview,
       };
+    }),
+  );
+}
+
+export async function putRenderPreview(id: string, preview: string): Promise<void> {
+  const db = await openDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(RENDER_STORE, "readwrite");
+    const record: RenderPreviewRecord = { id, preview, savedAt: Date.now() };
+    tx.objectStore(RENDER_STORE).put(record);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error ?? new Error("IndexedDB render write failed"));
+  });
+  db.close();
+}
+
+export async function getRenderPreview(id: string): Promise<string | null> {
+  const db = await openDb();
+  const record = await new Promise<RenderPreviewRecord | null>((resolve, reject) => {
+    const tx = db.transaction(RENDER_STORE, "readonly");
+    const request = tx.objectStore(RENDER_STORE).get(id);
+    request.onsuccess = () =>
+      resolve((request.result as RenderPreviewRecord | undefined) ?? null);
+    request.onerror = () => reject(request.error ?? new Error("IndexedDB render read failed"));
+  });
+  db.close();
+  return record?.preview ?? null;
+}
+
+export async function deleteRenderPreview(id: string): Promise<void> {
+  const db = await openDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(RENDER_STORE, "readwrite");
+    tx.objectStore(RENDER_STORE).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error ?? new Error("IndexedDB render delete failed"));
+  });
+  db.close();
+}
+
+export async function pruneRenderPreviews(keepIds: string[]): Promise<void> {
+  const keep = new Set(keepIds);
+  const db = await openDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(RENDER_STORE, "readwrite");
+    const store = tx.objectStore(RENDER_STORE);
+    const request = store.getAllKeys();
+    request.onsuccess = () => {
+      for (const key of request.result) {
+        if (!keep.has(String(key))) {
+          store.delete(key);
+        }
+      }
+    };
+    request.onerror = () => reject(request.error ?? new Error("IndexedDB render prune failed"));
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error ?? new Error("IndexedDB render prune failed"));
+  });
+  db.close();
+}
+
+export async function hydrateRenderSelections<
+  T extends { id: string; renderPreview?: string | null; renderError?: string | null },
+>(selections: T[]): Promise<T[]> {
+  return Promise.all(
+    selections.map(async (selection) => {
+      const stored = selection.renderPreview
+        ? selection.renderPreview
+        : await getRenderPreview(selection.id);
+      if (!stored) return { ...selection, renderError: null };
+      return { ...selection, renderPreview: stored, renderError: null };
     }),
   );
 }

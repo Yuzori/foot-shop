@@ -52,7 +52,7 @@ function stripHeavySelections(
     kind: s.kind,
     url: s.url,
     mode: s.mode,
-    renderError: s.renderError ?? null,
+    renderError: null,
     renderPreview: null,
     manualPreview: null,
   }));

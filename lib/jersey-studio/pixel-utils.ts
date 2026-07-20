@@ -117,6 +117,9 @@ export function isJerseyFabricPixel(r: number, g: number, b: number): boolean {
   if (b >= 105 && g >= 95 && r <= 200 && b >= r - 15) return true;
   if (g >= 130 && b >= 120 && r <= 160 && g > r + 8) return true;
 
+  // Noir / gris très foncé (Espagne, Argentina, maillots bicolores…)
+  if (max <= 65 && sat <= 32) return true;
+
   return sat >= 42;
 }
 

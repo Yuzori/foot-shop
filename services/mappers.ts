@@ -4,6 +4,7 @@
 import { serverConfig } from "@/config";
 import { shopConfig } from "@/config/shop";
 import { sanitizeProductHtml } from "@/lib/sanitize-html";
+import { displayJerseyProductName } from "@/lib/product-import/format-product-name";
 import type {
   Category,
   Customer,
@@ -124,7 +125,7 @@ export function mapProduct(ps: PsProduct): Product {
 
   return {
     id: ps.id,
-    name: resolveLang(ps.name),
+    name: displayJerseyProductName(resolveLang(ps.name)),
     slug: resolveLang(ps.link_rewrite) || ps.id,
     reference: ps.reference || undefined,
     summary: sanitizeProductHtml(resolveLang(ps.description_short)),
@@ -138,7 +139,17 @@ export function mapProduct(ps: PsProduct): Product {
     quantity,
     inStock,
 
-    categoryIds: ps.associations?.categories?.map((c) => c.id) ?? [],
+    categoryIds: (() => {
+      const fromAssociations =
+        ps.associations?.categories?.map((c) => String(c.id).trim()) ?? [];
+      const defaultId = ps.id_category_default
+        ? String(ps.id_category_default).trim()
+        : "";
+      if (defaultId && !fromAssociations.includes(defaultId)) {
+        return [...fromAssociations, defaultId];
+      }
+      return fromAssociations;
+    })(),
     defaultCategoryId: ps.id_category_default ?? null,
 
     variants: [],

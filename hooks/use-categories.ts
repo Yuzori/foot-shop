@@ -18,16 +18,31 @@ export function useCategories() {
 /** A category with its first page of products. */
 export function useCategory(
   id: string,
-  options?: { audience?: "kids" | "adult" | null; sort?: SortOption },
+  options?: {
+    audience?: "kids" | "adult" | null;
+    kind?: "jersey" | "short" | null;
+    league?: string | null;
+    sort?: SortOption;
+  },
 ) {
   const audience = options?.audience ?? null;
+  const kind = options?.kind ?? null;
+  const league = options?.league ?? null;
   const sort = options?.sort;
 
   return useQuery({
-    queryKey: [...queryKeys.category(id), audience ?? "all", sort ?? "relevance"],
+    queryKey: [
+      ...queryKeys.category(id),
+      audience ?? "all",
+      kind ?? "all",
+      league ?? "all",
+      sort ?? "relevance",
+    ],
     queryFn: () =>
       api.getCategory(id, {
         audience: audience ?? undefined,
+        kind: kind ?? undefined,
+        league: league ?? undefined,
         sort,
       }),
     enabled: Boolean(id),

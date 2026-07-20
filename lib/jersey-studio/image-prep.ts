@@ -32,6 +32,10 @@ import {
   stripNeutralOutlineFringe,
   touchesTransparentNeighbor,
 } from "@/lib/jersey-studio/pixel-utils";
+import { removeBgConfig } from "@/config/removebg";
+import {
+  removeBackgroundWithRemoveBg,
+} from "@/lib/jersey-studio/removebg";
 
 export async function rawRgba(buffer: Buffer): Promise<{
   data: Uint8Array;
@@ -98,9 +102,50 @@ export async function removeBackground(input: Buffer): Promise<Buffer> {
   return removeBackgroundInternal(input, { aggressiveFringe: true });
 }
 
-/** Détourage détail : conserve les couleurs du maillot. */
+/** Détourage détail : Remove.bg si configuré, sinon pipeline local. */
 export async function removeBackgroundForDetail(input: Buffer): Promise<Buffer> {
-  return removeBackgroundInternal(input, { aggressiveFringe: false });
+  if (removeBgConfig.enabled) {
+    try {
+      const cutout = await removeBackgroundWithRemoveBg(input);
+      return polishRemoveBgCutout(cutout);
+    } catch (err) {
+      if (removeBgConfig.fallbackLocal) {
+        console.warn(
+          "[jersey-studio] Remove.bg échec, détourage local:",
+          err instanceof Error ? err.message : err,
+        );
+        return removeBackgroundInternal(input, { aggressiveFringe: false }).then(polishCutoutDetail);
+      } else {
+        throw err instanceof Error
+          ? err
+          : new Error("Détourage Remove.bg échoué.");
+      }
+    }
+  }
+
+  return removeBackgroundInternal(input, { aggressiveFringe: false }).then(polishCutoutDetail);
+}
+
+/** Finition légère après Remove.bg — on fait confiance à l'API, pas de double nettoyage agressif. */
+async function polishRemoveBgCutout(png: Buffer): Promise<Buffer> {
+  const { data, width, height } = await rawRgba(png);
+  stripNeutralOutlineFringe(data, width, height);
+  defringeAgainstBackground(
+    data,
+    width,
+    height,
+    STUDIO_PHOTO_BG.r,
+    STUDIO_PHOTO_BG.g,
+    STUDIO_PHOTO_BG.b,
+    { protectSaturated: true },
+  );
+
+  const bounds = getAlphaBounds(data, width, height, ALPHA_THRESHOLD);
+  if (!bounds) {
+    throw new Error("Aucun sujet détecté après Remove.bg.");
+  }
+
+  return rgbaToPng(data, width, height);
 }
 
 /** Détourage maillot : coupe nette, sans anti-aliasing. */
@@ -207,10 +252,9 @@ export async function polishCutoutJersey(png: Buffer): Promise<Buffer> {
   return rgbaToPng(data, width, height);
 }
 
-/** Finition détail : pas de flou, dimensions carte conservées. */
+/** Finition détail — pipeline local uniquement (Remove.bg a sa propre finition légère). */
 export async function polishCutoutDetail(png: Buffer): Promise<Buffer> {
   const { data, width, height } = await rawRgba(png);
-  repairEnclosedTransparentHoles(data, width, height);
   removeOutlineStudioBleed(data, width, height);
   stripNeutralOutlineFringe(data, width, height);
   defringeAgainstBackground(

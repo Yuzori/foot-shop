@@ -1,6 +1,7 @@
 import { type Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { findKitSiblings } from "@/lib/kit-siblings";
 import { ProductDetail } from "@/components/product/product-detail";
 import { publicConfig } from "@/config";
 import { routes } from "@/config/site";
@@ -44,6 +45,13 @@ export default async function ProductPage({ params }: PageProps) {
   // still render a graceful "introuvable" state via notFound().
   if (!product) notFound();
 
+  const kitOptions = await findKitSiblings({
+    id: product.id,
+    name: product.name,
+    defaultCategoryId: product.defaultCategoryId,
+    coverUrl: product.cover?.url ?? product.images[0]?.url ?? null,
+  });
+
   const base = publicConfig.siteUrl.replace(/\/$/, "");
   const jsonLd = {
     "@context": "https://schema.org",
@@ -70,7 +78,7 @@ export default async function ProductPage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <ProductDetail product={product} />
+      <ProductDetail product={product} kitOptions={kitOptions} />
     </>
   );
 }

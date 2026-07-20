@@ -10,7 +10,7 @@ import { shopConfig } from "@/config/shop";
  */
 export const productImportConfig = {
   defaultStock: 20,
-  defaultPrice: Number(process.env.PRODUCT_IMPORT_DEFAULT_PRICE ?? "29.99") || 29.99,
+  defaultPrice: Number(process.env.PRODUCT_IMPORT_DEFAULT_PRICE ?? "25.99") || 25.99,
   defaultCategoryId:
     process.env.PRODUCT_IMPORT_CATEGORY_ID?.trim() ||
     worldCupConfig.categoryId ||

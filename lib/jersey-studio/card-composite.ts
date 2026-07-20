@@ -4,16 +4,18 @@ import sharp from "sharp";
 
 import {
   CARD_BG,
-  CARD_H,
-  CARD_W,
-  HALO_BLUR_SIGMA,
+  DETAIL_HALO_OPACITY,
+  DETAIL_WORK_HALO_BLUR_SIGMA,
   HALO_OPACITY,
   LOSSLESS_PNG,
   WORK_CARD_H,
   WORK_CARD_W,
+  WORK_HALO_BLUR_SIGMA,
 } from "@/lib/jersey-studio/constants";
-import { isProtectedJerseyPixel, isJerseyFabricPixel, isStudioBackgroundPixel } from "@/lib/jersey-studio/pixel-utils";
+import { isProtectedJerseyPixel, isStudioBackgroundPixel } from "@/lib/jersey-studio/pixel-utils";
 import { applyOpacity, rawRgba, rgbaToPng } from "@/lib/jersey-studio/image-prep";
+
+export type HaloVariant = "uniform" | "detail";
 
 export async function fitToCardLayer(input: Buffer): Promise<Buffer> {
   return sharp(input)
@@ -27,8 +29,14 @@ export async function fitToCardLayer(input: Buffer): Promise<Buffer> {
     .toBuffer();
 }
 
-/** Halo identique maillot / détail — franges quasi blanches uniquement, flou doux. */
-export async function buildColoredHalo(jerseyLayer: Buffer): Promise<Buffer> {
+/**
+ * Halo Figma : dupliquer le maillot, LAYER_BLUR 119 @ 328px, opacité ~37 %,
+ * calque net par-dessus. On retire seulement les franges blanches du détourage.
+ */
+export async function buildColoredHalo(
+  jerseyLayer: Buffer,
+  variant: HaloVariant = "uniform",
+): Promise<Buffer> {
   const { data, width, height } = await rawRgba(jerseyLayer);
 
   for (let p = 0; p < width * height; p++) {
@@ -37,25 +45,19 @@ export async function buildColoredHalo(jerseyLayer: Buffer): Promise<Buffer> {
     const g = data[i + 1] ?? 0;
     const b = data[i + 2] ?? 0;
     const a = data[i + 3] ?? 0;
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    const sat = max - min;
 
     if (a < 24) {
       data[i + 3] = 0;
       continue;
     }
 
-    if (isStudioBackgroundPixel(r, g, b) && !isJerseyFabricPixel(r, g, b)) {
+    if (isStudioBackgroundPixel(r, g, b)) {
       data[i + 3] = 0;
       continue;
     }
 
     const nearWhite = r >= 248 && g >= 248 && b >= 248;
-    const paleFringe =
-      a < 220 &&
-      !isProtectedJerseyPixel(r, g, b) &&
-      (nearWhite || (min >= 200 && sat < 24));
+    const paleFringe = a < 210 && !isProtectedJerseyPixel(r, g, b) && nearWhite;
 
     if (paleFringe) {
       data[i] = CARD_BG.r;
@@ -66,25 +68,25 @@ export async function buildColoredHalo(jerseyLayer: Buffer): Promise<Buffer> {
     }
   }
 
+  const sigma = variant === "detail" ? DETAIL_WORK_HALO_BLUR_SIGMA : WORK_HALO_BLUR_SIGMA;
+  const opacity = variant === "detail" ? DETAIL_HALO_OPACITY : HALO_OPACITY;
+
   const sanitized = await rgbaToPng(data, width, height);
-  // Flou à résolution export (×4 moins de pixels) puis upscale — évite timeout serveur.
-  const blurred = await sharp(sanitized)
-    .resize(CARD_W, CARD_H, { fit: "fill", kernel: sharp.kernel.lanczos3 })
-    .blur(HALO_BLUR_SIGMA)
-    .resize(WORK_CARD_W, WORK_CARD_H, { kernel: sharp.kernel.lanczos3 })
-    .png(LOSSLESS_PNG)
-    .toBuffer();
-  return applyOpacity(blurred, HALO_OPACITY);
+  const blurred = await sharp(sanitized).blur(sigma).png(LOSSLESS_PNG).toBuffer();
+  return applyOpacity(blurred, opacity);
 }
 
-async function compositeCardInternal(normalizedJersey: Buffer): Promise<Buffer> {
+async function compositeCardInternal(
+  normalizedJersey: Buffer,
+  variant: HaloVariant,
+): Promise<Buffer> {
   const meta = await sharp(normalizedJersey).metadata();
   const jerseyLayer =
     meta.width === WORK_CARD_W && meta.height === WORK_CARD_H
       ? normalizedJersey
       : await fitToCardLayer(normalizedJersey);
 
-  const halo = await buildColoredHalo(jerseyLayer);
+  const halo = await buildColoredHalo(jerseyLayer, variant);
 
   const flatBg = await sharp({
     create: {
@@ -107,9 +109,9 @@ async function compositeCardInternal(normalizedJersey: Buffer): Promise<Buffer> 
 }
 
 export async function compositeCard(normalizedJersey: Buffer): Promise<Buffer> {
-  return compositeCardInternal(normalizedJersey);
+  return compositeCardInternal(normalizedJersey, "uniform");
 }
 
 export async function compositeDetailCard(normalizedJersey: Buffer): Promise<Buffer> {
-  return compositeCardInternal(normalizedJersey);
+  return compositeCardInternal(normalizedJersey, "detail");
 }

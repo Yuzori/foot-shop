@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { CartLinePricing } from "@/components/cart/cart-line-pricing";
 import { WelcomePromoCheckoutBanner } from "@/components/checkout/welcome-promo-banner";
+import { Field } from "@/components/ui/field";
 import { SummaryCard } from "@/components/ui/summary-card";
 import { routes } from "@/config/site";
 import { shopConfig } from "@/config/shop";
@@ -24,6 +25,10 @@ interface OrderSummaryProps {
   shippingFee?: number;
   shippingLabel?: string;
   promoDiscount?: number;
+  promoCode?: string;
+  onPromoCodeChange?: (code: string) => void;
+  promoError?: string | null;
+  promoPending?: boolean;
   showEditCart?: boolean;
 }
 
@@ -39,6 +44,10 @@ export function OrderSummary({
   shippingFee,
   shippingLabel,
   promoDiscount = 0,
+  promoCode = "",
+  onPromoCodeChange,
+  promoError,
+  promoPending = false,
   showEditCart = true,
 }: OrderSummaryProps) {
   const bogoDiscount =
@@ -90,6 +99,23 @@ export function OrderSummary({
       </ul>
 
       <div className="mt-6 space-y-2 border-t border-ink/8 pt-6 text-sm">
+        {onPromoCodeChange ? (
+          <div className="pb-4">
+            <Field
+              label="Code promo"
+              name="promoCode"
+              value={promoCode}
+              onChange={(e) => onPromoCodeChange(e.target.value.toUpperCase())}
+              autoComplete="off"
+              disabled={promoPending}
+            />
+            {promoError ? (
+              <p className="mt-2 text-xs text-accent" role="alert">
+                {promoError}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
         <div className="flex justify-between">
           <span className="text-ink/55">Sous-total</span>
           <span className="tabular-nums">{formatPrice(subtotal)}</span>

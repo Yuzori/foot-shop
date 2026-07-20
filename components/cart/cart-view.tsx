@@ -1,13 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { OrderSummary, summarySubtotal } from "@/components/checkout/order-summary";
 import { ProductImage } from "@/components/product/product-image";
 import { CartLinePricing } from "@/components/cart/cart-line-pricing";
-import { Field } from "@/components/ui/field";
 import { Container } from "@/components/ui/container";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
@@ -40,6 +39,29 @@ export function CartView() {
   const removeLine = useCartStore((s) => s.removeLine);
   const { freePerLine, total, bogoLines } = useCartBogo();
   const subtotal = summarySubtotal(lines);
+  const [promoCode, setPromoCode] = useState("");
+
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem("footshop-promo-code");
+      if (saved) setPromoCode(saved);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const handlePromoCodeChange = (code: string) => {
+    setPromoCode(code);
+    try {
+      if (code.trim()) {
+        sessionStorage.setItem("footshop-promo-code", code);
+      } else {
+        sessionStorage.removeItem("footshop-promo-code");
+      }
+    } catch {
+      /* ignore */
+    }
+  };
 
   if (!hydrated && lines.length === 0) {
     return (
@@ -162,29 +184,14 @@ export function CartView() {
         </ul>
 
         <div className="space-y-4">
-          <div className="surface-card p-4">
-            <Field
-              label="Code promo (optionnel)"
-              name="cartPromoCode"
-              placeholder="FOODSHOP10"
-              onChange={(e) => {
-                try {
-                  sessionStorage.setItem(
-                    "footshop-promo-code",
-                    e.target.value.toUpperCase(),
-                  );
-                } catch {
-                  /* ignore */
-                }
-              }}
-            />
-          </div>
           <OrderSummary
             lines={lines}
             freePerLine={freePerLine}
             bogoCartLines={bogoLines}
             subtotal={subtotal}
             orderTotal={total}
+            promoCode={promoCode}
+            onPromoCodeChange={handlePromoCodeChange}
             showEditCart={false}
           />
           <Link

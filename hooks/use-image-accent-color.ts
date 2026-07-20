@@ -24,6 +24,10 @@ function slightlyDarken(r: number, g: number, b: number, factor = 0.86): [number
   return [Math.round(r * factor), Math.round(g * factor), Math.round(b * factor)];
 }
 
+function luminance(r: number, g: number, b: number): number {
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
 function buildAccent(r: number, g: number, b: number): ImageAccent {
   const [mr, mg, mb] = slightlyDarken(r, g, b);
   const [lr, lg, lb] = mixWhite(r, g, b, 0.38);
@@ -37,12 +41,28 @@ function buildAccent(r: number, g: number, b: number): ImageAccent {
 
 const DEFAULT_ACCENT = buildAccent(...DEFAULT_RGB);
 
-function isBackgroundPixel(r: number, g: number, b: number): boolean {
+/** Fond photo / carte — pas la couleur du maillot. */
+function isLikelyBackdrop(r: number, g: number, b: number): boolean {
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
-  if (max < 30) return true;
-  if (max > 200 && max - min < 28) return true;
+  const sat = max - min;
+  if (r >= 248 && g >= 248 && b >= 248 && sat < 12) return true;
+  if (max <= 28 && min <= 26 && sat < 10) return true;
   return false;
+}
+
+/** Blanc / noir / gris du maillot → teinte visible sur fond clair du site. */
+function normalizeFabricNeutral(rgb: [number, number, number]): [number, number, number] {
+  const [r, g, b] = rgb;
+  const lum = luminance(r, g, b);
+
+  if (lum >= 185) {
+    return [206, 206, 210];
+  }
+  if (lum <= 70) {
+    return [42, 42, 48];
+  }
+  return rgb;
 }
 
 /** Extrait la couleur dominante (centre du visuel) pour halo / accents par produit. */
@@ -84,7 +104,8 @@ export function useImageAccentColor(imageUrl: string | null | undefined): ImageA
         ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sample, sample);
 
         const { data } = ctx.getImageData(0, 0, sample, sample);
-        const buckets = new Map<string, { rgb: [number, number, number]; weight: number }>();
+        const chromatic = new Map<string, { rgb: [number, number, number]; weight: number }>();
+        const neutral = new Map<string, { rgb: [number, number, number]; weight: number }>();
 
         for (let i = 0; i < data.length; i += 4) {
           const a = data[i + 3] ?? 0;
@@ -92,28 +113,54 @@ export function useImageAccentColor(imageUrl: string | null | undefined): ImageA
           const r = data[i] ?? 0;
           const g = data[i + 1] ?? 0;
           const b = data[i + 2] ?? 0;
-          if (isBackgroundPixel(r, g, b)) continue;
+          if (isLikelyBackdrop(r, g, b)) continue;
 
           const max = Math.max(r, g, b);
           const min = Math.min(r, g, b);
           const sat = max - min;
-          if (sat < 6) continue;
 
           const qr = Math.round(r / 18) * 18;
           const qg = Math.round(g / 18) * 18;
           const qb = Math.round(b / 18) * 18;
           const key = `${qr}-${qg}-${qb}`;
-          const weight = (sat + 1) * (sat + 1);
-          const prev = buckets.get(key);
-          if (prev) prev.weight += weight;
-          else buckets.set(key, { rgb: [qr, qg, qb], weight });
+
+          if (sat >= 22) {
+            const weight = (sat + 1) * (sat + 1);
+            const prev = chromatic.get(key);
+            if (prev) prev.weight += weight;
+            else chromatic.set(key, { rgb: [qr, qg, qb], weight });
+          } else {
+            const weight = Math.max(1, 120 - sat * 4);
+            const prev = neutral.get(key);
+            if (prev) prev.weight += weight;
+            else neutral.set(key, { rgb: [qr, qg, qb], weight });
+          }
         }
 
-        let best: { rgb: [number, number, number]; weight: number } | null = null;
-        for (const entry of buckets.values()) {
-          if (!best || entry.weight > best.weight) best = entry;
+        let bestChromatic: { rgb: [number, number, number]; weight: number } | null = null;
+        for (const entry of chromatic.values()) {
+          if (!bestChromatic || entry.weight > bestChromatic.weight) bestChromatic = entry;
         }
-        if (best) setAccent(buildAccent(...best.rgb));
+
+        let bestNeutral: { rgb: [number, number, number]; weight: number } | null = null;
+        for (const entry of neutral.values()) {
+          if (!bestNeutral || entry.weight > bestNeutral.weight) bestNeutral = entry;
+        }
+
+        if (
+          bestChromatic &&
+          (!bestNeutral || bestChromatic.weight >= bestNeutral.weight * 0.28)
+        ) {
+          setAccent(buildAccent(...bestChromatic.rgb));
+          return;
+        }
+
+        if (bestNeutral) {
+          setAccent(buildAccent(...normalizeFabricNeutral(bestNeutral.rgb)));
+          return;
+        }
+
+        setAccent(DEFAULT_ACCENT);
       } catch {
         setAccent(DEFAULT_ACCENT);
       }

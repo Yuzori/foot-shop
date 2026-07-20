@@ -77,10 +77,17 @@ export const api = {
 
   async getCategory(
     id: string,
-    options?: { audience?: "kids" | "adult"; sort?: ProductQuery["sort"] },
+    options?: {
+      audience?: "kids" | "adult";
+      kind?: "jersey" | "short";
+      league?: string;
+      sort?: ProductQuery["sort"];
+    },
   ): Promise<{ category: Category; products: Product[] }> {
     const qs = toQueryString({
       audience: options?.audience,
+      kind: options?.kind,
+      league: options?.league,
       sort: options?.sort,
     });
     const { data } = await http.get<{

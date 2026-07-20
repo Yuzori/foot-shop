@@ -1,6 +1,7 @@
 import "server-only";
 
 import { paymentConfig } from "@/config/payment";
+import { countPaidOrdersByCustomer } from "@/lib/customer-order-history";
 import { markOrderArchivePaid } from "@/lib/order-archive-store";
 import { sendFirstOrderThankYouEmail } from "@/lib/first-order-thank-you-email";
 import { sendOrderConfirmationEmail } from "@/lib/order-confirmation-email";
@@ -44,8 +45,8 @@ export async function fulfillPaidOrder(
     : null;
   let isFirstPaidOrder = false;
   if (customerId) {
-    const prior = await prestashop.getOrdersByCustomer(customerId);
-    isFirstPaidOrder = prior.length <= 1;
+    const paidCount = await countPaidOrdersByCustomer(customerId);
+    isFirstPaidOrder = paidCount <= 1;
   } else if (email) {
     isFirstPaidOrder = true;
   }

@@ -12,6 +12,9 @@ const MIN_MAX_DIMENSION_STRICT = 720;
 const MIN_MAX_DIMENSION_RELAXED = 380;
 const MAX_BYTES = 16 * 1024 * 1024;
 const MAX_REDIRECT_HOPS = 12;
+const FETCH_TIMEOUT_MS =
+  Number(process.env.JERSEY_FETCH_TIMEOUT_MS) ||
+  (process.env.RENDER === "true" ? 12_000 : 45_000);
 
 async function fetchImageResponse(
   imageUrl: string,
@@ -20,7 +23,7 @@ async function fetchImageResponse(
   const start = await validateSourceUrl(imageUrl);
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 45_000);
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   try {
     let current = start;

@@ -7,6 +7,7 @@ import { AnnouncementBar } from "@/components/layout/announcement-bar";
 import { ClientShell } from "@/components/layout/client-shell";
 import { SiteModalHost } from "@/components/marketing/site-modal-host";
 import { SiteLoader } from "@/components/layout/site-loader";
+import { ProductNameMigration } from "@/components/migrations/product-name-migration";
 import { publicConfig } from "@/config";
 import { AppProviders } from "@/providers/app-providers";
 import "@/styles/globals.css";
@@ -67,6 +68,7 @@ export default function RootLayout({
           }}
         />
         <SiteLoader />
+        <ProductNameMigration />
         <AppProviders>
           <AnnouncementBar />
           <Header />

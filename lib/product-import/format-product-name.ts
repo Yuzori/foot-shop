@@ -1,3 +1,5 @@
+import { detectKitTypeFromName, kitTypeToFrenchLabel } from "@/lib/kit-type";
+
 const BRAND_RE =
   /\b(zalando|nike|adidas|puma|reebok|under\s*armour|new\s*balance|jordan|foot\s*locker|decathlon|go\s*sport|intersport|amazon|asos|hm|h&m|uniqlo|kappa|umbro|lotto|hummel|joma|macron|errea|castore|fanatics|soccer\.com|pro\s*direct|sports\s*direct)\b/gi;
 
@@ -12,18 +14,11 @@ const COLOR_RE =
 
 const SIZE_RE = /\b(XXS|XS|S|M|L|XL|XXL|XXXL|2XL|3XL|\d{2,3})\b/g;
 
-const KIT_HOME =
-  /\b(domicile|home|principal|1er|premier|first|heimm|heimtrikot|intérieur|interieur)\b/i;
-const KIT_AWAY =
-  /\b(extérieur|exterieur|away|second|deuxième|deuxieme|2e|2ème|auswärts|auswart)\b/i;
-const KIT_THIRD =
-  /\b(third|troisième|troisieme|3e|3ème|alternatif|alternate|special)\b/i;
-
 const SHORT_RE = /\b(short|shorts|pantalon|pant)\b/i;
 
-/** Titre produit : maillot enfant, junior, kids, etc. */
+/** Titre produit : maillot enfant, junior, kids, ensemble, etc. */
 const KIDS_TITLE_RE =
-  /\b(maillot|kit|short|shirt|jersey)\s+[-–]?\s*enfant\b|\benfant\s+[-–]?\s*(maillot|kit|short|shirt|jersey)\b|\b(junior|kids?|youth|garçon|garcon|fille|boys?|girls?)\b/i;
+  /\b(maillot|kit|short|shirt|jersey)\s+[-–]?\s*enfant\b|\benfant\s+[-–]?\s*(maillot|kit|short|shirt|jersey)\b|\b(junior|kids?|youth|garçon|garcon|fille|boys?|girls?)\b|\b(ensemble|kids?\s*kit|mini[\s-]?kit|kids?\s*set|baby\s*kit)\b/i;
 
 /** Description : formulations explicites (pas une simple mention « enfant » ailleurs sur la page). */
 const KIDS_DESC_RE =
@@ -235,24 +230,100 @@ function detectTeam(source: string): string | null {
   return null;
 }
 
-function detectYear(text: string): string | null {
-  const full = text.match(/\b(20[2-3]\d)\b/);
-  if (full?.[1]) return full[1];
+export type ParsedSeason =
+  | { kind: "range"; start: number; end: number; raw: string }
+  | { kind: "single"; year: number; raw: string };
 
-  const season = text.match(/\b(\d{2})\s*[/\\-]\s*(\d{2})\b/);
-  if (season) {
-    const second = Number.parseInt(season[2]!, 10);
-    return second < 50 ? `20${season[2]}` : `19${season[2]}`;
+/** Extrait une saison football depuis un texte (2025-2026, 25-26, 2026…). */
+export function parseSeasonFromText(text: string): ParsedSeason | null {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+
+  const fullRange = trimmed.match(/\b(20\d{2})\s*[-/]\s*(20\d{2})\b/);
+  if (fullRange?.[1] && fullRange[2]) {
+    const start = Number.parseInt(fullRange[1], 10);
+    const end = Number.parseInt(fullRange[2], 10);
+    if (end > start && end - start <= 2) {
+      return { kind: "range", start, end, raw: fullRange[0] };
+    }
+  }
+
+  const compactRange = trimmed.match(/\b(\d{2})\s*[-/]\s*(\d{2})\b/);
+  if (compactRange?.[1] && compactRange[2]) {
+    const y1 = Number.parseInt(compactRange[1], 10);
+    const y2 = Number.parseInt(compactRange[2], 10);
+    const start = y1 < 50 ? 2000 + y1 : 1900 + y1;
+    const end = y2 < 50 ? 2000 + y2 : 1900 + y2;
+    if (end === start + 1) {
+      return { kind: "range", start, end, raw: compactRange[0] };
+    }
+  }
+
+  const single = trimmed.match(/\b(20[2-3]\d)\b/);
+  if (single?.[1]) {
+    return {
+      kind: "single",
+      year: Number.parseInt(single[1], 10),
+      raw: single[1],
+    };
   }
 
   return null;
 }
 
+/** Saison compacte affichée : 25-26, 24-25… */
+export function seasonToCompact(season: ParsedSeason): string {
+  if (season.kind === "range") {
+    return `${String(season.start).slice(-2)}-${String(season.end).slice(-2)}`;
+  }
+
+  const end = season.year;
+  const start = end - 1;
+  return `${String(start).slice(-2)}-${String(end).slice(-2)}`;
+}
+
+function detectSeasonCompact(text: string): string | null {
+  const parsed = parseSeasonFromText(text);
+  return parsed ? seasonToCompact(parsed) : null;
+}
+
+/**
+ * Normalise le nom d'un maillot déjà en boutique : saison en format 25-26.
+ * Retourne null si pas un maillot, pas de saison détectée, ou déjà correct.
+ */
+export function normalizeJerseyProductName(name: string): string | null {
+  const trimmed = name.trim();
+  if (!trimmed || !/\bmaillot\b/i.test(trimmed) || SHORT_RE.test(trimmed)) {
+    return null;
+  }
+
+  const parsed = parseSeasonFromText(trimmed);
+  if (!parsed) return null;
+
+  const compact = seasonToCompact(parsed);
+  const trailingCompact = trimmed.match(/\b(\d{2}-\d{2})\s*$/);
+  if (trailingCompact?.[1] === compact) return null;
+
+  const base = trimmed
+    .replace(/\b20\d{2}\s*[-/]\s*20\d{2}\b/g, " ")
+    .replace(/\b\d{2}\s*[-/]\s*\d{2}\b/g, " ")
+    .replace(/\b20[2-3]\d\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!base) return null;
+
+  const normalized = `${base} ${compact}`.replace(/\s+/g, " ").trim();
+  return normalized === trimmed ? null : normalized;
+}
+
+/** Nom affiché côté boutique (normalisation saison sans écrire en base). */
+export function displayJerseyProductName(name: string): string {
+  return normalizeJerseyProductName(name) ?? name;
+}
+
 function detectKitType(text: string): string {
-  if (KIT_THIRD.test(text)) return "Third";
-  if (KIT_AWAY.test(text)) return "Extérieur";
-  if (KIT_HOME.test(text)) return "Domicile";
-  return "Domicile";
+  return kitTypeToFrenchLabel(detectKitTypeFromName(text) ?? "domicile");
 }
 
 function detectProductType(text: string): "Maillot" | "Short" {
@@ -322,8 +393,8 @@ export function extractTeamFromSlugTokens(sourceUrl: string): string | null {
 }
 
 /**
- * Formate un titre : « Maillot Maroc Domicile 2025 »
- * Uniquement type + équipe/pays + domicile/extérieur + année.
+ * Formate un titre : « Maillot Maroc Domicile 25-26 »
+ * Uniquement type + équipe/pays + domicile/extérieur + saison (format compact).
  * L'équipe est déduite du titre et de l'URL (pas du texte de page entier).
  */
 export function formatProductName(rawTitle: string, sourceUrl = ""): string {
@@ -333,11 +404,15 @@ export function formatProductName(rawTitle: string, sourceUrl = ""): string {
   const audience = detectAudienceFromProduct(title, "");
   const productType = detectProductType(`${title} ${sourceUrl}`);
   const kitType = detectKitType(title);
-  const year =
-    detectYear(title) ??
-    detectYear(sourceUrl) ??
-    detectYear(cleanTitle(title)) ??
-    String(new Date().getFullYear());
+  const seasonCompact =
+    detectSeasonCompact(title) ??
+    detectSeasonCompact(sourceUrl) ??
+    detectSeasonCompact(cleanTitle(title)) ??
+    seasonToCompact({
+      kind: "single",
+      year: new Date().getFullYear(),
+      raw: "",
+    });
   const team =
     detectTeam(title) ??
     detectTeam(cleanTitle(title)) ??
@@ -346,7 +421,7 @@ export function formatProductName(rawTitle: string, sourceUrl = ""): string {
     "Équipe";
 
   const audienceTag = audience === "kids" ? "Enfant " : "";
-  return `${productType} ${audienceTag}${team} ${kitType} ${year}`
+  return `${productType} ${audienceTag}${team} ${kitType} ${seasonCompact}`
     .replace(/\s+/g, " ")
     .trim();
 }

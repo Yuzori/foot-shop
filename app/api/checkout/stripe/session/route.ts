@@ -14,7 +14,7 @@ import {
   validateStripeSiteUrl,
 } from "@/lib/stripe-keys";
 import { calculateWelcomeBogo } from "@/lib/welcome-bogo";
-import { applyPercentDiscount, resolvePromoCode } from "@/lib/promo-code";
+import { validatePromoCodeForCheckout } from "@/lib/validate-promo-code";
 
 export const runtime = "nodejs";
 
@@ -105,18 +105,30 @@ export async function POST(request: Request) {
   }
 
   const shippingFee = order.shippingFee ?? 0;
-  const promo = resolvePromoCode(body.promoCode);
-  if (body.promoCode?.trim() && !promo?.valid) {
-    return NextResponse.json({ message: "Code promo invalide." }, { status: 400 });
-  }
   const productsSubtotal = chargeLines.reduce(
     (sum, line) => sum + line.unitPrice * line.quantity,
     0,
   );
+  const promoValidation = await validatePromoCodeForCheckout({
+    code: body.promoCode,
+    email: body.contact.email,
+    customerId: order.customerId,
+    subtotal: productsSubtotal,
+  });
+  if (body.promoCode?.trim() && promoValidation && !promoValidation.valid) {
+    return NextResponse.json({ message: promoValidation.message }, { status: 400 });
+  }
+  const promo =
+    promoValidation?.valid === true
+      ? {
+          valid: true as const,
+          code: promoValidation.code,
+          percent: promoValidation.percent,
+          label: promoValidation.label,
+        }
+      : null;
   const promoDiscount =
-    promo?.valid === true
-      ? applyPercentDiscount(productsSubtotal, promo.percent)
-      : 0;
+    promo?.valid === true ? promoValidation.discount : 0;
 
   const stripeLineItems = chargeLines.map((it) => ({
     quantity: it.quantity,

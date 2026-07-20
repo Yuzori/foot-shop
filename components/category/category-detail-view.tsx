@@ -58,7 +58,12 @@ export function CategoryDetailView({ id }: { id: string }) {
   const [sort, setSort] = useState<SortOption>("relevance");
 
   const catalogNav = useCatalogNav();
-  const { data, isLoading, isError } = useCategory(id, { audience, sort });
+  const { data, isLoading, isError } = useCategory(id, {
+    audience,
+    kind: forcedKind,
+    league: leagueParam,
+    sort,
+  });
   const category = data?.category;
   const rawProducts = data?.products ?? [];
 

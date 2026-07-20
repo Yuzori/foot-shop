@@ -9,6 +9,7 @@ import { ProductEngagementTracker } from "@/components/product/product-engagemen
 import { ProductGallery } from "@/components/product/product-gallery";
 import { ProductGrid } from "@/components/product/product-grid";
 import { ProductBadges } from "@/components/product/product-badges";
+import { KitTypeSwitcher, type KitSwitcherOption } from "@/components/product/kit-type-switcher";
 import { ProductPurchase } from "@/components/product/product-purchase";
 import { StockAlertBell } from "@/components/product/stock-alert-bell";
 import { Container } from "@/components/ui/container";
@@ -19,9 +20,10 @@ import type { Product } from "@/types/domain";
 
 interface ProductDetailProps {
   product: Product;
+  kitOptions?: KitSwitcherOption[];
 }
 
-export function ProductDetail({ product }: ProductDetailProps) {
+export function ProductDetail({ product, kitOptions = [] }: ProductDetailProps) {
   const setRecent = useRecentProductStore((s) => s.setRecent);
   const related = useProducts(
     product.defaultCategoryId
@@ -83,7 +85,13 @@ export function ProductDetail({ product }: ProductDetailProps) {
               </div>
             </div>
 
-            <div className="mt-8">
+            <div className="mt-8 flex flex-col gap-6">
+              {kitOptions.length > 1 ? (
+                <KitTypeSwitcher
+                  currentProductId={product.id}
+                  options={kitOptions}
+                />
+              ) : null}
               <ProductPurchase product={product} />
             </div>
           </div>

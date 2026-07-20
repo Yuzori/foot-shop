@@ -2,18 +2,24 @@ import { catalogConfig } from "@/config/catalog";
 import { findCategoryLabel } from "@/lib/admin/import-category-tree";
 import type { AdminCategoryOptGroup } from "@/lib/admin/import-category-tree";
 import {
+  divisionFromLeagueId,
+  findAdultDivisionCategoryId,
+  findKidsDivisionCategoryId,
+  kidsDivisionCategoryLabel,
+  detectDivisionFromProductText,
+} from "@/lib/catalog-divisions";
+import {
   findCategoryIdByMatcher,
   matchKidsMaillotsCategory,
   matchKidsShortsCategory,
 } from "@/lib/catalog-category-match";
-import {
-  detectDivisionFromProductText,
-  findAdultDivisionCategoryId,
-  findKidsDivisionCategoryId,
-  kidsDivisionCategoryLabel,
-} from "@/lib/catalog-divisions";
 import type { ProductAudience } from "@/lib/product-import/format-product-name";
 import type { ProductCollectionKind } from "@/lib/product-collection";
+import {
+  detectImportCategorySignal,
+  resolveExtraCategoryId,
+  resolveExtraKidsCategoryId,
+} from "@/lib/product-import/import-category-signals";
 
 export interface ImportCategorySuggestion {
   categoryId: string;
@@ -95,12 +101,49 @@ export function suggestImportCategory(params: {
   optGroups?: readonly AdminCategoryOptGroup[];
 }): ImportCategorySuggestion | null {
   const { title, sourceUrl, audience, kind, categories, optGroups } = params;
-  const division = detectDivisionFromProductText(
-    `${title}\n${sourceUrl ?? ""}`,
-  );
+
+  const signal = detectImportCategorySignal(title, sourceUrl ?? "");
+  if (signal?.type === "extra") {
+    if (audience === "kids") {
+      const kidsMaillotsBaseId = resolveKidsMaillotsBaseId(categories);
+      const kidsShortsBaseId = resolveKidsShortsBaseId(categories);
+      const kidsBaseId =
+        kind === "short" ? kidsShortsBaseId : kidsMaillotsBaseId;
+      const kidsCategoryId = resolveExtraKidsCategoryId(
+        signal.key,
+        categories,
+        kidsBaseId,
+        kidsShortsBaseId,
+      );
+      if (kidsCategoryId) {
+        return {
+          categoryId: kidsCategoryId,
+          label: formatCategoryLabel(kidsCategoryId, categories, optGroups),
+          reason: `Enfant · ${signal.reason}`,
+        };
+      }
+    }
+
+    const categoryId = resolveExtraCategoryId(signal.key, categories);
+    if (categoryId) {
+      return {
+        categoryId,
+        label: formatCategoryLabel(categoryId, categories, optGroups),
+        reason: signal.reason,
+      };
+    }
+  }
+
+  const division =
+    (signal?.type === "division"
+      ? divisionFromLeagueId(signal.leagueId)
+      : null) ?? detectDivisionFromProductText(`${title}\n${sourceUrl ?? ""}`);
+
   if (!division) return null;
 
   const divisionLabel = kidsDivisionCategoryLabel(division);
+  const signalReason =
+    signal?.type === "division" ? signal.reason : division.label;
 
   if (audience === "kids") {
     const kidsBaseId =
@@ -131,7 +174,7 @@ export function suggestImportCategory(params: {
     return {
       categoryId,
       label: formatCategoryLabel(categoryId, categories, optGroups),
-      reason: division.label,
+      reason: signalReason,
     };
   }
 
@@ -147,6 +190,6 @@ export function suggestImportCategory(params: {
   return {
     categoryId: adultDivisionId,
     label: formatCategoryLabel(adultDivisionId, categories, optGroups),
-    reason: division.label,
+    reason: signalReason,
   };
 }

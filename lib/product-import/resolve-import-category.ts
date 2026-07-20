@@ -18,6 +18,8 @@ import {
 
   getDivisionForCategoryId,
 
+  detectDivisionFromProductText,
+
   findKidsDivisionCategoryId,
 
   kidsDivisionMissingError,
@@ -29,6 +31,8 @@ import type { ProductAudience } from "@/lib/product-import/format-product-name";
 import type { ProductCollectionKind } from "@/lib/product-collection";
 
 import { prestashop } from "@/services/prestashop";
+
+import { normalizeCategoryId } from "@/lib/product-import/normalize-category-id";
 
 
 
@@ -120,7 +124,9 @@ export async function resolveImportCategoryForProduct(
 
   audience: ProductAudience,
 
-  divisionCategoryId: string,
+  divisionCategoryId: string | number,
+
+  productName?: string,
 
 ): Promise<string> {
 
@@ -158,7 +164,31 @@ export async function resolveImportCategoryForProduct(
 
 
 
-  const division = getDivisionForCategoryId(divisionCategoryId, categories);
+  const trimmedCategoryId = normalizeCategoryId(divisionCategoryId);
+
+  const selected = categories.find((item) => item.id === trimmedCategoryId);
+
+  if (
+
+    selected &&
+
+    String(selected.parentId ?? "").trim() === String(kidsBaseId).trim()
+
+  ) {
+
+    return trimmedCategoryId;
+
+  }
+
+
+
+  let division = getDivisionForCategoryId(trimmedCategoryId, categories);
+
+  if (!division && productName?.trim()) {
+
+    division = detectDivisionFromProductText(productName);
+
+  }
 
   if (!division) return kidsBaseId;
 

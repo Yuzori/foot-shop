@@ -10,6 +10,7 @@ import type { BbdBuyOrderDraft } from "@/lib/bbdbuy/types";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { ProductImage } from "@/components/product/product-image";
+import { QuickImportSection } from "@/components/admin/quick-import-section";
 import { JerseyStudioSection } from "@/components/admin/jersey-studio-section";
 
 const SECRET_KEY = "footshop-admin-secret";
@@ -673,6 +674,7 @@ export function BbdBuyPanel() {
 
         <OrderArchiveSection secret={secret} />
         <ShippingForm secret={secret} />
+        <QuickImportSection secret={secret} />
         <JerseyStudioSection secret={secret} />
       </div>
     </Container>

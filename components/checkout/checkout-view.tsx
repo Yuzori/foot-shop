@@ -41,6 +41,7 @@ import { getErrorMessage } from "@/lib/http";
 import { preloadStripe } from "@/lib/stripe-client";
 import { calculateWelcomeBogo, allocateBogoFreeQuantities } from "@/lib/welcome-bogo";
 import { useHydrated } from "@/hooks/use-hydrated";
+import { useSession } from "@/hooks/use-auth";
 import { cartLineUnitPrice } from "@/hooks/use-cart-bogo";
 import {
   resolveCartLinesForCheckout,
@@ -92,6 +93,7 @@ export function CheckoutView() {
   const removeLine = useCartStore((s) => s.removeLine);
   const clear = useCartStore((s) => s.clear);
   const welcomePromoQuery = useWelcomePromo();
+  const sessionQuery = useSession();
 
   const [frozenLines, setFrozenLines] = useState<CartLine[] | null>(null);
   const [step, setStep] = useState<Step>("details");
@@ -107,6 +109,9 @@ export function CheckoutView() {
   const [stripeBogoDiscount, setStripeBogoDiscount] = useState(0);
   const [stripeFreeUnits, setStripeFreeUnits] = useState(0);
   const [promoCode, setPromoCode] = useState("");
+  const [promoDiscount, setPromoDiscount] = useState(0);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [promoPending, setPromoPending] = useState(false);
   const [shippingPreview, setShippingPreview] = useState<{
     fee: number;
     label: string;
@@ -208,7 +213,89 @@ export function CheckoutView() {
 
   const orderTotal = Math.max(
     0,
-    subtotal - bogoDiscount + (shippingPreview?.fee ?? 0),
+    subtotal - bogoDiscount - promoDiscount + (shippingPreview?.fee ?? 0),
+  );
+
+  const refreshShippingPreview = useCallback(
+    async (email: string) => {
+      if (!email.trim()) return;
+      try {
+        const res = await fetch("/api/checkout/shipping-preview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email,
+            customerId: sessionQuery.data?.id,
+          }),
+        });
+        const data = (await res.json()) as { fee?: number; label?: string };
+        if (typeof data.fee === "number") {
+          setShippingPreview({ fee: data.fee, label: data.label ?? "" });
+        }
+      } catch {
+        /* ignore */
+      }
+    },
+    [sessionQuery.data?.id],
+  );
+
+  const refreshPromoPreview = useCallback(
+    async (code: string, email?: string) => {
+      const trimmed = code.trim();
+      if (!trimmed) {
+        setPromoDiscount(0);
+        setPromoError(null);
+        return;
+      }
+
+      setPromoPending(true);
+      try {
+        const res = await fetch("/api/checkout/promo-preview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            code: trimmed,
+            email: email?.trim() ?? "",
+            customerId: sessionQuery.data?.id,
+            subtotal: subtotal - bogoDiscount,
+          }),
+        });
+        const data = (await res.json()) as {
+          valid?: boolean;
+          discount?: number;
+          message?: string;
+        };
+        if (data.valid && typeof data.discount === "number") {
+          setPromoDiscount(data.discount);
+          setPromoError(null);
+        } else {
+          setPromoDiscount(0);
+          setPromoError(data.message || "Code promo invalide.");
+        }
+      } catch {
+        setPromoDiscount(0);
+        setPromoError("Impossible de vérifier le code promo.");
+      } finally {
+        setPromoPending(false);
+      }
+    },
+    [bogoDiscount, sessionQuery.data?.id, subtotal],
+  );
+
+  const handlePromoCodeChange = useCallback(
+    (code: string) => {
+      setPromoCode(code);
+      try {
+        if (code.trim()) {
+          sessionStorage.setItem("footshop-promo-code", code);
+        } else {
+          sessionStorage.removeItem("footshop-promo-code");
+        }
+      } catch {
+        /* ignore */
+      }
+    },
+    [],
   );
 
   const persistPaymentSession = useCallback(
@@ -241,12 +328,29 @@ export function CheckoutView() {
     }
     try {
       const savedPromo = sessionStorage.getItem("footshop-promo-code");
-      if (savedPromo) setPromoCode(savedPromo);
+      if (savedPromo) {
+        setPromoCode(savedPromo);
+        void refreshPromoPreview(savedPromo);
+      }
     } catch {
       /* ignore */
     }
     void preloadStripe();
-  }, []);
+  }, [refreshPromoPreview]);
+
+  useEffect(() => {
+    if (!promoCode.trim()) return;
+    const timer = window.setTimeout(() => {
+      void refreshPromoPreview(promoCode);
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [promoCode, refreshPromoPreview]);
+
+  useEffect(() => {
+    const email = sessionQuery.data?.email?.trim();
+    if (!email) return;
+    void refreshShippingPreview(email);
+  }, [refreshShippingPreview, sessionQuery.data?.email]);
 
   if (!hydrated) {
     return (
@@ -354,6 +458,11 @@ export function CheckoutView() {
       return;
     }
 
+    if (promoCode.trim() && promoError) {
+      setError(promoError);
+      return;
+    }
+
     setPending(true);
 
     const apiLines = snapshot.map(mapLineForApi);
@@ -403,6 +512,9 @@ export function CheckoutView() {
             fee: session.shippingFee,
             label: session.shippingLabel ?? "",
           });
+        }
+        if (typeof session.promoDiscount === "number") {
+          setPromoDiscount(session.promoDiscount);
         }
         if (session.bogoApplied) {
           await welcomePromoQuery.refetch();
@@ -514,18 +626,9 @@ export function CheckoutView() {
                 <Field label="Email" name="email" type="email" required autoComplete="email" className="sm:col-span-2" onBlur={async (e) => {
                   const email = e.currentTarget.value.trim();
                   if (!email) return;
-                  try {
-                    const res = await fetch("/api/checkout/shipping-preview", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ email }),
-                    });
-                    const data = (await res.json()) as { fee?: number; label?: string };
-                    if (typeof data.fee === "number") {
-                      setShippingPreview({ fee: data.fee, label: data.label ?? "" });
-                    }
-                  } catch {
-                    /* ignore */
+                  await refreshShippingPreview(email);
+                  if (promoCode.trim()) {
+                    await refreshPromoPreview(promoCode, email);
                   }
                 }} />
                 <Field label="Téléphone" name="phone" type="tel" autoComplete="tel" className="sm:col-span-2" />
@@ -546,18 +649,6 @@ export function CheckoutView() {
             <div className="surface-card p-6 sm:p-8">
               <CheckoutFlocage />
             </div>
-
-            <section className="surface-card p-6 sm:p-8">
-              <h2 className="section-title mb-3">Code promo</h2>
-              <Field
-                label="Code promotionnel (optionnel)"
-                name="promoCode"
-                value={promoCode}
-                onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                placeholder="Ex. FOODSHOP10"
-                autoComplete="off"
-              />
-            </section>
 
             {error ? (
               <p className="rounded-2xl border border-accent/20 bg-accent/5 px-4 py-3 text-sm text-accent" role="alert">
@@ -638,6 +729,11 @@ export function CheckoutView() {
           stripeFreeUnits={stripeFreeUnits}
           shippingFee={shippingPreview?.fee}
           shippingLabel={shippingPreview?.label}
+          promoDiscount={promoDiscount}
+          promoCode={promoCode}
+          onPromoCodeChange={handlePromoCodeChange}
+          promoError={promoError}
+          promoPending={promoPending}
         />
       </div>
     </Container>

@@ -7,6 +7,7 @@ import {
 } from "@/config/catalog-leagues";
 
 import type { ProductCollectionKind } from "@/lib/product-collection";
+import { normalizeCategoryId } from "@/lib/product-import/normalize-category-id";
 
 
 
@@ -88,9 +89,9 @@ const DIVISION_MATCHERS: Record<
 
   "la-liga": {
 
-    adult: [/la\s*liga/i, /\bliga\b/i],
+    adult: [/la\s*liga/i],
 
-    kids: [/la\s*liga/i, /\bliga\b/i],
+    kids: [/la\s*liga/i],
 
   },
 
@@ -146,9 +147,29 @@ const DIVISION_MATCHERS: Record<
 
   },
 
+  "maillot-concept": {
+    adult: [/maillot\s*concept/i, /^concept$/i],
+    kids: [/maillot\s*concept/i, /^concept$/i],
+  },
+
+  "maillot-retro": {
+    adult: [/maillot\s*retro/i, /rétro/i, /^retro$/i, /vintage/i],
+    kids: [/maillot\s*retro/i, /rétro/i, /^retro$/i, /vintage/i],
+  },
+
+  "reste-du-monde": {
+    adult: [/reste\s*du\s*monde/i, /hors\s*cat[ée]gorie/i],
+    kids: [/reste\s*du\s*monde/i, /hors\s*cat[ée]gorie/i],
+  },
+
 };
 
 
+
+export function divisionFromLeagueId(leagueId: string): CatalogDivision | null {
+  const league = catalogLeagues.find((item) => item.id === leagueId);
+  return league ? divisionFromLeague(league) : null;
+}
 
 function divisionFromLeague(league: CatalogLeague): CatalogDivision {
 
@@ -338,13 +359,13 @@ export function detectDivisionFromProductText(text: string): CatalogDivision | n
 
 export function getDivisionForCategoryId(
 
-  categoryId: string,
+  categoryId: string | number,
 
   categories: readonly { id: string; name: string }[],
 
 ): CatalogDivision | null {
 
-  const trimmed = categoryId.trim();
+  const trimmed = normalizeCategoryId(categoryId);
 
   if (!trimmed) return null;
 
@@ -382,34 +403,22 @@ export function getDivisionForCategoryId(
 
 
 
-/** Sous-catégorie enfant d'une division (ex. Enfant - Maillots > CDM). */
-
+/** Sous-catégorie enfant d'une division (ex. Enfant - Maillots > World Cup). */
 export function findKidsDivisionCategoryId(
-
   categories: readonly { id: string; name: string; parentId?: string | null }[],
-
   kidsBaseCategoryId: string,
-
   division: CatalogDivision,
-
 ): string {
-
-  if (!kidsBaseCategoryId) return "";
-
-
+  const kidsBase = String(kidsBaseCategoryId ?? "").trim();
+  if (!kidsBase) return "";
 
   const match = categories.find(
-
     (category) =>
-
-      category.parentId === kidsBaseCategoryId &&
-
+      String(category.parentId ?? "").trim() === kidsBase &&
       nameMatchesPatterns(category.name, division.kidsNamePatterns),
-
   );
 
   return match?.id ?? "";
-
 }
 
 
@@ -439,13 +448,10 @@ export function findAdultDivisionCategoryId(
 
 
   const match = categories.find(
-
     (category) =>
-
-      category.parentId === adultBaseCategoryId &&
-
+      String(category.parentId ?? "").trim() ===
+        String(adultBaseCategoryId ?? "").trim() &&
       nameMatchesPatterns(category.name, matchers.adult),
-
   );
 
   return match?.id ?? "";

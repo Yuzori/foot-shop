@@ -1,34 +1,13 @@
 {
-  "name": "Foot Shop - Import maillot v3",
-  "id": "footshop-import-maillot-v3",
+  "name": "Foot Shop — Détourer",
+  "id": "footshop-remove-background",
   "api": "1.0.0",
   "main": "code.js",
   "ui": "ui.html",
   "documentAccess": "dynamic-page",
   "editorType": ["figma"],
   "networkAccess": {
-    "allowedDomains": [
-      "foot-shop.fr",
-      "www.foot-shop.fr",
-      "foot-shop.onrender.com",
-      "httpbin.org",
-      "unisportstore.fr",
-      "www.unisportstore.fr",
-      "*.unisportstore.fr",
-      "zalando.fr",
-      "www.zalando.fr",
-      "*.ztat.net",
-      "bbdbuy.com",
-      "www.bbdbuy.com",
-      "*.bbdbuy.com",
-      "cdn.shopify.com",
-      "*.cloudinary.com",
-      "*.cloudfront.net",
-      "*.akamaized.net"
-    ],
-    "devAllowedDomains": [
-      "http://localhost:3000"
-    ],
-    "reasoning": "Appelle l'API Foot Shop (Render) pour scraper les produits côté serveur et télécharger les images depuis les fournisseurs."
+    "allowedDomains": ["api.remove.bg"],
+    "reasoning": "Envoie l'image sélectionnée à remove.bg pour le détourage automatique."
   }
 }

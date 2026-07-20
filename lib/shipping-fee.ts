@@ -1,6 +1,7 @@
 import "server-only";
 
 import { shopConfig } from "@/config/shop";
+import { countPaidOrdersForCheckout } from "@/lib/customer-order-history";
 import { prestashop } from "@/services/prestashop";
 
 export interface ShippingFeeResult {
@@ -9,7 +10,7 @@ export interface ShippingFeeResult {
   label: string;
 }
 
-/** Livraison offerte si le client n'a encore aucune commande PrestaShop. */
+/** Livraison offerte si le client n'a encore aucune commande payée. */
 export async function resolveShippingFee(input: {
   email: string;
   customerId?: string | null;
@@ -35,8 +36,11 @@ export async function resolveShippingFee(input: {
     };
   }
 
-  const orders = await prestashop.getOrdersByCustomer(customerId);
-  if (orders.length === 0) {
+  const paidOrders = await countPaidOrdersForCheckout({
+    email: input.email,
+    customerId,
+  });
+  if (paidOrders === 0) {
     return {
       fee: 0,
       free: true,

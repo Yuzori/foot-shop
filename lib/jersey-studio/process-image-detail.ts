@@ -7,7 +7,6 @@ import { LOSSLESS_PNG, WORK_CARD_H, WORK_CARD_W } from "@/lib/jersey-studio/cons
 import { downscaleCardForExport } from "@/lib/jersey-studio/export-card";
 import {
   prepareInput,
-  polishCutoutDetail,
   rawRgba,
   removeBackgroundForDetail,
   rgbaToPng,
@@ -37,8 +36,7 @@ async function fillCardPreservingFraming(cutout: Buffer): Promise<Buffer> {
     })
     .ensureAlpha()
     .png(LOSSLESS_PNG)
-    .toBuffer()
-    .then(polishCutoutDetail);
+    .toBuffer();
 }
 
 /** Pipeline détail : détourage → carte pleine + halo. */
