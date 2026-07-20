@@ -128,7 +128,7 @@ export async function POST(request: Request) {
         }
       : null;
   const promoDiscount =
-    promo?.valid === true ? promoValidation.discount : 0;
+    promoValidation?.valid === true ? promoValidation.discount : 0;
 
   const stripeLineItems = chargeLines.map((it) => ({
     quantity: it.quantity,

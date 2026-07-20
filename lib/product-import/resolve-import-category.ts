@@ -130,7 +130,7 @@ export async function resolveImportCategoryForProduct(
 
 ): Promise<string> {
 
-  if (audience !== "kids") return divisionCategoryId;
+  if (audience !== "kids") return normalizeCategoryId(divisionCategoryId);
 
 
 

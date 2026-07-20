@@ -343,7 +343,7 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
         }
       : null;
   const promoDiscount =
-    promo?.valid === true ? promoValidation.discount : 0;
+    promoValidation?.valid === true ? promoValidation.discount : 0;
 
   const result = await prestashop.createOrder({
 
