@@ -131,6 +131,20 @@ export async function fetchImageBuffer(
   imageUrl: string,
   referer?: string,
 ): Promise<{ buffer: Buffer; mimeType: string; width: number; height: number }> {
+  if (imageUrl.startsWith("data:")) {
+    const match = imageUrl.match(/^data:([^;]+);base64,(.+)$/);
+    if (!match?.[1] || !match[2]) {
+      throw new Error("Image collée invalide.");
+    }
+    const buffer = Buffer.from(match[2], "base64");
+    const mimeType = match[1].trim().toLowerCase();
+    const meta = await sharp(buffer).metadata();
+    const width = meta.width ?? 0;
+    const height = meta.height ?? 0;
+    validateImageBuffer(buffer, width, height, true);
+    return { buffer, mimeType, width, height };
+  }
+
   const candidates = buildImageUrlCandidates(imageUrl);
   let lastError: Error | null = null;
 

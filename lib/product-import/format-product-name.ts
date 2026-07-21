@@ -239,27 +239,27 @@ export function parseSeasonFromText(text: string): ParsedSeason | null {
   const trimmed = text.trim();
   if (!trimmed) return null;
 
-  const fullRange = trimmed.match(/\b(20\d{2})\s*[-/]\s*(20\d{2})\b/);
+  const fullRange = trimmed.match(/(?:^|[^\d])(20\d{2})\s*[-_/]\s*(20\d{2})(?:[^\d]|$)/);
   if (fullRange?.[1] && fullRange[2]) {
     const start = Number.parseInt(fullRange[1], 10);
     const end = Number.parseInt(fullRange[2], 10);
     if (end > start && end - start <= 2) {
-      return { kind: "range", start, end, raw: fullRange[0] };
+      return { kind: "range", start, end, raw: `${fullRange[1]}-${fullRange[2]}` };
     }
   }
 
-  const compactRange = trimmed.match(/\b(\d{2})\s*[-/]\s*(\d{2})\b/);
+  const compactRange = trimmed.match(/(?:^|[^\d])(\d{2})\s*[-_/]\s*(\d{2})(?:[^\d]|$)/);
   if (compactRange?.[1] && compactRange[2]) {
     const y1 = Number.parseInt(compactRange[1], 10);
     const y2 = Number.parseInt(compactRange[2], 10);
     const start = y1 < 50 ? 2000 + y1 : 1900 + y1;
     const end = y2 < 50 ? 2000 + y2 : 1900 + y2;
     if (end === start + 1) {
-      return { kind: "range", start, end, raw: compactRange[0] };
+      return { kind: "range", start, end, raw: `${compactRange[1]}-${compactRange[2]}` };
     }
   }
 
-  const single = trimmed.match(/\b(20[2-3]\d)\b/);
+  const single = trimmed.match(/(?:^|[^\d])(20[2-3]\d)(?:[^\d]|$)/);
   if (single?.[1]) {
     return {
       kind: "single",
@@ -271,15 +271,12 @@ export function parseSeasonFromText(text: string): ParsedSeason | null {
   return null;
 }
 
-/** Saison compacte affichée : 25-26, 24-25… */
+/** Saison compacte affichée : 25-26 pour une plage, 2026 pour une année seule. */
 export function seasonToCompact(season: ParsedSeason): string {
   if (season.kind === "range") {
     return `${String(season.start).slice(-2)}-${String(season.end).slice(-2)}`;
   }
-
-  const end = season.year;
-  const start = end - 1;
-  return `${String(start).slice(-2)}-${String(end).slice(-2)}`;
+  return String(season.year);
 }
 
 function detectSeasonCompact(text: string): string | null {
@@ -407,12 +404,7 @@ export function formatProductName(rawTitle: string, sourceUrl = ""): string {
   const seasonCompact =
     detectSeasonCompact(title) ??
     detectSeasonCompact(sourceUrl) ??
-    detectSeasonCompact(cleanTitle(title)) ??
-    seasonToCompact({
-      kind: "single",
-      year: new Date().getFullYear(),
-      raw: "",
-    });
+    detectSeasonCompact(cleanTitle(title));
   const team =
     detectTeam(title) ??
     detectTeam(cleanTitle(title)) ??
@@ -421,7 +413,7 @@ export function formatProductName(rawTitle: string, sourceUrl = ""): string {
     "Équipe";
 
   const audienceTag = audience === "kids" ? "Enfant " : "";
-  return `${productType} ${audienceTag}${team} ${kitType} ${seasonCompact}`
-    .replace(/\s+/g, " ")
-    .trim();
+  const parts = [`${productType} ${audienceTag}${team}`.trim(), kitType];
+  if (seasonCompact) parts.push(seasonCompact);
+  return parts.join(" ").replace(/\s+/g, " ").trim();
 }

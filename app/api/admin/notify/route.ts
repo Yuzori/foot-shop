@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { publicConfig } from "@/config";
 import { mailConfig } from "@/config/mail";
 import { isAdminAuthorized } from "@/lib/admin-auth";
+import { productCoverEmailImageUrl } from "@/lib/email-product-image-url";
 import {
   emailButton,
   emailHeading,
@@ -10,9 +11,9 @@ import {
   emailParagraph,
   emailProductImage,
 } from "@/lib/email-template";
-import { absoluteUrl } from "@/lib/absolute-url";
-import { sendMail } from "@/lib/mailer";
 import { readGuestNewsletterEmails } from "@/lib/newsletter-subscribers";
+import { sendMail } from "@/lib/mailer";
+import { getSiteUrl, productPageUrl } from "@/lib/site-url";
 import { readSnapshot, writeSnapshot, type ProductSnapshot } from "@/lib/notify-state";
 import { processStockAlertEmails } from "@/lib/stock-alerts";
 import { filterProductsByKind } from "@/lib/product-collection";
@@ -123,13 +124,13 @@ export async function runNotifyJob() {
     });
   }
 
-  const base = publicConfig.siteUrl.replace(/\/$/, "");
+  const base = getSiteUrl();
   const listHtml = (title: string, items: typeof products) =>
     items.length
       ? `<h3 style="margin:20px 0 8px;font-size:16px">${title}</h3>${items
           .map((p) => {
-            const img = absoluteUrl(p.cover?.url ?? p.images?.[0]?.url ?? null);
-            return `<div style="margin-bottom:20px">${emailProductImage(img, p.name)}<p style="margin:0 0 6px;font-size:15px"><a href="${base}/produit/${p.id}" style="color:#0a0a0a;font-weight:600;text-decoration:none">${escapeHtml(p.name)}</a></p></div>`;
+            const img = productCoverEmailImageUrl(p);
+            return `<div style="margin-bottom:20px">${emailProductImage(img, p.name)}<p style="margin:0 0 6px;font-size:15px"><a href="${productPageUrl(p.id)}" style="color:#0a0a0a;font-weight:600;text-decoration:none">${escapeHtml(p.name)}</a></p></div>`;
           })
           .join("")}`
       : "";
@@ -146,12 +147,12 @@ export async function runNotifyJob() {
   const html = emailLayout(body);
   const text = [
     `Du nouveau chez ${publicConfig.siteName} !`,
-    ...newArrivals.map((p) => `Nouveau maillot: ${p.name} - ${base}/produit/${p.id}`),
+    ...newArrivals.map((p) => `Nouveau maillot: ${p.name} - ${productPageUrl(p.id)}`),
     ...backInStock.map(
-      (p) => `Retour en stock: ${p.name} - ${base}/produit/${p.id}`,
+      (p) => `Retour en stock: ${p.name} - ${productPageUrl(p.id)}`,
     ),
     ...wentOutOfStock.map(
-      (p) => `Rupture imminente: ${p.name} - ${base}/produit/${p.id}`,
+      (p) => `Rupture imminente: ${p.name} - ${productPageUrl(p.id)}`,
     ),
   ].join("\n");
 

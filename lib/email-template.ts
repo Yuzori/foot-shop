@@ -1,11 +1,12 @@
 import "server-only";
 
 import { publicConfig } from "@/config";
+import { getSiteUrl } from "@/lib/site-url";
 
 /** Mise en page HTML commune pour tous les emails transactionnels. */
 export function emailLayout(body: string): string {
   const site = publicConfig.siteName;
-  const base = publicConfig.siteUrl.replace(/\/$/, "");
+  const base = getSiteUrl();
 
   return `<!DOCTYPE html>
 <html lang="fr">

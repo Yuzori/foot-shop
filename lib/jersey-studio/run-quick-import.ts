@@ -112,24 +112,19 @@ export async function runQuickProductImport(
     productImportConfig.sizeAttributeGroupId || undefined,
   );
 
-  try {
-    if (sizeValues.length > 0) {
-      for (const size of sizeValues) {
-        const combinationId = await prestashop.createProductCombination({
-          productId,
-          optionValueId: size.id,
-        });
-        await prestashop.setStockQuantity(productId, combinationId, stock);
-      }
-    } else {
-      await prestashop.setStockQuantity(productId, null, stock);
+  if (sizeValues.length > 0) {
+    for (const size of sizeValues) {
+      const combinationId = await prestashop.createProductCombination({
+        productId,
+        optionValueId: size.id,
+      });
+      await prestashop.setStockQuantity(productId, combinationId, stock);
     }
-  } catch (err) {
-    console.warn(
-      `[quick-import] tailles/stock ignorés pour product=${productId}`,
-      err instanceof Error ? err.message : err,
-    );
+  } else {
+    await prestashop.setStockQuantity(productId, null, stock);
   }
+
+  await prestashop.verifyProductHasStock(productId, stock);
 
   return { productId, name, imagesUploaded: uploaded };
 }

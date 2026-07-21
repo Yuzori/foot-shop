@@ -1,7 +1,7 @@
 import "server-only";
 
 import { publicConfig } from "@/config";
-import { absoluteUrl } from "@/lib/absolute-url";
+import { resolveEmailProductImageUrl, productCoverEmailImageUrl } from "@/lib/email-product-image-url";
 import {
   emailButton,
   emailHeading,
@@ -16,13 +16,13 @@ import {
   readStockSubscribers,
   removeStockSubscribers,
 } from "@/lib/stock-subscribers";
+import { getSiteUrl, productPageUrl } from "@/lib/site-url";
 import { prestashop } from "@/services/prestashop";
 
 export async function processStockAlertEmails(): Promise<number> {
   const subs = await readStockSubscribers();
   if (subs.length === 0) return 0;
 
-  const base = publicConfig.siteUrl.replace(/\/$/, "");
   const toRemove: Array<{
     email: string;
     productId: string;
@@ -48,13 +48,11 @@ export async function processStockAlertEmails(): Promise<number> {
       continue;
     }
 
-    const url = `${base}/produit/${sub.productId}`;
+    const url = productPageUrl(sub.productId);
     const label = sub.variantLabel
       ? `${sub.productName} — ${sub.variantLabel}`
       : sub.productName;
-    const image =
-      absoluteUrl(sub.imageUrl) ||
-      absoluteUrl(product.cover?.url ?? product.images?.[0]?.url ?? null);
+    const image = productCoverEmailImageUrl(product);
 
     const result = await sendMail({
       to: sub.email,
@@ -95,8 +93,8 @@ export async function sendStockAlertConfirmation(input: {
   label: string;
   imageUrl?: string | null;
 }): Promise<SendMailResult> {
-  const base = publicConfig.siteUrl.replace(/\/$/, "");
-  const image = absoluteUrl(input.imageUrl ?? null);
+  const base = getSiteUrl();
+  const image = resolveEmailProductImageUrl({ relativeUrl: input.imageUrl });
 
   return sendMail({
     to: input.email,

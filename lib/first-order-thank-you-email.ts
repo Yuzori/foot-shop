@@ -1,7 +1,7 @@
 import "server-only";
 
-import { publicConfig } from "@/config";
 import { firstOrderThankYouPromo } from "@/config/promotions";
+import { getSiteUrl } from "@/lib/site-url";
 import { routes } from "@/config/site";
 import {
   emailButton,
@@ -18,7 +18,7 @@ export async function sendFirstOrderThankYouEmail(input: {
   firstName?: string;
   reference: string;
 }): Promise<void> {
-  const base = publicConfig.siteUrl.replace(/\/$/, "");
+  const base = getSiteUrl();
   const name = input.firstName?.trim() || "Client";
   const code = firstOrderThankYouPromo.code;
 

@@ -1,7 +1,7 @@
 import "server-only";
 
 import { publicConfig } from "@/config";
-import { absoluteUrl } from "@/lib/absolute-url";
+import { productCoverEmailImageUrl } from "@/lib/email-product-image-url";
 import {
   emailButton,
   emailHeading,
@@ -12,6 +12,7 @@ import {
 } from "@/lib/email-template";
 import { readGuestNewsletterEmails } from "@/lib/newsletter-subscribers";
 import { sendMail } from "@/lib/mailer";
+import { productPageUrl } from "@/lib/site-url";
 import { prestashop } from "@/services/prestashop";
 
 /** Envoie immédiatement une alerte « nouveau maillot » aux abonnés newsletter. */
@@ -26,11 +27,8 @@ export async function sendInstantNewProductEmail(input: {
   if (!subscribers.length) return 0;
 
   const product = await prestashop.getProductById(input.productId);
-  const base = publicConfig.siteUrl.replace(/\/$/, "");
-  const url = `${base}/produit/${input.productId}`;
-  const image =
-    absoluteUrl(input.imageUrl) ||
-    absoluteUrl(product?.cover?.url ?? product?.images?.[0]?.url ?? null);
+  const url = productPageUrl(input.productId);
+  const image = product ? productCoverEmailImageUrl(product) : "";
 
   const body = `
     ${emailHeading("Nouveau maillot disponible")}

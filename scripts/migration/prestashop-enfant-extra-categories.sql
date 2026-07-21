@@ -9,8 +9,10 @@
 -- Idempotent : ne recrée pas une catégorie si le nom existe déjà.
 --
 -- Après exécution :
---   1. BO → Catalogue → Catégories → Reconstruire l'arborescence
---   2. Copiez les IDs affichés en fin de script dans .env.local
+--   1. Back-office → Paramètres avancés → Performances → Vider le cache
+--   2. Catalogue → Catégories : ouvrez « Maillot - Enfant » ou « Enfant - Short »
+--      pour vérifier les sous-catégories (Concept, Retro, Reste du monde)
+--   3. Copiez les IDs affichés en fin de script dans .env.local
 -- =============================================================================
 
 SET @id_lang = 1;
@@ -23,13 +25,19 @@ SET @enfant_shorts = 16;
 SELECT id_category INTO @enfant_maillots_found
 FROM ps_category_lang
 WHERE id_lang = @id_lang
-  AND (name = 'Maillot - Enfant' OR name LIKE '%Maillot%Enfant%')
+  AND (
+    name COLLATE utf8mb4_unicode_ci = 'Maillot - Enfant'
+    OR name COLLATE utf8mb4_unicode_ci LIKE '%Maillot%Enfant%'
+  )
 LIMIT 1;
 
 SELECT id_category INTO @enfant_shorts_found
 FROM ps_category_lang
 WHERE id_lang = @id_lang
-  AND (name = 'Enfant - Short' OR name LIKE 'Enfant%Short%')
+  AND (
+    name COLLATE utf8mb4_unicode_ci = 'Enfant - Short'
+    OR name COLLATE utf8mb4_unicode_ci LIKE 'Enfant%Short%'
+  )
 LIMIT 1;
 
 SET @parent_maillots = IFNULL(@enfant_maillots_found, @enfant_maillots);
@@ -41,15 +49,15 @@ DELIMITER $$
 
 CREATE PROCEDURE footshop_add_category_if_missing(
   IN p_parent INT,
-  IN p_name VARCHAR(128),
-  IN p_rewrite VARCHAR(128),
+  IN p_name VARCHAR(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  IN p_rewrite VARCHAR(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   IN p_position INT
 )
 BEGIN
   SELECT c.id_category INTO @existing_id
   FROM ps_category c
   JOIN ps_category_lang cl ON cl.id_category = c.id_category AND cl.id_lang = @id_lang
-  WHERE cl.name = p_name
+  WHERE cl.name COLLATE utf8mb4_unicode_ci = p_name
     AND c.id_parent = p_parent
   LIMIT 1;
 
@@ -117,5 +125,9 @@ FROM ps_category c
 JOIN ps_category_lang cl ON cl.id_category = c.id_category AND cl.id_lang = @id_lang
 LEFT JOIN ps_category_lang pl ON pl.id_category = c.id_parent AND pl.id_lang = @id_lang
 WHERE c.id_parent IN (@parent_maillots, @parent_shorts)
-  AND cl.name IN ('Maillot Concept', 'Maillot Retro', 'Le reste du monde')
+  AND cl.name COLLATE utf8mb4_unicode_ci IN (
+    'Maillot Concept' COLLATE utf8mb4_unicode_ci,
+    'Maillot Retro' COLLATE utf8mb4_unicode_ci,
+    'Le reste du monde' COLLATE utf8mb4_unicode_ci
+  )
 ORDER BY c.id_parent, c.position;

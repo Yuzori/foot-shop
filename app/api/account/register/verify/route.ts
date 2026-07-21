@@ -65,7 +65,7 @@ export async function POST(request: Request) {
     lastName: customer.lastName,
   });
 
-  if (welcomePromo.enabled) {
+  if (welcomePromo.enabled && pending.newsletter) {
     await grantWelcomePromo(customer.id);
     try {
       await sendWelcomePromoEmail({

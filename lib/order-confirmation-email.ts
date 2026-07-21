@@ -2,6 +2,7 @@ import "server-only";
 
 import { publicConfig } from "@/config";
 import { routes } from "@/config/site";
+import { getSiteUrl } from "@/lib/site-url";
 import {
   emailButton,
   emailHeading,
@@ -18,7 +19,7 @@ export async function sendOrderConfirmationEmail(input: {
   order: Order;
 }): Promise<void> {
   const { to, order } = input;
-  const base = publicConfig.siteUrl.replace(/\/$/, "");
+  const base = getSiteUrl();
   const trackingUrl = `${base}${routes.tracking}?ref=${encodeURIComponent(order.reference)}`;
 
   const linesHtml = order.lines

@@ -8,6 +8,7 @@ import {
   emailParagraph,
 } from "@/lib/email-template";
 import { sendMail } from "@/lib/mailer";
+import { getSiteUrl } from "@/lib/site-url";
 import {
   addGuestNewsletterEmail,
   removeGuestNewsletterEmail,
@@ -15,7 +16,7 @@ import {
 import { prestashop } from "@/services/prestashop";
 
 async function sendWelcomeNewsletterEmail(email: string): Promise<void> {
-  const base = publicConfig.siteUrl.replace(/\/$/, "");
+  const base = getSiteUrl();
   await sendMail({
     to: email,
     subject: `${publicConfig.siteName} — Bienvenue dans la newsletter`,

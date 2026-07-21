@@ -4,6 +4,7 @@ import axios, { type AxiosInstance } from "axios";
 import crypto from "node:crypto";
 
 import { serverConfig } from "@/config";
+import { slugify } from "@/lib/product-import/slug";
 import type {
   Category,
   Customer,
@@ -172,9 +173,19 @@ class PrestaShopService {
    * Low-level POST. PrestaShop write operations expect an XML body (the
    * `output_format=JSON` default only affects the RESPONSE shape).
    */
+  private resolveShopId(): string {
+    const raw = String(serverConfig.shopId ?? "").trim();
+    return raw || "1";
+  }
+
+  private shopQueryParams(): Record<string, string> {
+    return { id_shop: this.resolveShopId() };
+  }
+
   private async post<T>(
     path: string,
     xmlBody: string,
+    params?: Record<string, string | number>,
   ): Promise<{ data: T | null; status: number | null; error: string | null }> {
     const client = this.getClient();
     if (!client) return { data: null, status: null, error: "not_configured" };
@@ -182,6 +193,7 @@ class PrestaShopService {
     try {
       const res = await client.post<T>(path, xmlBody, {
         headers: { "Content-Type": "text/xml" },
+        params,
       });
       return { data: res.data, status: res.status, error: null };
     } catch (error) {
@@ -202,6 +214,7 @@ class PrestaShopService {
   private async put<T>(
     path: string,
     xmlBody: string,
+    params?: Record<string, string | number>,
   ): Promise<{ data: T | null; status: number | null; error: string | null }> {
     const client = this.getClient();
     if (!client) return { data: null, status: null, error: "not_configured" };
@@ -209,6 +222,7 @@ class PrestaShopService {
     try {
       const res = await client.put<T>(path, xmlBody, {
         headers: { "Content-Type": "text/xml" },
+        params,
       });
       return { data: res.data, status: res.status, error: null };
     } catch (error) {
@@ -1487,8 +1501,11 @@ class PrestaShopService {
   /** Crée un produit actif dans PrestaShop. */
   async createProduct(input: CreateProductInput): Promise<string> {
     const langId = serverConfig.langId;
-    const xml = buildProductCreateXml({ ...input, langId });
-    const { data, status, error } = await this.post("/products", xml);
+    const shopId = this.resolveShopId();
+    const xml = buildProductCreateXml({ ...input, langId, shopId });
+    const { data, status, error } = await this.post("/products", xml, {
+      id_shop: shopId,
+    });
     if (status !== null && status >= 400) {
       throw new Error(`Création produit échouée : ${error ?? status}`);
     }
@@ -1496,8 +1513,132 @@ class PrestaShopService {
     if (!id) throw new Error("Produit créé mais identifiant introuvable.");
     await this.assignProductCategory(id, input.categoryId, input.associationIds, {
       price: input.price,
+      name: input.name,
+      linkRewrite: input.linkRewrite,
     });
+    await this.ensureProductShopAssociation(id, {
+      price: input.price,
+      categoryId: input.categoryId,
+      name: input.name,
+      linkRewrite: input.linkRewrite,
+    });
+    await this.verifyProductIsListable(id);
     return id;
+  }
+
+  /**
+   * PrestaShop multishop: products can exist in ps_product + ps_category_product
+   * but stay invisible in Catalogue → Produits without a ps_product_shop row.
+   */
+  private async ensureProductShopAssociation(
+    productId: string,
+    options?: {
+      price?: number;
+      categoryId?: string;
+      name?: string;
+      linkRewrite?: string;
+    },
+  ): Promise<void> {
+    const shopId = this.resolveShopId();
+    const langId = serverConfig.langId;
+    const price =
+      options?.price !== undefined && Number.isFinite(options.price)
+        ? options.price.toFixed(6)
+        : "0.000000";
+    const categoryId = String(options?.categoryId ?? "").trim();
+
+    const raw = await this.getProductRawXml(productId);
+    if (raw) {
+      let patched = patchProductShopXml(raw, {
+        shopId,
+        price,
+        categoryId: categoryId || undefined,
+      });
+      patched = patchProductLangFields(patched, langId, options);
+      const { status, error } = await this.put(`/products/${productId}`, patched, {
+        id_shop: shopId,
+      });
+      if (status !== null && status < 400) return;
+      console.warn(
+        `[prestashop] ensureProductShopAssociation full-xml PUT failed product=${productId} shop=${shopId}`,
+        error,
+      );
+    }
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
+  <product>
+    <id>${escapeXml(productId)}</id>
+    <active>1</active>
+    <visibility>both</visibility>
+    <available_for_order>1</available_for_order>
+    <show_price>1</show_price>
+    <state>1</state>
+    <id_shop_default>${escapeXml(shopId)}</id_shop_default>
+    <price>${escapeXml(price)}</price>
+    ${categoryId ? `<id_category_default>${escapeXml(categoryId)}</id_category_default>` : ""}
+    ${options?.name ? langFieldXml("name", options.name, langId) : ""}
+    ${options?.name ? langFieldXml("link_rewrite", options.linkRewrite ?? slugify(options.name), langId) : ""}
+  </product>
+</prestashop>`;
+
+    const { status, error } = await this.put(`/products/${productId}`, xml, {
+      id_shop: shopId,
+    });
+    if (status !== null && status >= 400) {
+      throw new Error(
+        `Association boutique échouée pour le produit #${productId} (shop ${shopId}) : ${error ?? status}. Exécutez scripts/migration/prestashop-fix-product-shop.sql dans phpMyAdmin.`,
+      );
+    }
+  }
+
+  /**
+   * Confirms the product appears in the active catalogue (same query as the BO
+   * product list). Throws if it only exists in category associations.
+   */
+  async verifyProductIsListable(productId: string): Promise<void> {
+    const shopId = this.resolveShopId();
+    const listParams = {
+      display: "[id,active,visibility]",
+      "filter[id]": `[${productId}]`,
+      "filter[active]": "1",
+      id_shop: shopId,
+      limit: "1",
+    };
+
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const { data } = await this.request<{ products?: PsProduct[] }>(
+        "/products",
+        listParams,
+      );
+      const found = asArray<PsProduct>(data as never, "products").some(
+        (product) => String(product.id) === String(productId),
+      );
+      if (found) return;
+      if (attempt < 3) {
+        await new Promise((resolve) => setTimeout(resolve, 750));
+      }
+    }
+
+    const { data: anyState } = await this.request<{ products?: PsProduct[] }>(
+      "/products",
+      {
+        display: "[id,active]",
+        "filter[id]": `[${productId}]`,
+        id_shop: shopId,
+        limit: "1",
+      },
+    );
+    const existsInactive = asArray<PsProduct>(anyState as never, "products").length > 0;
+    if (existsInactive) {
+      throw new Error(
+        `Produit #${productId} créé mais invisible dans Catalogue → Produits (shop ${shopId}). Lancez le script SQL prestashop-fix-product-shop.sql dans phpMyAdmin, videz le cache PrestaShop, puis réessayez.`,
+      );
+    }
+
+    throw new Error(
+      `Produit #${productId} introuvable — vérifiez PRESTASHOP_API_URL et PRESTASHOP_SHOP_ID (actuel : ${shopId}).`,
+    );
   }
 
   /** Force la catégorie + associations parentes (évite le rattachement par défaut à Accueil). */
@@ -1505,12 +1646,14 @@ class PrestaShopService {
     productId: string,
     categoryId: string,
     associationIds?: string[],
-    options?: { price?: number },
+    options?: { price?: number; name?: string; linkRewrite?: string },
   ): Promise<void> {
     const defaultCategoryId = String(categoryId ?? "").trim();
     if (!defaultCategoryId) {
       throw new Error("Catégorie produit invalide.");
     }
+
+    const langId = serverConfig.langId;
 
     const ids = associationIds?.length
       ? [
@@ -1533,9 +1676,30 @@ class PrestaShopService {
     }
 
     if (raw) {
-      const patched = patchProductCategoryXml(raw, defaultCategoryId, ids);
-      const { status, error } = await this.put(`/products/${productId}`, patched);
-      if (status !== null && status < 400) return;
+      let patched = patchProductCategoryXml(raw, defaultCategoryId, ids);
+      patched = patchProductShopXml(patched, {
+        shopId: this.resolveShopId(),
+        price,
+        categoryId: defaultCategoryId,
+      });
+      patched = patchProductLangFields(patched, langId, options);
+      const { status, error } = await this.put(
+        `/products/${productId}`,
+        patched,
+        this.shopQueryParams(),
+      );
+      if (status !== null && status < 400) {
+        const verified = await this.getProductById(productId);
+        if (
+          verified &&
+          (String(verified.defaultCategoryId ?? "").trim() === defaultCategoryId ||
+            verified.categoryIds.some(
+              (id) => String(id).trim() === defaultCategoryId,
+            ))
+        ) {
+          return;
+        }
+      }
       console.warn(
         `[prestashop] category raw-xml PUT failed product=${productId} category=${defaultCategoryId}`,
         error,
@@ -1548,6 +1712,8 @@ class PrestaShopService {
     <id>${escapeXml(productId)}</id>
     <price>${escapeXml(price)}</price>
     <id_category_default>${escapeXml(defaultCategoryId)}</id_category_default>
+    ${options?.name ? langFieldXml("name", options.name, langId) : ""}
+    ${options?.name ? langFieldXml("link_rewrite", options.linkRewrite ?? slugify(options.name), langId) : ""}
     <associations>
       <categories>
 ${ids
@@ -1562,7 +1728,11 @@ ${ids
   </product>
 </prestashop>`;
 
-    const { status, error } = await this.put(`/products/${productId}`, xml);
+    const { status, error } = await this.put(
+      `/products/${productId}`,
+      xml,
+      this.shopQueryParams(),
+    );
     if (status !== null && status >= 400) {
       throw new Error(
         `Impossible d'assigner la catégorie ${defaultCategoryId} au produit ${productId} : ${error ?? status}`,
@@ -1573,43 +1743,101 @@ ${ids
   private async getProductRawXml(id: string): Promise<string | null> {
     const client = this.getClient();
     if (!client) return null;
-    try {
-      const res = await client.get<string>(`/products/${id}`, {
-        params: { display: "full" },
-        headers: { Accept: "application/xml" },
-        responseType: "text",
-        transformResponse: [(data: string) => data],
-      });
-      const body = res.data;
-      return typeof body === "string" && body.includes("<product>") ? body : null;
-    } catch {
-      return null;
+
+    const shopId = this.resolveShopId();
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const res = await client.get<string>(`/products/${id}`, {
+          params: { display: "full", id_shop: shopId },
+          headers: { Accept: "application/xml" },
+          responseType: "text",
+          transformResponse: [(data: string) => data],
+        });
+        const body = res.data;
+        if (typeof body === "string" && body.includes("<product>")) {
+          return body;
+        }
+      } catch {
+        // PrestaShop peut mettre quelques centaines de ms à indexer un nouveau produit.
+      }
+      if (attempt < 2) {
+        await new Promise((resolve) => setTimeout(resolve, 600));
+      }
     }
+
+    return null;
   }
 
-  /** Met à jour le nom affiché + link_rewrite d'un produit (XML complet). */
-  async updateProductName(productId: string, name: string): Promise<void> {
-    const raw = await this.getProductRawXml(productId);
-    if (!raw) {
-      throw new Error(`Produit ${productId} introuvable pour renommage.`);
-    }
+  /** Met à jour le nom affiché + link_rewrite d'un produit. */
+  async updateProductName(
+    productId: string,
+    name: string,
+    linkRewrite?: string,
+    price?: number,
+  ): Promise<void> {
+    const trimmed = name.trim();
+    if (!trimmed) return;
 
-    const { slugify } = await import("@/lib/product-import/slug");
     const langId = serverConfig.langId;
-    let patched = patchLangFieldXml(raw, "name", name, langId);
-    patched = patchLangFieldXml(
-      patched,
-      "link_rewrite",
-      slugify(name),
-      langId,
-    );
+    const shopId = this.resolveShopId();
+    const slug = linkRewrite?.trim() || slugify(trimmed);
+    let priceStr =
+      price !== undefined && Number.isFinite(price) ? price.toFixed(6) : null;
 
-    const { status, error } = await this.put(`/products/${productId}`, patched);
-    if (status !== null && status >= 400) {
-      throw new Error(
-        `Renommage produit ${productId} échoué : ${error ?? status}`,
-      );
+    if (!priceStr) {
+      const raw = await this.getProductRawXml(productId);
+      if (raw) {
+        priceStr = extractXmlScalarField(raw, "price");
+      }
     }
+    if (!priceStr) {
+      priceStr = "0.000000";
+    }
+
+    const minimalXml = `<?xml version="1.0" encoding="UTF-8"?>
+<prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
+  <product>
+    <id>${escapeXml(productId)}</id>
+    <active>1</active>
+    <price>${escapeXml(priceStr)}</price>
+    ${langFieldXml("name", trimmed, langId)}
+    ${langFieldXml("link_rewrite", slug, langId)}
+  </product>
+</prestashop>`;
+
+    const { status, error } = await this.put(
+      `/products/${productId}`,
+      minimalXml,
+      this.shopQueryParams(),
+    );
+    if (status !== null && status < 400) return;
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const raw = await this.getProductRawXml(productId);
+      if (raw) {
+        let patched = patchLangFieldXml(raw, "name", trimmed, langId);
+        patched = patchLangFieldXml(patched, "link_rewrite", slug, langId);
+        patched = patchXmlScalarField(patched, "price", priceStr);
+        patched = patchXmlScalarField(patched, "active", "1");
+        const full = await this.put(
+          `/products/${productId}`,
+          patched,
+          this.shopQueryParams(),
+        );
+        if (full.status !== null && full.status < 400) return;
+        throw new Error(
+          `Renommage produit ${productId} échoué : ${full.error ?? full.status}`,
+        );
+      }
+      if (attempt < 2) {
+        await new Promise((resolve) => setTimeout(resolve, 600));
+      }
+    }
+
+    throw new Error(
+      `Renommage produit ${productId} échoué : ${error ?? "produit introuvable"} (shop ${shopId})`,
+    );
   }
 
   /** Liste tous les produits (noms bruts PrestaShop) pour migrations batch. */
@@ -1766,7 +1994,89 @@ ${ids
     variantId: string | null,
     quantity: number,
   ): Promise<void> {
-    await this.writeStockQuantity(productId, variantId, Math.max(0, quantity));
+    const attrId = variantId ? String(variantId) : "0";
+    const row = await this.ensureStockRow(productId, attrId);
+    await this.writeStockRow(row, productId, attrId, Math.max(0, quantity));
+  }
+
+  private async findStockRow(
+    productId: string,
+    attrId: string,
+  ): Promise<PsStockAvailable | null> {
+    const shopId = this.resolveShopId();
+
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const { data } = await this.request<{ stock_availables?: PsStockAvailable[] }>(
+        "/stock_availables",
+        {
+          display: "full",
+          "filter[id_product]": productId,
+          "filter[id_product_attribute]": attrId,
+          id_shop: shopId,
+          limit: "5",
+        },
+      );
+
+      const row = asArray<PsStockAvailable>(data as never, "stock_availables")[0];
+      if (row?.id) return row;
+
+      if (attempt < 3) {
+        await new Promise((resolve) => setTimeout(resolve, 600));
+      }
+    }
+
+    return null;
+  }
+
+  private async ensureStockRow(
+    productId: string,
+    attrId: string,
+  ): Promise<PsStockAvailable> {
+    const existing = await this.findStockRow(productId, attrId);
+    if (existing?.id) return existing;
+
+    const shopId = this.resolveShopId();
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
+  <stock_available>
+    <id_product>${escapeXml(productId)}</id_product>
+    <id_product_attribute>${escapeXml(attrId)}</id_product_attribute>
+    <id_shop>${escapeXml(shopId)}</id_shop>
+    <id_shop_group>0</id_shop_group>
+    <depends_on_stock>0</depends_on_stock>
+    <out_of_stock>2</out_of_stock>
+    <quantity>0</quantity>
+  </stock_available>
+</prestashop>`;
+
+    const { data, status, error } = await this.post("/stock_availables", xml, {
+      id_shop: shopId,
+    });
+    if (status !== null && status >= 400) {
+      throw new Error(
+        `Création stock échouée pour produit #${productId} : ${error ?? status}`,
+      );
+    }
+
+    const id = extractCreatedId(data, "stock_available");
+    if (!id) {
+      const created = await this.findStockRow(productId, attrId);
+      if (created?.id) return created;
+      throw new Error(
+        `Stock introuvable pour le produit #${productId} (déclinaison ${attrId}).`,
+      );
+    }
+
+    return {
+      id,
+      id_product: productId,
+      id_product_attribute: attrId,
+      id_shop: shopId,
+      id_shop_group: "0",
+      depends_on_stock: "0",
+      out_of_stock: "2",
+      quantity: "0",
+    };
   }
 
   private async findSizeAttributeGroupId(): Promise<string | undefined> {
@@ -1787,7 +2097,71 @@ ${ids
     buffer: Buffer,
     mime: string,
   ): Promise<void> {
-    await this.uploadProductImageBuffer(productId, buffer, mime);
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        await this.uploadProductImageBuffer(productId, buffer, mime);
+        await this.verifyProductHasCoverImage(productId);
+        return;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        if (attempt < 3) {
+          await new Promise((resolve) => setTimeout(resolve, 700));
+        }
+      }
+    }
+
+    throw (
+      lastError ??
+      new Error(`Upload image échoué pour le produit #${productId}.`)
+    );
+  }
+
+  /** Vérifie qu'au moins une image est associée au produit dans la boutique active. */
+  async verifyProductHasCoverImage(productId: string): Promise<void> {
+    const shopId = this.resolveShopId();
+    const { data } = await this.request<Record<string, unknown>>(
+      `/products/${productId}`,
+      { display: "[id,id_default_image]", id_shop: shopId },
+    );
+
+    const product =
+      (data?.product as { id_default_image?: string | number } | undefined) ??
+      asArray<{ id_default_image?: string | number }>(data as never, "products")[0];
+
+    const imageId = String(product?.id_default_image ?? "").trim();
+    if (imageId && imageId !== "0") return;
+
+    throw new Error(
+      `Image non associée au produit #${productId} (shop ${shopId}).`,
+    );
+  }
+
+  /** Vérifie qu'au moins une ligne de stock porte une quantité > 0. */
+  async verifyProductHasStock(productId: string, minQuantity = 1): Promise<void> {
+    const shopId = this.resolveShopId();
+    const { data } = await this.request<{ stock_availables?: PsStockAvailable[] }>(
+      "/stock_availables",
+      {
+        display: "[id,quantity,id_product_attribute]",
+        "filter[id_product]": productId,
+        id_shop: shopId,
+        limit: "50",
+      },
+    );
+
+    const rows = asArray<PsStockAvailable>(data as never, "stock_availables");
+    const maxQty = rows.reduce((max, row) => {
+      const qty = Number.parseInt(row.quantity ?? "0", 10) || 0;
+      return Math.max(max, qty);
+    }, 0);
+
+    if (maxQty >= minQuantity) return;
+
+    throw new Error(
+      `Stock non appliqué pour le produit #${productId} (max trouvé: ${maxQty}, attendu: ≥${minQuantity}).`,
+    );
   }
 
   private async uploadProductImageBuffer(
@@ -1813,8 +2187,9 @@ ${ids
       `image.${ext}`,
     );
 
+    const shopId = this.resolveShopId();
     const res = await fetch(
-      `${baseUrl}/images/${resource}/${resourceId}?output_format=JSON`,
+      `${baseUrl}/images/${resource}/${resourceId}?output_format=JSON&id_shop=${encodeURIComponent(shopId)}`,
       {
         method: "POST",
         headers: {
@@ -1865,23 +2240,7 @@ ${ids
     quantity: number,
   ): Promise<void> {
     const attrId = variantId ? String(variantId) : "0";
-    const { data } = await this.request<{ stock_availables?: PsStockAvailable[] }>(
-      "/stock_availables",
-      {
-        display: "full",
-        "filter[id_product]": productId,
-        "filter[id_product_attribute]": attrId,
-      },
-    );
-
-    const row = asArray<PsStockAvailable>(data as never, "stock_availables")[0];
-    if (!row?.id) {
-      console.warn(
-        `[prestashop] stock row not found product=${productId} attr=${attrId}`,
-      );
-      return;
-    }
-
+    const row = await this.ensureStockRow(productId, attrId);
     await this.writeStockRow(row, productId, attrId, quantity);
   }
 
@@ -1912,9 +2271,8 @@ ${ids
 
     const { status, error } = await this.put(`/stock_availables/${row.id}`, xml);
     if (status !== null && status >= 400) {
-      console.error(
-        `[prestashop] stock update failed product=${productId} attr=${attrId}`,
-        error,
+      throw new Error(
+        `Mise à jour stock échouée pour produit #${productId} : ${error ?? status}`,
       );
     }
   }
@@ -2143,6 +2501,53 @@ ${ids
   return out;
 }
 
+/** Force active + visibility + shop default on a full product XML payload. */
+function patchProductShopXml(
+  xml: string,
+  opts: { shopId: string; price?: string; categoryId?: string },
+): string {
+  let out = xml;
+  out = patchXmlScalarField(out, "active", "1");
+  out = patchXmlScalarField(out, "visibility", "both");
+  out = patchXmlScalarField(out, "available_for_order", "1");
+  out = patchXmlScalarField(out, "show_price", "1");
+  out = patchXmlScalarField(out, "state", "1");
+  out = patchXmlScalarField(out, "id_shop_default", opts.shopId);
+  if (opts.price) out = patchXmlScalarField(out, "price", opts.price);
+  if (opts.categoryId) {
+    out = patchXmlScalarField(out, "id_category_default", opts.categoryId);
+  }
+  return out;
+}
+
+function patchXmlScalarField(xml: string, field: string, value: string): string {
+  const re = new RegExp(
+    `<${field}>(?:<!\\[CDATA\\[)?[\\s\\S]*?(?:\\]\\]>)?<\\/${field}>`,
+    "i",
+  );
+  const replacement = `<${field}><![CDATA[${value}]]></${field}>`;
+  if (re.test(xml)) return xml.replace(re, replacement);
+  return xml.replace(/<\/product>/i, `    ${replacement}\n  </product>`);
+}
+
+function patchProductLangFields(
+  xml: string,
+  langId: string,
+  options?: { name?: string; linkRewrite?: string },
+): string {
+  const name = options?.name?.trim();
+  if (!name) return xml;
+
+  let out = patchLangFieldXml(xml, "name", name, langId);
+  out = patchLangFieldXml(
+    out,
+    "link_rewrite",
+    options?.linkRewrite?.trim() || slugify(name),
+    langId,
+  );
+  return out;
+}
+
 function patchLangFieldXml(
   xml: string,
   tag: string,
@@ -2169,7 +2574,7 @@ function extractXmlScalarField(xml: string, field: string): string | null {
 }
 
 function buildProductCreateXml(
-  input: CreateProductInput & { langId: string },
+  input: CreateProductInput & { langId: string; shopId: string },
 ): string {
   const price = Number.isFinite(input.price) ? input.price.toFixed(6) : "0.000000";
   const reference = input.reference?.trim();
@@ -2199,6 +2604,9 @@ function buildProductCreateXml(
     <show_price>1</show_price>
     <available_for_order>1</available_for_order>
     <visibility>both</visibility>
+    <id_shop_default>${escapeXml(input.shopId)}</id_shop_default>
+    <product_type>standard</product_type>
+    <id_tax_rules_group>1</id_tax_rules_group>
     <id_category_default>${escapeXml(defaultCategoryId)}</id_category_default>
     ${reference ? `<reference>${escapeXml(reference)}</reference>` : ""}
     <associations>

@@ -67,18 +67,52 @@ function migrateLegacySession(): QuickImportDraft | null {
     const parsed = JSON.parse(raw) as Omit<QuickImportDraft, "version" | "savedAt">;
     window.sessionStorage.removeItem(LEGACY_SESSION_KEY);
     return {
-      version: 2,
+      version: 3,
       savedAt: Date.now(),
       urlsText: parsed.urlsText ?? "",
       price: parsed.price ?? "25.99",
       stock: parsed.stock ?? "20",
       defaultCategoryId: parsed.defaultCategoryId ?? "",
-      products: (parsed.products ?? []) as QuickImportDraft["products"],
+      products: (parsed.products ?? []).map((p) => ({ ...p, pushResult: null })),
       brokenLinks: parsed.brokenLinks ?? [],
     };
   } catch {
     return null;
   }
+}
+
+async function readImageFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") resolve(reader.result);
+      else reject(new Error("Lecture image impossible."));
+    };
+    reader.onerror = () => reject(new Error("Lecture image impossible."));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function importPastedImages(
+  product: QuickProduct,
+  files: File[],
+  updateProduct: (id: string, patch: Partial<QuickProduct>) => void,
+): Promise<number> {
+  const imageFiles = files.filter((f) => f.type.startsWith("image/"));
+  if (!imageFiles.length) return 0;
+
+  const added: string[] = [];
+  for (const file of imageFiles) {
+    const dataUrl = await readImageFile(file);
+    added.push(dataUrl);
+  }
+
+  updateProduct(product.id, {
+    imageUrls: [...product.imageUrls, ...added],
+    selectedUrls: [...product.selectedUrls, ...added],
+    pushResult: null,
+  });
+  return added.length;
 }
 
 function loadInitialDraft(): QuickImportDraft | null {
@@ -171,7 +205,7 @@ export function QuickImportSection({ secret }: { secret: string }) {
     if (!saved) return null;
     const count = saved.products.length;
     if (!count) return null;
-    return `Session restaurée — ${count} produit(s) sauvegardé(s) localement.`;
+    return `Session restaurée — ${count} produit(s). Statuts d'envoi réinitialisés : vous pouvez renvoyer vers PrestaShop.`;
   });
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -189,7 +223,7 @@ export function QuickImportSection({ secret }: { secret: string }) {
 
   useEffect(() => {
     const ok = saveQuickImportDraft({
-      version: 2,
+      version: 3,
       savedAt: Date.now(),
       urlsText,
       price,
@@ -394,6 +428,17 @@ export function QuickImportSection({ secret }: { secret: string }) {
             error?: string;
           };
         };
+
+        if (!res.ok && !data.result) {
+          updateProduct(p.id, {
+            pushResult: {
+              ok: false,
+              error: data.message ?? `Erreur serveur (${res.status}).`,
+            },
+          });
+          failCount++;
+          continue;
+        }
 
         const result = data.result;
         updateProduct(p.id, {
@@ -684,9 +729,10 @@ export function QuickImportSection({ secret }: { secret: string }) {
                 {product.imageUrls.map((url) => {
                   const order = imageOrder(product, url);
                   const selected = order > 0;
+                  const key = url.startsWith("data:") ? `${url.slice(0, 48)}-${order}` : url;
                   return (
                     <button
-                      key={url}
+                      key={key}
                       type="button"
                       onClick={() =>
                         updateProduct(product.id, toggleImageUrl(product, url))
@@ -713,6 +759,64 @@ export function QuickImportSection({ secret }: { secret: string }) {
                     </button>
                   );
                 })}
+              </div>
+
+              <div className="mt-4">
+                <label className="text-xs font-medium text-ink/50">
+                  Ajouter des images (glisser-déposer, coller ou fichier)
+                </label>
+                <div
+                  tabIndex={0}
+                  className="mt-2 rounded-xl border border-dashed border-ink/15 bg-white/60 px-4 py-5 text-center outline-none focus:border-accent/40 focus:ring-2 focus:ring-accent/20"
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    void importPastedImages(
+                      product,
+                      Array.from(e.dataTransfer.files),
+                      updateProduct,
+                    ).catch((err) =>
+                      setError(err instanceof Error ? err.message : "Import image échoué."),
+                    );
+                  }}
+                  onPaste={(e) => {
+                    const files: File[] = [];
+                    for (const item of Array.from(e.clipboardData.items)) {
+                      if (item.type.startsWith("image/")) {
+                        const file = item.getAsFile();
+                        if (file) files.push(file);
+                      }
+                    }
+                    if (!files.length) return;
+                    e.preventDefault();
+                    void importPastedImages(product, files, updateProduct).catch((err) =>
+                      setError(err instanceof Error ? err.message : "Import image échoué."),
+                    );
+                  }}
+                >
+                  <p className="text-xs text-ink/55">
+                    Cliquez ici puis <kbd className="rounded bg-ink/5 px-1">Ctrl+V</kbd> pour
+                    coller, ou déposez des fichiers.
+                  </p>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="mt-3 block w-full text-xs"
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files ?? []);
+                      e.target.value = "";
+                      if (!files.length) return;
+                      void importPastedImages(product, files, updateProduct).catch((err) =>
+                        setError(err instanceof Error ? err.message : "Import image échoué."),
+                      );
+                    }}
+                  />
+                </div>
               </div>
 
               {product.pushResult ? (

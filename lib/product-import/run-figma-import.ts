@@ -114,32 +114,27 @@ export async function runFigmaProductImport(
     await prestashop.uploadProductImageFromBuffer(productId, encoded.buffer, encoded.mime);
   }
 
+  const combinations: { size: string; combinationId: string }[] = [];
+
   const sizeValues = await prestashop.resolveSizeOptionValues(
     productImportConfig.sizes,
     productImportConfig.sizeAttributeGroupId || undefined,
   );
 
-  const combinations: { size: string; combinationId: string }[] = [];
-
-  try {
-    if (sizeValues.length > 0) {
-      for (const size of sizeValues) {
-        const combinationId = await prestashop.createProductCombination({
-          productId,
-          optionValueId: size.id,
-        });
-        await prestashop.setStockQuantity(productId, combinationId, stock);
-        combinations.push({ size: size.label, combinationId });
-      }
-    } else {
-      await prestashop.setStockQuantity(productId, null, stock);
+  if (sizeValues.length > 0) {
+    for (const size of sizeValues) {
+      const combinationId = await prestashop.createProductCombination({
+        productId,
+        optionValueId: size.id,
+      });
+      await prestashop.setStockQuantity(productId, combinationId, stock);
+      combinations.push({ size: size.label, combinationId });
     }
-  } catch (err) {
-    console.warn(
-      `[figma-import] tailles/stock ignorés pour product=${productId}`,
-      err instanceof Error ? err.message : err,
-    );
+  } else {
+    await prestashop.setStockQuantity(productId, null, stock);
   }
+
+  await prestashop.verifyProductHasStock(productId, stock);
 
   const uploadedCount = 1 + (input.imagesBase64?.length ?? 0);
 

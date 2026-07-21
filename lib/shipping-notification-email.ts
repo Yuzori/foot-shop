@@ -2,6 +2,7 @@ import "server-only";
 
 import { publicConfig } from "@/config";
 import { routes } from "@/config/site";
+import { getSiteUrl } from "@/lib/site-url";
 import {
   emailButton,
   emailHeading,
@@ -17,7 +18,7 @@ export async function sendShippingNotificationEmail(input: {
   trackingNumber: string;
   carrierUrl: string;
 }): Promise<SendMailResult> {
-  const base = publicConfig.siteUrl.replace(/\/$/, "");
+  const base = getSiteUrl();
   const siteTracking = `${base}${routes.tracking}?ref=${encodeURIComponent(input.reference)}`;
 
   return sendMail({

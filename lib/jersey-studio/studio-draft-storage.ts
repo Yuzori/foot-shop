@@ -1,7 +1,8 @@
 import type { ProductCollectionKind } from "@/lib/product-collection";
 import type { JerseyRenderMode } from "@/lib/jersey-studio/render-mode";
 
-const STORAGE_KEY = "maillot-store-jersey-studio-draft-v1";
+const STORAGE_KEY = "maillot-store-jersey-studio-draft-v2";
+const LEGACY_STORAGE_KEY = "maillot-store-jersey-studio-draft-v1";
 const MAX_BYTES = 4_500_000;
 
 export type PersistedStudioSelection = {
@@ -33,7 +34,7 @@ export type PersistedStudioProduct = {
 };
 
 export type StudioDraft = {
-  version: 1;
+  version: 2;
   savedAt: number;
   urlsText: string;
   price: string;
@@ -58,6 +59,10 @@ function stripHeavySelections(
   }));
 }
 
+function stripPushResults(products: PersistedStudioProduct[]): PersistedStudioProduct[] {
+  return products.map((product) => ({ ...product, pushResult: null }));
+}
+
 function toLiteDraft(draft: StudioDraft): StudioDraft {
   return {
     ...draft,
@@ -68,14 +73,45 @@ function toLiteDraft(draft: StudioDraft): StudioDraft {
   };
 }
 
+function parseLegacyDraft(raw: string): StudioDraft | null {
+  try {
+    const parsed = JSON.parse(raw) as StudioDraft & { version?: number };
+    if (!Array.isArray(parsed.products)) return null;
+    return {
+      version: 2,
+      savedAt: parsed.savedAt ?? Date.now(),
+      urlsText: parsed.urlsText ?? "",
+      price: parsed.price ?? "25.99",
+      stock: parsed.stock ?? "20",
+      defaultCategoryId: parsed.defaultCategoryId ?? "",
+      brokenLinks: parsed.brokenLinks ?? [],
+      products: stripPushResults(parsed.products),
+      lastModifiedProductId: parsed.lastModifiedProductId ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function loadStudioDraft(): StudioDraft | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as StudioDraft;
-    if (parsed?.version !== 1 || !Array.isArray(parsed.products)) return null;
-    return parsed;
+    if (raw) {
+      const parsed = JSON.parse(raw) as StudioDraft;
+      if (parsed?.version === 2 && Array.isArray(parsed.products)) {
+        return parsed;
+      }
+    }
+
+    const legacy = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (!legacy) return null;
+    const migrated = parseLegacyDraft(legacy);
+    if (migrated) {
+      window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+    }
+    return migrated;
   } catch {
     return null;
   }
@@ -87,19 +123,21 @@ export function saveStudioDraft(draft: StudioDraft): {
 } {
   if (typeof window === "undefined") return { ok: false, lite: false };
 
+  const payloadDraft: StudioDraft = { ...draft, version: 2 };
+
   try {
-    const payload = JSON.stringify(draft);
+    const payload = JSON.stringify(payloadDraft);
     if (payload.length <= MAX_BYTES) {
       window.localStorage.setItem(STORAGE_KEY, payload);
       return { ok: true, lite: false };
     }
 
-    const lite = JSON.stringify(toLiteDraft(draft));
+    const lite = JSON.stringify(toLiteDraft(payloadDraft));
     window.localStorage.setItem(STORAGE_KEY, lite);
     return { ok: true, lite: true };
   } catch {
     try {
-      const lite = JSON.stringify(toLiteDraft(draft));
+      const lite = JSON.stringify(toLiteDraft(payloadDraft));
       window.localStorage.setItem(STORAGE_KEY, lite);
       return { ok: true, lite: true };
     } catch {
@@ -112,6 +150,7 @@ export function clearStudioDraft(): void {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.removeItem(STORAGE_KEY);
+    window.localStorage.removeItem(LEGACY_STORAGE_KEY);
   } catch {
     // ignore
   }

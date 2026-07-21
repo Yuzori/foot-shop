@@ -13,6 +13,7 @@ import {
   flattenAdminCategoryOptGroups,
   type AdminCategoryOptGroup,
 } from "@/lib/admin/import-category-tree";
+import { dataUrlToBase64 } from "@/lib/product-import/data-url-base64";
 import {
   guessRenderModeFromDataUrl,
   guessRenderModeFromUrl,
@@ -581,8 +582,8 @@ export function JerseyStudioSection({ secret }: { secret: string }) {
         if (count > 0) {
           setRestoreNotice(
             manualCount > 0
-              ? `Session restaurée — ${count} produit(s), ${manualCount} import(s) local(aux) rechargé(s).`
-              : `Session restaurée — ${count} produit(s), sélections et réglages conservés.`,
+              ? `Session restaurée — ${count} produit(s), ${manualCount} import(s) local(aux). Statuts d'envoi réinitialisés.`
+              : `Session restaurée — ${count} produit(s). Statuts d'envoi réinitialisés pour permettre un nouvel envoi.`,
           );
         }
       }
@@ -604,7 +605,7 @@ export function JerseyStudioSection({ secret }: { secret: string }) {
       void pruneRenderPreviews(renderIds);
 
       const result = saveStudioDraft({
-        version: 1,
+        version: 2,
         savedAt: Date.now(),
         urlsText,
         price,
@@ -962,15 +963,29 @@ export function JerseyStudioSection({ secret }: { secret: string }) {
           `Envoi PrestaShop ${i + 1}/${toSend.length} — produit #${productIndex}…`,
         );
 
+        const hydratedSelections = await hydrateRenderSelections(p.selections);
+        const imagesBase64 = hydratedSelections
+          .map((s) => (s.renderPreview ? dataUrlToBase64(s.renderPreview) : ""))
+          .filter((img) => img.length >= 1_000);
+
+        if (!imagesBase64.length) {
+          updateProduct(p.id, {
+            pushResult: {
+              ok: false,
+              error:
+                "Aucune image rendue disponible — relancez le rendu pour ce produit.",
+            },
+          });
+          failCount++;
+          continue;
+        }
+
         const item = {
           clientId: p.id,
           name: p.name.trim(),
           categoryId: asTrimmedString(p.categoryId) || defaultCategoryId,
           sourceUrl: p.sourceUrl,
-          imagesBase64: p.selections
-            .filter((s) => s.renderPreview)
-            .map((s) => s.renderPreview!.split(",")[1] ?? "")
-            .filter(Boolean),
+          imagesBase64,
         };
 
         const res = await fetch("/api/admin/jersey-studio", {
