@@ -1,6 +1,6 @@
 import "server-only";
 
-import { runNotifyJob } from "@/app/api/admin/notify/route";
+import { runNotifyJob } from "@/lib/run-notify-job";
 import { readSnapshot, writeSnapshot } from "@/lib/notify-state";
 
 const THROTTLE_MS = 3 * 60 * 1000;

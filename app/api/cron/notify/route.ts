@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 
 import { isCronAuthorized } from "@/lib/admin-auth";
 
-import { runNotifyJob } from "@/app/api/admin/notify/route";
+import { runNotifyJob } from "@/lib/run-notify-job";
 
 
 
