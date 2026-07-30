@@ -68,7 +68,7 @@ function normalizeFabricNeutral(rgb: AccentRgb): AccentRgb {
 
 /** Extrait la couleur dominante depuis un buffer RGBA (48×48 typiquement). */
 export function extractAccentFromRgba(
-  data: Uint8Array | Buffer,
+  data: ArrayLike<number>,
   width: number,
   height: number,
 ): ImageAccentData {
