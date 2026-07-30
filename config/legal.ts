@@ -24,6 +24,7 @@ export const legalInfo = {
     "Hostinger International Ltd. — 61 Lordou Vironos Street, 6023 Larnaca, Chypre",
   ),
   withdrawalDays: 14,
+  /** Délai commercial « changer d'avis » à compter de la réception. */
   returnDays: 30,
   odrUrl: "https://ec.europa.eu/consumers/odr",
   /** Médiateur de la consommation (obligatoire pour les professionnels). */

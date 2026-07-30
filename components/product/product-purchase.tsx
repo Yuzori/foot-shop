@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { PurchaseInfoTicker } from "@/components/product/purchase-info-ticker";
 import { ProductFlocagePicker } from "@/components/product/product-flocage-picker";
@@ -10,6 +10,8 @@ import { StockIndicator } from "@/components/product/stock-indicator";
 import { StockAlertBell } from "@/components/product/stock-alert-bell";
 import { shopConfig } from "@/config/shop";
 import { isJerseyProduct } from "@/lib/product-collection";
+import { effectiveProductPrice } from "@/lib/product-price";
+import { requiresRetroFlocage } from "@/lib/retro-jersey";
 import { stockForVariant } from "@/lib/stock-display";
 import { Button } from "@/components/ui/button";
 import { Price } from "@/components/ui/price";
@@ -61,6 +63,11 @@ export function ProductPurchase({ product }: ProductPurchaseProps) {
   const markPurchased = useProductEngagementStore((s) => s.markPurchased);
   const router = useRouter();
   const showFlocage = isJerseyProduct(product.name);
+  const retroFlocageRequired = requiresRetroFlocage(product);
+
+  useEffect(() => {
+    if (retroFlocageRequired) setFlocageEnabled(true);
+  }, [retroFlocageRequired]);
 
   const matchedVariant: ProductVariant | null = useMemo(() => {
     if (!hasVariants) return null;
@@ -75,7 +82,7 @@ export function ProductPurchase({ product }: ProductPurchaseProps) {
     (group) => selected[group.name],
   );
 
-  const activePrice = matchedVariant?.price ?? product.price;
+  const activePrice = effectiveProductPrice(product, matchedVariant);
   const displayTotal = activePrice * quantity;
   const needsSize = hasVariants && !allGroupsSelected;
   const sizeSelected = !hasVariants || allGroupsSelected;
@@ -89,10 +96,12 @@ export function ProductPurchase({ product }: ProductPurchaseProps) {
       : true
     : product.inStock;
 
-  const flocageValid =
-    !flocageEnabled ||
-    (flocageName.trim().length >= 2 &&
-      flocageNumber.trim().length >= shopConfig.flocageNumberMin);
+  const flocageValid = retroFlocageRequired
+    ? flocageName.trim().length >= 2 &&
+      flocageNumber.trim().length >= shopConfig.flocageNumberMin
+    : !flocageEnabled ||
+      (flocageName.trim().length >= 2 &&
+        flocageNumber.trim().length >= shopConfig.flocageNumberMin);
 
   const canAdd = inStock && sizeSelected && flocageValid;
 
@@ -112,7 +121,7 @@ export function ProductPurchase({ product }: ProductPurchaseProps) {
       optionsLabel,
       reference: matchedVariant?.reference ?? product.reference,
       flocage:
-        showFlocage && flocageEnabled
+        showFlocage && (retroFlocageRequired || flocageEnabled)
           ? {
               enabled: true,
               name: flocageName.trim().toUpperCase(),
@@ -151,6 +160,7 @@ export function ProductPurchase({ product }: ProductPurchaseProps) {
       {showFlocage ? (
         <ProductFlocagePicker
           enabled={flocageEnabled}
+          required={retroFlocageRequired}
           name={flocageName}
           number={flocageNumber}
           onEnabledChange={setFlocageEnabled}

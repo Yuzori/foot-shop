@@ -4,6 +4,8 @@ import axios, { type AxiosInstance } from "axios";
 import crypto from "node:crypto";
 
 import { serverConfig } from "@/config";
+import { productImportConfig } from "@/config/product-import";
+import { syncProductPriceFromVariants } from "@/lib/product-price";
 import { slugify } from "@/lib/product-import/slug";
 import type {
   Category,
@@ -255,6 +257,7 @@ class PrestaShopService {
     const offset = (page - 1) * limit;
 
     const params: Record<string, string | number> = {
+      ...this.shopQueryParams(),
       display: "full",
       // Fetch one extra row to detect a next page. PrestaShop limit syntax:
       // "offset,count" (offset omitted for page 1 to keep the URL simple).
@@ -287,7 +290,7 @@ class PrestaShopService {
     const hasMore = raw.length > limit;
     let items = raw.slice(0, limit).map(mapProduct);
 
-    await this.applyStock(items);
+    await Promise.all([this.applyStock(items), this.normalizeProductPrices(items)]);
 
     items = sortProducts(items, query.sort);
 
@@ -344,7 +347,7 @@ class PrestaShopService {
   async getProductById(id: string): Promise<Product | null> {
     const { data, status, error } = await this.request<Record<string, unknown>>(
       `/products/${id}`,
-      { display: "full" },
+      { display: "full", ...this.shopQueryParams() },
     );
 
     // PrestaShop returns { product: {...} } for a single resource, but some
@@ -373,6 +376,8 @@ class PrestaShopService {
     await this.applyVariantStock(id, variants);
     product.variants = variants;
     product.optionGroups = buildOptionGroups(variants);
+    syncProductPriceFromVariants(product);
+    await this.normalizeProductPrices([product]);
 
     return product;
   }
@@ -385,18 +390,30 @@ class PrestaShopService {
   async getProductsByIds(ids: string[]): Promise<Product[]> {
     if (ids.length === 0) return [];
 
-    const { data } = await this.request<{ products?: PsProduct[] }>("/products", {
-      display: "full",
-      "filter[id]": `[${ids.join("|")}]`,
-      "filter[active]": "1",
-      limit: `${ids.length}`,
-    });
+    const unique = [...new Set(ids.map((id) => String(id).trim()).filter(Boolean))];
+    const chunkSize = 40;
+    const items: Product[] = [];
 
-    const items = asArray<PsProduct>(data as never, "products").map(mapProduct);
-    await this.applyStock(items);
+    for (let offset = 0; offset < unique.length; offset += chunkSize) {
+      const chunk = unique.slice(offset, offset + chunkSize);
+      const { data } = await this.request<{ products?: PsProduct[] }>("/products", {
+        ...this.shopQueryParams(),
+        display: "full",
+        "filter[id]": `[${chunk.join("|")}]`,
+        "filter[active]": "1",
+        limit: `${chunk.length}`,
+      });
+
+      const mapped = asArray<PsProduct>(data as never, "products").map(mapProduct);
+      await Promise.all([
+        this.applyStock(mapped),
+        this.normalizeProductPrices(mapped),
+      ]);
+      items.push(...mapped);
+    }
 
     // Preserve the order given by the category association.
-    const order = new Map(ids.map((id, i) => [id, i]));
+    const order = new Map(unique.map((id, i) => [id, i]));
     items.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
     return items;
   }
@@ -451,12 +468,171 @@ class PrestaShopService {
     }
 
     for (const pid of productIds) {
-      // Prefer the authoritative "attribute 0" total; otherwise sum combinations.
-      const value = base.has(pid) ? base.get(pid)! : summed.get(pid);
+      const baseQty = base.get(pid);
+      const sumQty = summed.get(pid);
+      // Produits à déclinaisons : la ligne attribute=0 est parfois à 0 alors
+      // que les tailles ont du stock — prendre le max des deux.
+      let value: number | undefined;
+      if (baseQty !== undefined && sumQty !== undefined) {
+        value = Math.max(baseQty, sumQty);
+      } else {
+        value = baseQty ?? sumQty;
+      }
       if (value !== undefined) map.set(pid, value);
     }
 
     return map;
+  }
+
+  /**
+   * Corrige les prix manquants (0 €) pour TOUS les produits de la liste.
+   * Ordre : relecture shop → XML individuel (parallèle borné) → déclinaisons batch.
+   */
+  private async normalizeProductPrices(products: Product[]): Promise<void> {
+    const missing = products.filter((p) => p.price <= 0);
+    if (missing.length === 0) return;
+
+    const shopId = this.resolveShopId();
+    const chunkSize = 50;
+
+    // 1) Relecture ciblée id + price avec id_shop
+    for (let offset = 0; offset < missing.length; offset += chunkSize) {
+      const chunk = missing.slice(offset, offset + chunkSize);
+      const ids = chunk.map((p) => p.id);
+
+      const { data } = await this.request<{ products?: PsProduct[] }>(
+        "/products",
+        {
+          ...this.shopQueryParams(),
+          display: "[id,price]",
+          "filter[id]": `[${ids.join("|")}]`,
+          limit: `${ids.length}`,
+        },
+      );
+
+      for (const row of asArray<PsProduct>(data as never, "products")) {
+        const parsed = Number.parseFloat(String(row.price ?? "").replace(",", "."));
+        if (!Number.isFinite(parsed) || parsed <= 0) continue;
+        const product = products.find((p) => p.id === String(row.id));
+        if (product && product.price <= 0) product.price = parsed;
+      }
+    }
+
+    let stillMissing = products.filter((p) => p.price <= 0);
+    if (stillMissing.length === 0) return;
+
+    // 2) XML avec id_shop (source la plus fiable en multiboutique) — parallèle borné
+    const xmlConcurrency = 8;
+    for (let i = 0; i < stillMissing.length; i += xmlConcurrency) {
+      const batch = stillMissing.slice(i, i + xmlConcurrency);
+      await Promise.all(
+        batch.map(async (product) => {
+          const raw = await this.getProductRawXml(product.id);
+          if (!raw) return;
+          const priceStr = extractXmlScalarField(raw, "price");
+          const parsed = Number.parseFloat(
+            String(priceStr ?? "").replace(",", "."),
+          );
+          if (Number.isFinite(parsed) && parsed > 0) {
+            product.price = parsed;
+          }
+        }),
+      );
+    }
+
+    stillMissing = products.filter((p) => p.price <= 0);
+    if (stillMissing.length === 0) return;
+
+    // 3) Prix via déclinaisons (batch) — impact positif ou prix absolu stocké
+    await this.applyBatchCombinationPrices(stillMissing);
+
+    // 4) Dernier recours affiché : prix d'import par défaut (évite 0,00 € vitrine)
+    const fallback = productImportConfig.defaultPrice;
+    if (fallback > 0) {
+      for (const product of products) {
+        if (product.price <= 0) product.price = fallback;
+      }
+    }
+
+    if (process.env.NODE_ENV !== "production") {
+      const unresolved = products.filter((p) => p.price <= 0).length;
+      if (unresolved > 0) {
+        console.warn(
+          `[prestashop] normalizeProductPrices: ${unresolved}/${products.length} product(s) still at 0 (shop=${shopId})`,
+        );
+      }
+    }
+  }
+
+  /** Hydrate les prix 0 € depuis les déclinaisons (requêtes batchées). */
+  private async applyBatchCombinationPrices(products: Product[]): Promise<void> {
+    if (products.length === 0) return;
+
+    const byId = new Map(products.map((p) => [p.id, p]));
+    const ids = products.map((p) => p.id);
+    const chunkSize = 40;
+
+    for (let offset = 0; offset < ids.length; offset += chunkSize) {
+      const chunk = ids.slice(offset, offset + chunkSize);
+
+      const [{ data: comboData }, { data: productData }] = await Promise.all([
+        this.request<{ combinations?: PsCombination[] }>("/combinations", {
+          display: "[id,id_product,price]",
+          "filter[id_product]": `[${chunk.join("|")}]`,
+          limit: "2000",
+        }),
+        this.request<{ products?: PsProduct[] }>("/products", {
+          ...this.shopQueryParams(),
+          display: "[id,price]",
+          "filter[id]": `[${chunk.join("|")}]`,
+          limit: `${chunk.length}`,
+        }),
+      ]);
+
+      const bases = new Map<string, number>();
+      for (const row of asArray<PsProduct>(productData as never, "products")) {
+        const parsed = Number.parseFloat(
+          String(row.price ?? "").replace(",", "."),
+        );
+        if (Number.isFinite(parsed) && parsed > 0) {
+          bases.set(String(row.id), parsed);
+        }
+      }
+
+      const impacts = new Map<string, number[]>();
+      for (const combo of asArray<PsCombination>(
+        comboData as never,
+        "combinations",
+      )) {
+        const pid = String(combo.id_product ?? "").trim();
+        if (!pid || !byId.has(pid)) continue;
+        const impact =
+          Number.parseFloat(String(combo.price ?? "0").replace(",", ".")) || 0;
+        const list = impacts.get(pid) ?? [];
+        list.push(impact);
+        impacts.set(pid, list);
+      }
+
+      for (const pid of chunk) {
+        const product = byId.get(pid);
+        if (!product || product.price > 0) continue;
+
+        const base = bases.get(pid) ?? 0;
+        const comboImpacts = impacts.get(pid);
+
+        if (comboImpacts && comboImpacts.length > 0) {
+          const prices = comboImpacts
+            .map((impact) => base + impact)
+            .filter((p) => p > 0);
+          if (prices.length > 0) {
+            product.price = Math.min(...prices);
+            continue;
+          }
+        }
+
+        if (base > 0) product.price = base;
+      }
+    }
   }
 
   /** Applique le stock réel (stock_availables) à chaque déclinaison / taille. */
@@ -638,7 +814,33 @@ class PrestaShopService {
     }
     const id = extractCreatedId(data, "category");
     if (!id) throw new Error("Catégorie créée mais identifiant introuvable.");
+    await this.ensureCategoryShopAssociation(id);
     return id;
+  }
+
+  /**
+   * PrestaShop multishop: categories created via API may miss ps_category_shop,
+   * which hides them from the BO category picker when editing a product.
+   */
+  private async ensureCategoryShopAssociation(categoryId: string): Promise<void> {
+    const shopId = this.resolveShopId();
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
+  <category>
+    <id>${escapeXml(categoryId)}</id>
+    <active>1</active>
+  </category>
+</prestashop>`;
+
+    const { status, error } = await this.put(`/categories/${categoryId}`, xml, {
+      id_shop: shopId,
+    });
+    if (status !== null && status >= 400) {
+      console.warn(
+        `[prestashop] ensureCategoryShopAssociation failed category=${categoryId} shop=${shopId}`,
+        error,
+      );
+    }
   }
 
   /** Téléverse une image pour une catégorie PrestaShop. */
@@ -652,100 +854,99 @@ class PrestaShopService {
 
   /**
    * Products that belong to a category. Reads the category's
-   * `associations.products` (every product linked to it) and fetches them by id,
-   * which is far more accurate than filtering products by `id_category_default`.
-   * Falls back to the default-category filter if the association is empty.
+   * `associations.products` and fetches them by id in batches.
    */
   async getCategoryProducts(id: string, limit = 500): Promise<Product[]> {
     const categoryId = String(id).trim();
-    const merged = new Map<string, Product>();
+    if (!categoryId || categoryId === "0") return [];
 
-    const belongsToCategory = (product: Product, targetId: string): boolean => {
-      const cat = String(targetId).trim();
-      if (String(product.defaultCategoryId ?? "").trim() === cat) return true;
-      return product.categoryIds.some((cid) => String(cid).trim() === cat);
-    };
+    const ids = await this.getCategoryAssociatedProductIds(categoryId);
 
-    const push = (items: Product[]) => {
-      for (const product of items) {
-        if (belongsToCategory(product, categoryId)) {
-          merged.set(product.id, product);
-        }
-      }
-    };
+    if (ids.length > 0) {
+      return this.getProductsByIds(ids.slice(0, limit));
+    }
 
-    const pushIds = async (ids: string[]) => {
-      if (ids.length === 0) return;
-      const chunkSize = 50;
-      for (let offset = 0; offset < ids.length; offset += chunkSize) {
-        push(
-          await this.getProductsByIds(ids.slice(offset, offset + chunkSize)),
-        );
-      }
-    };
-
-    const { data } = await this.request<Record<string, unknown>>(
-      `/categories/${categoryId}`,
-      { display: "full" },
-    );
-    const ps =
-      (data?.category as PsCategory | undefined) ??
-      asArray<PsCategory>(data as never, "categories")[0];
-
-    const associationIds =
-      ps?.associations?.products?.map((p) => String(p.id).trim()).filter(Boolean) ??
-      [];
-
-    await pushIds(associationIds);
-
+    // Fallback : filtre id_category_default
     const byDefault = await this.getProducts({
       category: categoryId,
       limit: Math.min(limit, 200),
       page: 1,
     });
-    push(byDefault.items);
+    return byDefault.items;
+  }
 
-    const parentId = String(ps?.id_parent ?? "").trim();
-    if (merged.size === 0 && parentId && parentId !== "0" && parentId !== "1" && parentId !== "2") {
-      const { data: parentData } = await this.request<Record<string, unknown>>(
-        `/categories/${parentId}`,
-        { display: "full" },
+  /** IDs produits liés à une catégorie (associations PrestaShop). */
+  async getCategoryAssociatedProductIds(categoryId: string): Promise<string[]> {
+    const id = String(categoryId).trim();
+    if (!id || id === "0" || !/^\d+$/.test(id)) return [];
+
+    const { data, status } = await this.request<Record<string, unknown>>(
+      `/categories/${id}`,
+      { display: "full", ...this.shopQueryParams() },
+    );
+    if (status === 404 || !data) return [];
+
+    const ps =
+      (data?.category as PsCategory | undefined) ??
+      asArray<PsCategory>(data as never, "categories")[0];
+
+    const raw = ps?.associations?.products as unknown;
+    const list = Array.isArray(raw)
+      ? raw
+      : raw && typeof raw === "object"
+        ? "id" in (raw as object)
+          ? [raw as { id: string }]
+          : Array.isArray((raw as { product?: unknown }).product)
+            ? ((raw as { product: { id: string }[] }).product)
+            : (raw as { product?: { id: string } }).product
+              ? [(raw as { product: { id: string } }).product]
+              : []
+        : [];
+
+    return [
+      ...new Set(
+        list.map((p) => String(p.id).trim()).filter((pid) => /^\d+$/.test(pid)),
+      ),
+    ];
+  }
+
+  /**
+   * Tous les produits d'une arborescence de catégories (racine + enfants),
+   * en une passe d'IDs puis fetch batché — évite N× getCategoryProducts.
+   */
+  async getProductsInCategoryTree(
+    rootCategoryId: string,
+    categoryIds: string[],
+    limit = 500,
+  ): Promise<Product[]> {
+    const scope = [
+      ...new Set(
+        [rootCategoryId, ...categoryIds]
+          .map((id) => String(id).trim())
+          .filter((id) => id && id !== "0" && /^\d+$/.test(id)),
+      ),
+    ];
+    if (scope.length === 0) return [];
+
+    const allIds = new Set<string>();
+
+    const concurrency = 6;
+    for (let i = 0; i < scope.length; i += concurrency) {
+      const batch = scope.slice(i, i + concurrency);
+      const lists = await Promise.all(
+        batch.map((cid) => this.getCategoryAssociatedProductIds(cid)),
       );
-      const parentPs =
-        (parentData?.category as PsCategory | undefined) ??
-        asArray<PsCategory>(parentData as never, "categories")[0];
-      const parentAssociationIds =
-        parentPs?.associations?.products
-          ?.map((p) => String(p.id).trim())
-          .filter(Boolean) ?? [];
-      await pushIds(parentAssociationIds);
-    }
-
-    if (merged.size === 0) {
-      let page = 1;
-      let hasMore = true;
-      while (hasMore && page <= 30) {
-        const batch = await this.getProducts({ limit: 100, page });
-        for (const product of batch.items) {
-          if (belongsToCategory(product, categoryId)) {
-            merged.set(product.id, product);
-          }
-        }
-        hasMore = batch.hasMore;
-        page += 1;
+      for (const list of lists) {
+        for (const id of list) allIds.add(id);
       }
     }
 
-    if (merged.size > 0) {
-      const enriched = await this.getProductsByIds([...merged.keys()]);
-      const byId = new Map(enriched.map((product) => [product.id, product]));
-      return [...merged.keys()]
-        .map((productId) => byId.get(productId) ?? merged.get(productId)!)
-        .filter((product) => belongsToCategory(product, categoryId))
-        .slice(0, limit);
+    if (allIds.size === 0) {
+      return this.getCategoryProducts(rootCategoryId, limit);
     }
 
-    return [];
+    const ids = [...allIds].slice(0, limit);
+    return this.getProductsByIds(ids);
   }
 
   // ─────────────────────────────────────────────
@@ -1541,13 +1742,26 @@ class PrestaShopService {
   ): Promise<void> {
     const shopId = this.resolveShopId();
     const langId = serverConfig.langId;
-    const price =
-      options?.price !== undefined && Number.isFinite(options.price)
-        ? options.price.toFixed(6)
-        : "0.000000";
     const categoryId = String(options?.categoryId ?? "").trim();
 
     const raw = await this.getProductRawXml(productId);
+
+    // Ne JAMAIS écraser un prix existant avec 0 — c'était la cause des 0 € en boutique.
+    let price: string | undefined;
+    if (
+      options?.price !== undefined &&
+      Number.isFinite(options.price) &&
+      options.price > 0
+    ) {
+      price = options.price.toFixed(6);
+    } else if (raw) {
+      const existing = extractXmlScalarField(raw, "price");
+      const parsed = Number.parseFloat(String(existing ?? "").replace(",", "."));
+      if (Number.isFinite(parsed) && parsed > 0) {
+        price = parsed.toFixed(6);
+      }
+    }
+
     if (raw) {
       let patched = patchProductShopXml(raw, {
         shopId,
@@ -1575,7 +1789,7 @@ class PrestaShopService {
     <show_price>1</show_price>
     <state>1</state>
     <id_shop_default>${escapeXml(shopId)}</id_shop_default>
-    <price>${escapeXml(price)}</price>
+    ${price ? `<price>${escapeXml(price)}</price>` : ""}
     ${categoryId ? `<id_category_default>${escapeXml(categoryId)}</id_category_default>` : ""}
     ${options?.name ? langFieldXml("name", options.name, langId) : ""}
     ${options?.name ? langFieldXml("link_rewrite", options.linkRewrite ?? slugify(options.name), langId) : ""}
@@ -1664,15 +1878,19 @@ class PrestaShopService {
       : [defaultCategoryId];
 
     const raw = await this.getProductRawXml(productId);
-    let price =
-      options?.price !== undefined && Number.isFinite(options.price)
-        ? options.price.toFixed(6)
-        : null;
-    if (!price && raw) {
-      price = extractXmlScalarField(raw, "price");
-    }
-    if (!price) {
-      price = "0.000000";
+    let price: string | undefined;
+    if (
+      options?.price !== undefined &&
+      Number.isFinite(options.price) &&
+      options.price > 0
+    ) {
+      price = options.price.toFixed(6);
+    } else if (raw) {
+      const existing = extractXmlScalarField(raw, "price");
+      const parsed = Number.parseFloat(String(existing ?? "").replace(",", "."));
+      if (Number.isFinite(parsed) && parsed > 0) {
+        price = parsed.toFixed(6);
+      }
     }
 
     if (raw) {
@@ -1710,7 +1928,7 @@ class PrestaShopService {
 <prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
   <product>
     <id>${escapeXml(productId)}</id>
-    <price>${escapeXml(price)}</price>
+    ${price ? `<price>${escapeXml(price)}</price>` : ""}
     <id_category_default>${escapeXml(defaultCategoryId)}</id_category_default>
     ${options?.name ? langFieldXml("name", options.name, langId) : ""}
     ${options?.name ? langFieldXml("link_rewrite", options.linkRewrite ?? slugify(options.name), langId) : ""}
@@ -1782,17 +2000,18 @@ ${ids
     const langId = serverConfig.langId;
     const shopId = this.resolveShopId();
     const slug = linkRewrite?.trim() || slugify(trimmed);
-    let priceStr =
-      price !== undefined && Number.isFinite(price) ? price.toFixed(6) : null;
-
-    if (!priceStr) {
+    let priceStr: string | undefined;
+    if (price !== undefined && Number.isFinite(price) && price > 0) {
+      priceStr = price.toFixed(6);
+    } else {
       const raw = await this.getProductRawXml(productId);
       if (raw) {
-        priceStr = extractXmlScalarField(raw, "price");
+        const existing = extractXmlScalarField(raw, "price");
+        const parsed = Number.parseFloat(String(existing ?? "").replace(",", "."));
+        if (Number.isFinite(parsed) && parsed > 0) {
+          priceStr = parsed.toFixed(6);
+        }
       }
-    }
-    if (!priceStr) {
-      priceStr = "0.000000";
     }
 
     const minimalXml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -1800,7 +2019,7 @@ ${ids
   <product>
     <id>${escapeXml(productId)}</id>
     <active>1</active>
-    <price>${escapeXml(priceStr)}</price>
+    ${priceStr ? `<price>${escapeXml(priceStr)}</price>` : ""}
     ${langFieldXml("name", trimmed, langId)}
     ${langFieldXml("link_rewrite", slug, langId)}
   </product>
@@ -1818,7 +2037,9 @@ ${ids
       if (raw) {
         let patched = patchLangFieldXml(raw, "name", trimmed, langId);
         patched = patchLangFieldXml(patched, "link_rewrite", slug, langId);
-        patched = patchXmlScalarField(patched, "price", priceStr);
+        if (priceStr) {
+          patched = patchXmlScalarField(patched, "price", priceStr);
+        }
         patched = patchXmlScalarField(patched, "active", "1");
         const full = await this.put(
           `/products/${productId}`,
@@ -1880,6 +2101,70 @@ ${ids
     }
 
     return items;
+  }
+
+  /**
+   * Même filtre que Catalogue → Produits : actif boutique + visibility both/catalog.
+   */
+  async isProductBoListable(productId: string): Promise<boolean> {
+    const shopId = this.resolveShopId();
+    const { data } = await this.request<{ products?: PsProduct[] }>("/products", {
+      display: "[id,active,visibility]",
+      "filter[id]": `[${productId}]`,
+      "filter[active]": "1",
+      ...this.shopQueryParams(),
+      limit: "1",
+    });
+    const product = asArray<PsProduct>(data as never, "products")[0];
+    if (!product) return false;
+    const visibility = String(product.visibility ?? "").toLowerCase();
+    return visibility === "both" || visibility === "catalog";
+  }
+
+  /** Télécharge une image produit depuis l’API PrestaShop (auth serveur). */
+  async fetchProductImageBuffer(
+    productId: string,
+    imageId: string,
+  ): Promise<{ buffer: Buffer; mimeType: string }> {
+    if (!/^\d+$/.test(productId) || !/^\d+$/.test(imageId)) {
+      throw new Error("Identifiants image invalides.");
+    }
+    const base = serverConfig.apiUrl.replace(/\/$/, "");
+    const url = `${base}/images/products/${productId}/${imageId}`;
+    const auth = Buffer.from(`${serverConfig.apiKey}:`).toString("base64");
+    const response = await fetch(url, {
+      headers: { Authorization: `Basic ${auth}` },
+    });
+    if (!response.ok) {
+      throw new Error(`Image PrestaShop #${imageId} inaccessible (${response.status}).`);
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    if (buffer.byteLength < 2_500) {
+      throw new Error(`Image PrestaShop #${imageId} trop petite.`);
+    }
+    const mimeType = response.headers.get("content-type")?.split(";")[0]?.trim() || "image/jpeg";
+    return { buffer, mimeType };
+  }
+
+  /** Désactive un produit (utile après re-clonage pour éviter les doublons site). */
+  async setProductActive(productId: string, active: boolean): Promise<void> {
+    const raw = await this.getProductRawXml(productId);
+    if (!raw) {
+      throw new Error(`Produit #${productId} introuvable pour mise à jour active.`);
+    }
+    let patched = patchXmlScalarField(raw, "active", active ? "1" : "0");
+    patched = patchProductShopXml(patched, {
+      shopId: this.resolveShopId(),
+    });
+    const { status, error } = await this.put(`/products/${productId}`, patched, {
+      ...this.shopQueryParams(),
+    });
+    if (status !== null && status >= 400) {
+      throw new Error(
+        `Mise à jour active produit #${productId} échouée : ${error ?? status}`,
+      );
+    }
   }
 
   /** Téléverse une image distante vers un produit PrestaShop. */
@@ -1953,10 +2238,47 @@ ${ids
 
     const matched: { id: string; label: string }[] = [];
     for (const size of sizeLabels) {
-      const row = byLabel.get(size.trim().toUpperCase());
+      const key = size.trim().toUpperCase();
+      let row = byLabel.get(key);
+      if (!row?.id && groupId) {
+        const createdId = await this.createSizeOptionValue(groupId, size);
+        if (createdId) {
+          row = { id: createdId, name: size } as PsProductOptionValue;
+          byLabel.set(key, row);
+        }
+      }
       if (row?.id) matched.push({ id: String(row.id), label: size });
     }
     return matched;
+  }
+
+  /** Crée une valeur d'attribut « Taille » manquante (ex. XXL). */
+  private async createSizeOptionValue(
+    groupId: string,
+    label: string,
+  ): Promise<string | null> {
+    const langId = serverConfig.langId;
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
+  <product_option_value>
+    <id_attribute_group>${escapeXml(groupId)}</id_attribute_group>
+    ${langFieldXml("name", label.trim().toUpperCase(), langId)}
+  </product_option_value>
+</prestashop>`;
+
+    const { data, status, error } = await this.post(
+      "/product_option_values",
+      xml,
+      this.shopQueryParams(),
+    );
+    if (status !== null && status >= 400) {
+      console.warn(
+        `[prestashop] createSizeOptionValue failed label=${label} group=${groupId}`,
+        error,
+      );
+      return null;
+    }
+    return extractCreatedId(data, "product_option_value");
   }
 
   /** Crée une déclinaison (combinaison) pour un produit. */
@@ -2513,7 +2835,12 @@ function patchProductShopXml(
   out = patchXmlScalarField(out, "show_price", "1");
   out = patchXmlScalarField(out, "state", "1");
   out = patchXmlScalarField(out, "id_shop_default", opts.shopId);
-  if (opts.price) out = patchXmlScalarField(out, "price", opts.price);
+  if (opts.price) {
+    const parsed = Number.parseFloat(opts.price);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      out = patchXmlScalarField(out, "price", opts.price);
+    }
+  }
   if (opts.categoryId) {
     out = patchXmlScalarField(out, "id_category_default", opts.categoryId);
   }
@@ -2522,7 +2849,7 @@ function patchProductShopXml(
 
 function patchXmlScalarField(xml: string, field: string, value: string): string {
   const re = new RegExp(
-    `<${field}>(?:<!\\[CDATA\\[)?[\\s\\S]*?(?:\\]\\]>)?<\\/${field}>`,
+    `<${field}\\b[^>]*>(?:<!\\[CDATA\\[)?[\\s\\S]*?(?:\\]\\]>)?<\\/${field}>`,
     "i",
   );
   const replacement = `<${field}><![CDATA[${value}]]></${field}>`;
@@ -2566,7 +2893,7 @@ function patchLangFieldXml(
 function extractXmlScalarField(xml: string, field: string): string | null {
   const match = xml.match(
     new RegExp(
-      `<${field}>(?:<!\\[CDATA\\[)?([^<\\]]+)(?:\\]\\]>)?<\\/${field}>`,
+      `<${field}\\b[^>]*>(?:<!\\[CDATA\\[)?\\s*([^<\\]]+?)\\s*(?:\\]\\]>)?<\\/${field}>`,
       "i",
     ),
   );

@@ -36,7 +36,7 @@ export function useCategory(
       audience ?? "all",
       kind ?? "all",
       league ?? "all",
-      sort ?? "relevance",
+      sort ?? "newest",
     ],
     queryFn: () =>
       api.getCategory(id, {
@@ -46,6 +46,6 @@ export function useCategory(
         sort,
       }),
     enabled: Boolean(id),
-    staleTime: 2 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
   });
 }

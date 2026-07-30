@@ -23,6 +23,7 @@ const remotePatterns = imageHosts.flatMap((hostname) => [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  compress: true,
   serverExternalPackages: ["sharp"],
   images: {
     // When no host is configured yet, fall back to unoptimized images so the

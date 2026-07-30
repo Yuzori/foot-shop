@@ -79,19 +79,28 @@ export default function TermsPage() {
         <h2>Article 6 — Livraison</h2>
         <p>
           Les produits sont livrés à l&apos;adresse indiquée par le client lors
-          de la commande. Les délais indicatifs sont de 5 à 10 jours ouvrés à
-          compter de la confirmation du paiement.
+          de la commande. Les délais indicatifs sont de{" "}
+          {shopConfig.deliveryDaysMin} à {shopConfig.deliveryDaysMax} jours
+          ouvrés à compter de la confirmation du paiement.
         </p>
         <p>
           {legalInfo.companyName} offre la livraison sur la première commande
           du client. À partir de la deuxième commande, des frais de livraison de{" "}
           {shopConfig.standardShippingPrice.toFixed(2).replace(".", ",")} € TTC
-          s&apos;appliquent, indiqués avant validation du paiement.
+          s&apos;appliquent par tranche de {shopConfig.shippingItemsPerUnit}{" "}
+          articles (ex. {shopConfig.shippingItemsPerUnit} articles ={" "}
+          {shopConfig.standardShippingPrice.toFixed(2).replace(".", ",")} € ;{" "}
+          {shopConfig.shippingItemsPerUnit + 1} à{" "}
+          {shopConfig.shippingItemsPerUnit * 2} articles ={" "}
+          {(shopConfig.standardShippingPrice * 2)
+            .toFixed(2)
+            .replace(".", ",")}{" "}
+          €). Le montant exact est indiqué avant validation du paiement.
         </p>
         <p>
           En cas de retard de livraison, le client peut, conformément à
           l&apos;article L.216-6 du Code de la consommation, demander la
-          résolution de la vente si le produit n&apos;a pas été livré dans un
+          résiliation de la vente si le produit n&apos;a pas été livré dans un
           délai supplémentaire raisonnable après mise en demeure.
         </p>
       </section>
@@ -108,8 +117,9 @@ export default function TermsPage() {
         </p>
         <p>
           Au-delà du délai légal, {legalInfo.companyName} accepte les retours
-          commerciaux pendant {legalInfo.returnDays} jours pour les articles non
-          personnalisés, dans leur état et emballage d&apos;origine.
+          commerciaux pendant {legalInfo.returnDays} jours à partir de la date de
+          réception pour les articles non personnalisés, dans leur état et
+          emballage d&apos;origine.
         </p>
       </section>
 

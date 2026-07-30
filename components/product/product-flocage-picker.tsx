@@ -13,6 +13,8 @@ interface ProductFlocagePickerProps {
   onEnabledChange: (enabled: boolean) => void;
   onNameChange: (name: string) => void;
   onNumberChange: (number: string) => void;
+  /** Flocage imposé (ex. maillots rétro) — pas de case à cocher. */
+  required?: boolean;
 }
 
 /** Flocage nom / numéro sur la fiche produit (maillots). */
@@ -23,37 +25,46 @@ export function ProductFlocagePicker({
   onEnabledChange,
   onNameChange,
   onNumberChange,
+  required = false,
 }: ProductFlocagePickerProps) {
+  const active = required || enabled;
+
   return (
     <motion.div
       layout
       className={cn(
         "overflow-hidden rounded-2xl border p-4 transition-colors duration-300",
-        enabled
+        active
           ? "border-accent/35 bg-accent/[0.06] shadow-glow-sm"
           : "border-ink/10 bg-paper-soft",
       )}
       transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
     >
-      <label className="flex cursor-pointer items-start gap-3">
-        <motion.span
-          animate={{ scale: enabled ? 1.05 : 1 }}
-          transition={{ type: "spring", stiffness: 420, damping: 22 }}
-          className="mt-0.5 inline-flex"
-        >
-          <input
-            type="checkbox"
-            checked={enabled}
-            onChange={(e) => onEnabledChange(e.target.checked)}
-            className="h-4 w-4 accent-accent"
-          />
-        </motion.span>
-        <span className="text-sm font-medium text-ink/80">
-          Flocage personnalisé (+{formatPrice(shopConfig.flocagePrice)})
-        </span>
-      </label>
+      {required ? (
+        <p className="text-sm font-medium text-ink/80">
+          Flocage obligatoire (+{formatPrice(shopConfig.flocagePrice)})
+        </p>
+      ) : (
+        <label className="flex cursor-pointer items-start gap-3">
+          <motion.span
+            animate={{ scale: enabled ? 1.05 : 1 }}
+            transition={{ type: "spring", stiffness: 420, damping: 22 }}
+            className="mt-0.5 inline-flex"
+          >
+            <input
+              type="checkbox"
+              checked={enabled}
+              onChange={(e) => onEnabledChange(e.target.checked)}
+              className="h-4 w-4 accent-accent"
+            />
+          </motion.span>
+          <span className="text-sm font-medium text-ink/80">
+            Flocage personnalisé (+{formatPrice(shopConfig.flocagePrice)})
+          </span>
+        </label>
+      )}
       <AnimatePresence initial={false}>
-        {enabled ? (
+        {active ? (
           <motion.div
             key="flocage-fields"
             initial={{ height: 0, opacity: 0, y: -6 }}

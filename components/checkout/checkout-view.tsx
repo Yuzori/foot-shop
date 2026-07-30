@@ -219,6 +219,7 @@ export function CheckoutView() {
   const refreshShippingPreview = useCallback(
     async (email: string) => {
       if (!email.trim()) return;
+      const itemCount = lines.reduce((sum, line) => sum + line.quantity, 0);
       try {
         const res = await fetch("/api/checkout/shipping-preview", {
           method: "POST",
@@ -226,6 +227,7 @@ export function CheckoutView() {
           body: JSON.stringify({
             email,
             customerId: sessionQuery.data?.id,
+            itemCount,
           }),
         });
         const data = (await res.json()) as { fee?: number; label?: string };
@@ -236,7 +238,7 @@ export function CheckoutView() {
         /* ignore */
       }
     },
-    [sessionQuery.data?.id],
+    [sessionQuery.data?.id, lines],
   );
 
   const refreshPromoPreview = useCallback(

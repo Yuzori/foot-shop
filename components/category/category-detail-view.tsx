@@ -55,7 +55,7 @@ export function CategoryDetailView({ id }: { id: string }) {
     ? (audienceParam as (typeof VALID_AUDIENCES)[number])
     : null;
 
-  const [sort, setSort] = useState<SortOption>("relevance");
+  const [sort, setSort] = useState<SortOption>("newest");
 
   const catalogNav = useCatalogNav();
   const { data, isLoading, isError } = useCategory(id, {

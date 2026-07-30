@@ -39,15 +39,17 @@ export interface PsAssociations {
 
 export interface PsProduct {
   id: string;
-  id_default_image?: string | false;
-  id_category_default?: string;
+  id_default_image?: string | number | false;
+  id_category_default?: string | number;
   reference?: string;
-  price?: string;
+  /** HT — souvent string, parfois number selon la config webservice. */
+  price?: string | number;
   name?: PsLangField;
   description?: PsLangField;
   description_short?: PsLangField;
   link_rewrite?: PsLangField;
   active?: string;
+  visibility?: string;
   quantity?: string;
   date_add?: string;
   on_sale?: string;

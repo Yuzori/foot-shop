@@ -26,8 +26,10 @@ const ACTIVE_SIZE = "h-[4.75rem] w-[4.75rem]";
 const INACTIVE_SIZE = "h-[4rem] w-[4rem]";
 const SLOT_CLASS = "w-[4.75rem]";
 
+import type { ImageAccent } from "@/hooks/use-image-accent-color";
+
 function accentRing(
-  accent: ReturnType<typeof useImageAccentColor>,
+  accent: ImageAccent,
   strength: "active" | "hover" | "none",
 ): CSSProperties {
   if (strength === "active") {
@@ -51,7 +53,9 @@ function KitTypeTile({
   isActive: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
-  const accent = useImageAccentColor(option.imageUrl);
+  const { accent } = useImageAccentColor(option.imageUrl, {
+    enabled: isActive || hovered,
+  });
 
   const ringStrength = isActive ? "active" : hovered ? "hover" : "none";
   const enlarged = isActive || hovered;

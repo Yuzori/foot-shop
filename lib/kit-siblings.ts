@@ -50,11 +50,11 @@ export async function findKitSiblings(product: {
   const candidates = new Map<string, Product>();
 
   if (product.defaultCategoryId) {
-    const fromCategory = await prestashop.getCategoryProducts(
-      product.defaultCategoryId,
-      120,
-    );
-    collectCandidates(candidates, fromCategory);
+    const categoryId = String(product.defaultCategoryId).trim();
+    if (categoryId && categoryId !== "0") {
+      const fromCategory = await prestashop.getCategoryProducts(categoryId, 120);
+      collectCandidates(candidates, fromCategory);
+    }
   }
 
   for (const query of queries) {

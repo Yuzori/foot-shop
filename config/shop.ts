@@ -4,8 +4,16 @@
 export const shopConfig = {
   /** Prix du flocage personnalisé (nom / numéro) par maillot. */
   flocagePrice: 3.99,
-  /** Frais de livraison standard (€) — offerts sur la 1ʳᵉ commande uniquement. */
-  standardShippingPrice: 2.99,
+  /**
+   * Frais de livraison par tranche (€) — offerts sur la 1ʳᵉ commande uniquement.
+   * Ex. 3 articles → 3,99 € ; 4–6 → 7,98 € ; etc.
+   */
+  standardShippingPrice: 3.99,
+  /** Nombre d'articles couverts par une tranche de livraison. */
+  shippingItemsPerUnit: 3,
+  /** Délai de livraison indicatif (jours ouvrés). */
+  deliveryDaysMin: 10,
+  deliveryDaysMax: 13,
   /** Seuil d'affichage du stock : masqué au-dessus, visible entre 0 et ce nombre inclus. */
   stockDisplayMax: 10,
   flocageLabel: "Flocage personnalisé",
@@ -15,8 +23,8 @@ export const shopConfig = {
   /** Messages sous le bouton d'achat (rotation toutes les 3 s). */
   purchaseTicker: [
     "Livraison offerte sur votre 1ʳᵉ commande",
-    "Livraison 2,99 € à partir de la 2ᵉ commande",
-    "Livraison estimée : 5 à 10 jours ouvrés",
+    "Livraison 3,99 € / 3 articles à partir de la 2ᵉ commande",
+    "Livraison estimée : 10 à 13 jours ouvrés",
     "Retours gratuits sous 30 jours",
     "Flocage premium disponible sur tous les maillots",
     "Paiement 100 % sécurisé",

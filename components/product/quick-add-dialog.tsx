@@ -14,6 +14,8 @@ import { Spinner } from "@/components/ui/spinner";
 import { shopConfig } from "@/config/shop";
 import { useProduct } from "@/hooks/use-products";
 import { isJerseyProduct } from "@/lib/product-collection";
+import { effectiveProductPrice } from "@/lib/product-price";
+import { requiresRetroFlocage } from "@/lib/retro-jersey";
 import { isSizeGroup } from "@/lib/sizes";
 import { cn } from "@/lib/utils";
 import { useCartStore } from "@/store/cart-store";
@@ -63,6 +65,11 @@ export function QuickAddDialog({ product, open, onClose }: QuickAddDialogProps) 
   const [flocageNumber, setFlocageNumber] = useState("");
 
   const showFlocage = isJerseyProduct(resolved.name);
+  const retroFlocageRequired = requiresRetroFlocage(resolved);
+
+  useEffect(() => {
+    if (retroFlocageRequired) setFlocageEnabled(true);
+  }, [retroFlocageRequired]);
 
   const matchedVariant: ProductVariant | null = useMemo(() => {
     if (!hasVariants) return null;
@@ -78,17 +85,19 @@ export function QuickAddDialog({ product, open, onClose }: QuickAddDialogProps) 
     : true;
 
   const needsSize = hasVariants && !allGroupsSelected;
-  const activePrice = matchedVariant?.price ?? resolved.price;
+  const activePrice = effectiveProductPrice(resolved, matchedVariant);
   const inStock = hasVariants
     ? allGroupsSelected
       ? (matchedVariant?.inStock ?? false)
       : resolved.inStock
     : resolved.inStock;
 
-  const flocageValid =
-    !flocageEnabled ||
-    (flocageName.trim().length >= 2 &&
-      flocageNumber.trim().length >= shopConfig.flocageNumberMin);
+  const flocageValid = retroFlocageRequired
+    ? flocageName.trim().length >= 2 &&
+      flocageNumber.trim().length >= shopConfig.flocageNumberMin
+    : !flocageEnabled ||
+      (flocageName.trim().length >= 2 &&
+        flocageNumber.trim().length >= shopConfig.flocageNumberMin);
 
   const canAdd =
     inStock &&
@@ -121,7 +130,7 @@ export function QuickAddDialog({ product, open, onClose }: QuickAddDialogProps) 
       optionsLabel,
       reference: matchedVariant?.reference ?? resolved.reference,
       flocage:
-        showFlocage && flocageEnabled
+        showFlocage && (retroFlocageRequired || flocageEnabled)
           ? {
               enabled: true,
               name: flocageName.trim().toUpperCase(),
@@ -279,6 +288,7 @@ export function QuickAddDialog({ product, open, onClose }: QuickAddDialogProps) 
                 <div className="mt-6">
                   <ProductFlocagePicker
                     enabled={flocageEnabled}
+                    required={retroFlocageRequired}
                     name={flocageName}
                     number={flocageNumber}
                     onEnabledChange={setFlocageEnabled}

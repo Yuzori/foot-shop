@@ -311,9 +311,11 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
 
   const note = buildOrderNote(resolvedLines);
 
+  const itemCount = resolvedLines.reduce((sum, line) => sum + line.quantity, 0);
   const shipping = await resolveShippingFee({
     email: contact.email,
     customerId,
+    itemCount,
   });
 
   const subtotal = resolvedLines.reduce(

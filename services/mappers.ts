@@ -55,10 +55,42 @@ export function resolveLang(field: PsLangField | undefined): string {
   return "";
 }
 
-function toNumber(value: string | undefined, fallback = 0): number {
-  if (value === undefined || value === null) return fallback;
-  const parsed = Number.parseFloat(value);
+function toNumber(value: unknown, fallback = 0): number {
+  if (value === undefined || value === null || value === "") return fallback;
+  if (typeof value === "number") return Number.isFinite(value) ? value : fallback;
+  if (typeof value === "object" && value !== null && "value" in value) {
+    return toNumber((value as { value: unknown }).value, fallback);
+  }
+  const cleaned = String(value)
+    .trim()
+    .replace(/\s/g, "")
+    .replace(",", ".");
+  const parsed = Number.parseFloat(cleaned.replace(/[^\d.-]/g, ""));
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+/** PrestaShop renvoie 1 association en objet, N en tableau, parfois sous une clé imbriquée. */
+function asAssocList<T extends { id?: string | number }>(
+  value: unknown,
+  nestedKeys: string[] = [
+    "image",
+    "images",
+    "category",
+    "categories",
+    "product",
+    "products",
+  ],
+): T[] {
+  if (!value) return [];
+  if (Array.isArray(value)) return value as T[];
+  if (typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    if ("id" in obj) return [value as T];
+    for (const key of nestedKeys) {
+      if (key in obj) return asAssocList<T>(obj[key], nestedKeys);
+    }
+  }
+  return [];
 }
 
 /**
@@ -78,9 +110,23 @@ export function buildCategoryImageUrl(categoryId: string): string {
 }
 
 export function mapProductImages(ps: PsProduct): ProductImage[] {
-  const productId = ps.id;
-  const imageIds = ps.associations?.images?.map((img) => img.id) ?? [];
+  const productId = psStr(ps.id);
   const name = resolveLang(ps.name);
+
+  const imageIds = asAssocList(ps.associations?.images)
+    .map((img) => psStr(img.id))
+    .filter((id) => /^\d+$/.test(id));
+
+  // Cover seule (associations vides / 1 image mal formée)
+  const defaultCover = psStr(ps.id_default_image);
+  if (
+    defaultCover &&
+    /^\d+$/.test(defaultCover) &&
+    defaultCover !== "0" &&
+    !imageIds.includes(defaultCover)
+  ) {
+    imageIds.unshift(defaultCover);
+  }
 
   return imageIds.map((imageId) => ({
     id: imageId,
@@ -92,13 +138,16 @@ export function mapProductImages(ps: PsProduct): ProductImage[] {
 export function mapProduct(ps: PsProduct): Product {
   const images = mapProductImages(ps);
 
+  const coverIdRaw = psStr(ps.id_default_image);
   const coverId =
-    typeof ps.id_default_image === "string"
-      ? ps.id_default_image
-      : undefined;
+    coverIdRaw && /^\d+$/.test(coverIdRaw) && coverIdRaw !== "0"
+      ? coverIdRaw
+      : "";
 
   const cover =
-    images.find((img) => img.id === coverId) ?? images[0] ?? null;
+    (coverId ? images.find((img) => img.id === coverId) : undefined) ??
+    images[0] ??
+    null;
 
   /**
    * Stock resolution (robust):
@@ -124,9 +173,9 @@ export function mapProduct(ps: PsProduct): Product {
   const createdAt = ps.date_add ?? null;
 
   return {
-    id: ps.id,
+    id: psStr(ps.id),
     name: displayJerseyProductName(resolveLang(ps.name)),
-    slug: resolveLang(ps.link_rewrite) || ps.id,
+    slug: resolveLang(ps.link_rewrite) || psStr(ps.id),
     reference: ps.reference || undefined,
     summary: sanitizeProductHtml(resolveLang(ps.description_short)),
     description: sanitizeProductHtml(resolveLang(ps.description)),
@@ -140,17 +189,19 @@ export function mapProduct(ps: PsProduct): Product {
     inStock,
 
     categoryIds: (() => {
-      const fromAssociations =
-        ps.associations?.categories?.map((c) => String(c.id).trim()) ?? [];
-      const defaultId = ps.id_category_default
-        ? String(ps.id_category_default).trim()
-        : "";
+      const fromAssociations = asAssocList(ps.associations?.categories)
+        .map((c) => psStr(c.id))
+        .filter(Boolean);
+      const defaultId = psStr(ps.id_category_default);
       if (defaultId && !fromAssociations.includes(defaultId)) {
         return [...fromAssociations, defaultId];
       }
       return fromAssociations;
     })(),
-    defaultCategoryId: ps.id_category_default ?? null,
+    defaultCategoryId: (() => {
+      const id = psStr(ps.id_category_default);
+      return id && id !== "0" ? id : null;
+    })(),
 
     variants: [],
     optionGroups: [],

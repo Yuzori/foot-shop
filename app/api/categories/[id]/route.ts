@@ -36,7 +36,7 @@ export async function GET(
   const sortParam = searchParams.get("sort");
   const sort = SORTS.includes(sortParam as SortOption)
     ? (sortParam as SortOption)
-    : undefined;
+    : "newest";
 
   const category = await prestashop.getCategoryById(id);
 
@@ -47,14 +47,30 @@ export async function GET(
     );
   }
 
-  let products = await prestashop.getCategoryProducts(id);
   const allCategories = await prestashop.getCategories();
+  const nav = resolveCatalogNavCategories(allCategories);
+  const collectionRoots = new Set(
+    [
+      nav.maillotsCategoryId,
+      nav.shortsCategoryId,
+      nav.kidsMaillotsCategoryId,
+      nav.kidsShortsCategoryId,
+    ].filter(Boolean),
+  );
+
+  let products: Awaited<ReturnType<typeof prestashop.getCategoryProducts>>;
+
+  if (!leagueParam && collectionRoots.has(id)) {
+    const scope = getCategoryDescendantIds(allCategories, id);
+    products = await prestashop.getProductsInCategoryTree(id, [...scope], 500);
+  } else {
+    products = await prestashop.getCategoryProducts(id);
+  }
 
   if (leagueParam) {
     const league = catalogLeagues.find((item) => item.id === leagueParam);
     if (league) {
       const division = catalogDivisionFromLeague(league);
-      const nav = resolveCatalogNavCategories(allCategories);
       const kidsBase =
         kindParam === "short"
           ? nav.kidsShortsCategoryId

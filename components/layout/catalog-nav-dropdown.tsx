@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { LeagueIcon } from "@/components/layout/league-icon";
 import {
   buildCatalogHref,
+  buildAudienceCatalogHref,
   catalogAudiences,
   catalogLeagues,
   type CatalogKind,
@@ -113,6 +114,32 @@ export function CatalogNavDropdown({
                     className="grid grid-cols-2 gap-2"
                   >
                     {catalogAudiences.map((item, index) => (
+                      kind === "short" ? (
+                        <motion.div
+                          key={item.id}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{
+                            delay: index * 0.05,
+                            duration: 0.22,
+                            ease: [0.16, 1, 0.3, 1],
+                          }}
+                        >
+                          <Link
+                            href={buildAudienceCatalogHref(kind, item.id, categories)}
+                            onClick={close}
+                            className="group relative block overflow-hidden rounded-xl border border-ink/[0.08] px-4 py-3.5 text-left transition-all hover:border-accent/40 hover:bg-accent-muted"
+                          >
+                            <span className="relative z-10 text-sm font-semibold">
+                              {item.label}
+                            </span>
+                            <span
+                              className="pointer-events-none absolute inset-0 bg-gradient-to-br from-accent/0 to-accent/10 opacity-0 transition-opacity group-hover:opacity-100"
+                              aria-hidden
+                            />
+                          </Link>
+                        </motion.div>
+                      ) : (
                       <motion.button
                         key={item.id}
                         type="button"
@@ -134,6 +161,7 @@ export function CatalogNavDropdown({
                           aria-hidden
                         />
                       </motion.button>
+                      )
                     ))}
                   </motion.div>
                 ) : (

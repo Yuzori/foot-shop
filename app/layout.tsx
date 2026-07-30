@@ -40,6 +40,10 @@ export const metadata: Metadata = {
     type: "website",
     locale: publicConfig.locale,
     siteName: publicConfig.siteName,
+    url: publicConfig.siteUrl,
+  },
+  alternates: {
+    canonical: publicConfig.siteUrl,
   },
   robots: { index: true, follow: true },
   icons: {

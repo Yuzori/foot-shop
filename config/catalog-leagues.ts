@@ -224,3 +224,29 @@ export function buildCatalogHref(
   const base = adultBase ? routes.category(adultBase) : routes.catalogue;
   return `${base}?${params.toString()}`;
 }
+
+/** Lien direct vers tous les shorts (ou maillots) adulte/enfant, toutes divisions. */
+export function buildAudienceCatalogHref(
+  kind: CatalogKind,
+  audience: CatalogAudience,
+  categories: CatalogNavCategories,
+): string {
+  const params = new URLSearchParams();
+  params.set("kind", kind);
+  params.set("audience", audience);
+
+  const categoryId =
+    audience === "kids"
+      ? kind === "jersey"
+        ? categories.kidsMaillotsCategoryId
+        : categories.kidsShortsCategoryId
+      : kind === "jersey"
+        ? categories.maillotsCategoryId
+        : categories.shortsCategoryId;
+
+  if (categoryId) {
+    return `${routes.category(categoryId)}?${params.toString()}`;
+  }
+
+  return `${routes.catalogHub({ kind, audience })}`;
+}

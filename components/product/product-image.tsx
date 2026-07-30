@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -26,8 +26,15 @@ export function ProductImage({
   priority,
 }: ProductImageProps) {
   const [errored, setErrored] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
 
-  if (!src || errored) {
+  // Reset si l'URL change ; une erreur miniature ne doit pas rester bloquée.
+  useEffect(() => {
+    setErrored(false);
+    setRetryKey(0);
+  }, [src]);
+
+  if (!src || (errored && retryKey >= 2)) {
     return (
       <div
         className={cn(
@@ -60,13 +67,21 @@ export function ProductImage({
 
   return (
     <Image
-      src={src}
+      key={`${src}-${retryKey}`}
+      src={retryKey > 0 ? `${src}${src.includes("?") ? "&" : "?"}r=${retryKey}` : src}
       alt={alt}
       fill
       sizes={sizes}
       priority={priority}
       unoptimized={unoptimized}
-      onError={() => setErrored(true)}
+      onError={() => {
+        if (retryKey < 2) {
+          // Retry après un court délai (concurrence PrestaShop / cold start)
+          window.setTimeout(() => setRetryKey((k) => k + 1), 200 * (retryKey + 1));
+        } else {
+          setErrored(true);
+        }
+      }}
       className={cn("object-cover", className)}
     />
   );

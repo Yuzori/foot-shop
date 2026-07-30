@@ -12,6 +12,7 @@ import { buttonClasses } from "@/components/ui/button";
 import { Price } from "@/components/ui/price";
 import { routes } from "@/config/site";
 import { api } from "@/lib/api";
+import { effectiveProductPrice } from "@/lib/product-price";
 import type { Product } from "@/types/domain";
 
 const CATALOG_KEY = "footshop_catalog_ids";
@@ -181,10 +182,10 @@ function useCarouselSwipe(
 export function SiteModal() {
   const { data: catalog } = useQuery({
     queryKey: ["catalog-watch"],
-    queryFn: () => api.getProducts({ sort: "newest", limit: 40, page: 1 }),
-    staleTime: 60_000,
-    refetchInterval: 120_000,
-    refetchOnWindowFocus: true,
+    queryFn: () => api.getProducts({ sort: "newest", limit: 24, page: 1 }),
+    staleTime: 5 * 60_000,
+    refetchInterval: 5 * 60_000,
+    refetchOnWindowFocus: false,
   });
 
   const [open, setOpen] = useState(false);
@@ -318,7 +319,7 @@ export function SiteModal() {
                           {currentNew.name}
                         </h3>
                         <Price
-                          amount={currentNew.price}
+                          amount={effectiveProductPrice(currentNew)}
                           compareAt={currentNew.compareAtPrice}
                           currency={currentNew.currency}
                           className="mt-3 text-lg sm:mt-4 sm:text-xl"
