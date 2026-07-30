@@ -11,6 +11,7 @@ import { ProductBadges } from "@/components/product/product-badges";
 import { Price } from "@/components/ui/price";
 import { routes } from "@/config/site";
 import { cardButtonClasses, useCardScale } from "@/hooks/use-card-scale";
+import { brandButtonStyle } from "@/lib/brand-button";
 import { accentFromProductCover } from "@/lib/image-accent-client";
 import { effectiveProductPrice } from "@/lib/product-price";
 import { cn } from "@/lib/utils";
@@ -35,7 +36,7 @@ const CardImage = memo(function CardImage({
 }) {
   return (
     <Link href={href} className="absolute inset-0 z-0 block">
-      <div className="absolute inset-0 will-change-transform transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]">
+      <div className="absolute inset-0 transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]">
         <ProductImage src={imageUrl} alt={alt} priority={priority} />
       </div>
     </Link>
@@ -97,14 +98,7 @@ export const ProductCard = memo(function ProductCard({
                     "group-hover:translate-y-0 group-hover:opacity-100",
                     "max-sm:translate-y-0 max-sm:opacity-100",
                   )}
-                  style={{
-                    borderWidth: 1,
-                    borderStyle: "solid",
-                    borderColor: "rgba(255,255,255,0.38)",
-                    background: `linear-gradient(135deg, ${accent.alpha(0.78)} 0%, ${accent.alpha(0.58)} 100%)`,
-                    boxShadow: `0 10px 28px -8px ${accent.alpha(0.55)}, inset 0 1px 0 rgba(255,255,255,0.3)`,
-                    textShadow: "0 1px 2px rgba(0,0,0,0.22)",
-                  }}
+                  style={brandButtonStyle(accent)}
                   aria-label={`Ajouter ${product.name} au panier`}
                 >
                   Choisir options

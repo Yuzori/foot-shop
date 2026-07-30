@@ -1,27 +1,32 @@
-import { forwardRef, type ButtonHTMLAttributes } from "react";
+import { forwardRef, type ButtonHTMLAttributes, type CSSProperties } from "react";
 
+import { BRAND_BUTTON_BASE, brandButtonStyle, type BrandButtonTone } from "@/lib/brand-button";
 import { cn } from "@/lib/utils";
 
 export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "accent";
 export type ButtonSize = "sm" | "md" | "lg";
 
-const base =
-  "inline-flex items-center justify-center gap-2 font-bold tracking-wide transition-all duration-200 ease-premium select-none disabled:pointer-events-none disabled:opacity-40 hover:scale-105 active:scale-[0.98]";
-
-const variants: Record<ButtonVariant, string> = {
-  primary: "bg-ink text-paper hover:bg-ink-soft shadow-sm",
-  accent:
-    "bg-accent text-ink hover:bg-accent-dark shadow-glow-sm hover:shadow-glow",
-  secondary: "bg-paper-soft text-ink hover:bg-accent-muted border border-ink/[0.06]",
-  outline:
-    "border border-ink/15 text-ink hover:border-accent hover:bg-accent/10 hover:text-ink",
-  ghost: "text-ink hover:bg-accent-muted",
-};
+const ghostBase =
+  "inline-flex items-center justify-center gap-2 rounded-full font-bold tracking-wide transition-all duration-300 ease-premium select-none hover:scale-105 active:scale-[0.96] disabled:pointer-events-none disabled:opacity-40";
 
 const sizes: Record<ButtonSize, string> = {
-  sm: "h-9 px-4 text-xs rounded-full",
-  md: "h-12 px-6 text-sm rounded-full",
-  lg: "h-14 px-8 text-sm rounded-full",
+  sm: "h-9 px-4 text-xs",
+  md: "h-12 px-6 text-sm",
+  lg: "h-14 px-8 text-sm",
+};
+
+const toneClass: Record<Exclude<ButtonVariant, "ghost">, string> = {
+  primary: "btn-brand",
+  accent: "btn-brand",
+  secondary: "btn-brand-subtle",
+  outline: "btn-brand-subtle",
+};
+
+const toneByVariant: Record<Exclude<ButtonVariant, "ghost">, BrandButtonTone> = {
+  primary: "brand",
+  accent: "brand",
+  secondary: "subtle",
+  outline: "subtle",
 };
 
 /** Reusable class builder so links can share the button look. */
@@ -30,7 +35,23 @@ export function buttonClasses(
   size: ButtonSize = "md",
   className?: string,
 ): string {
-  return cn(base, variants[variant], sizes[size], className);
+  if (variant === "ghost") {
+    return cn(
+      ghostBase,
+      sizes[size],
+      "text-ink hover:bg-accent-muted",
+      className,
+    );
+  }
+  return cn(BRAND_BUTTON_BASE, toneClass[variant], sizes[size], className);
+}
+
+export function buttonStyle(
+  variant: ButtonVariant = "primary",
+  style?: CSSProperties,
+): CSSProperties | undefined {
+  if (variant === "ghost") return style;
+  return { ...brandButtonStyle(undefined, toneByVariant[variant]), ...style };
 }
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -39,10 +60,11 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ variant = "primary", size = "md", className, ...props }, ref) => (
+  ({ variant = "primary", size = "md", className, style, ...props }, ref) => (
     <button
       ref={ref}
       className={buttonClasses(variant, size, className)}
+      style={style}
       {...props}
     />
   ),

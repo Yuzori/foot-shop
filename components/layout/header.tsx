@@ -16,6 +16,7 @@ import {
 import { Logo } from "@/components/layout/logo";
 import { MobileMenu } from "@/components/layout/mobile-menu";
 import { Container } from "@/components/ui/container";
+import { buttonClasses, buttonStyle } from "@/components/ui/button";
 import { primaryNav, routes } from "@/config/site";
 import { worldCupConfig } from "@/config/world-cup";
 import { useCatalogNav } from "@/hooks/use-catalog-nav";
@@ -58,8 +59,8 @@ export function Header() {
         className={cn(
           "sticky top-0 z-40 transition-all duration-500",
           scrolled
-            ? "border-b border-ink/[0.06] bg-paper/85 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.08)] backdrop-blur-2xl"
-            : "bg-paper/40 backdrop-blur-md",
+            ? "border-b border-ink/[0.06] bg-paper/90 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.08)] backdrop-blur-md"
+            : "bg-paper/40 backdrop-blur-sm",
         )}
       >
         <Container className="relative flex h-16 items-center lg:h-[4.5rem]">
@@ -173,17 +174,13 @@ function WorldCupNavLink({
     <Link
       href={href}
       className={cn(
-        "group relative mr-1 hidden items-center gap-2 overflow-hidden rounded-full bg-ink px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-paper transition-[transform,background-color,box-shadow] duration-300 ease-premium lg:flex",
-        "hover:scale-[1.04] hover:bg-accent hover:text-ink active:scale-[0.97]",
-        "hover:shadow-glow-sm",
-        active && "bg-accent text-ink ring-2 ring-accent/40 ring-offset-2",
+        buttonClasses("accent", "sm"),
+        "relative mr-1 hidden overflow-hidden lg:inline-flex",
+        active && "ring-2 ring-accent/40 ring-offset-2",
       )}
+      style={buttonStyle("accent")}
     >
-      <span
-        className="absolute inset-0 -translate-x-full bg-paper/10 transition-transform duration-500 ease-premium group-hover:translate-x-full"
-        aria-hidden
-      />
-      <TrophyIcon className="relative h-4 w-4 shrink-0 transition-transform duration-300 ease-premium group-hover:-rotate-12 group-hover:scale-110" />
+      <TrophyIcon className="relative h-4 w-4 shrink-0" />
       <span className="relative">{label}</span>
     </Link>
   );

@@ -11,6 +11,7 @@ import { Price } from "@/components/ui/price";
 import { routes } from "@/config/site";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useSearch } from "@/hooks/use-search";
+import { brandFocusRingStyle } from "@/lib/brand-button";
 import { overlayMotion, searchPanelMotion } from "@/lib/motion";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import { useUIStore } from "@/store/ui-store";
@@ -25,6 +26,7 @@ export function SearchOverlay() {
   const pathname = usePathname();
 
   const [term, setTerm] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
   const debounced = useDebounce(term, 300);
   const { data, isLoading, isError } = useSearch(open ? debounced : "");
 
@@ -69,7 +71,7 @@ export function SearchOverlay() {
 
           <motion.div
             {...searchPanelMotion}
-            className="absolute inset-x-0 top-0 mx-auto max-h-full w-full max-w-3xl overflow-y-auto overscroll-contain px-4 pb-16 pt-[max(1.25rem,env(safe-area-inset-top))] will-change-transform sm:px-5 sm:pt-12"
+            className="absolute inset-x-0 top-0 mx-auto max-h-full w-full max-w-3xl overflow-y-auto overscroll-contain px-4 pb-16 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5 sm:pt-12"
             style={{ maxHeight: "100dvh" }}
           >
             <div className="relative">
@@ -78,8 +80,11 @@ export function SearchOverlay() {
                 autoFocus
                 value={term}
                 onChange={(e) => setTerm(e.target.value)}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setSearchFocused(false)}
                 placeholder="Rechercher un maillot, un club, une équipe…"
-                className="h-16 w-full rounded-full border border-ink/[0.08] bg-paper/95 pl-14 pr-16 text-base shadow-panel outline-none transition-all placeholder:text-ink/35 focus:border-accent focus:shadow-glow-sm"
+                className="h-16 w-full rounded-full border border-ink/[0.08] bg-paper/95 pl-14 pr-16 text-base shadow-panel outline-none transition-all duration-300 placeholder:text-ink/35"
+                style={searchFocused ? brandFocusRingStyle() : undefined}
                 aria-label="Rechercher un produit"
               />
               <button

@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { Reveal } from "@/components/motion/reveal";
 import { ResponsiveBackground } from "@/components/ui/responsive-background";
-import { buttonClasses } from "@/components/ui/button";
+import { buttonClasses, buttonStyle } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { routes } from "@/config/site";
 
@@ -60,6 +60,7 @@ export function Editorial() {
           <Link
             href={routes.catalogue}
             className={buttonClasses("accent", "lg", "mt-10")}
+            style={buttonStyle("accent")}
           >
             Composer mon maillot
           </Link>

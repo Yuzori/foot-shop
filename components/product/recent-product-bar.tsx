@@ -10,6 +10,7 @@ import { ProductImage } from "@/components/product/product-image";
 import { buttonClasses } from "@/components/ui/button";
 import { routes } from "@/config/site";
 import { formatPrice } from "@/lib/format";
+import { brandButtonStyle } from "@/lib/brand-button";
 import { accentFromProductCover } from "@/lib/image-accent-client";
 import { cn } from "@/lib/utils";
 import { useRecentProductStore } from "@/store/recent-product-store";
@@ -42,18 +43,19 @@ export function RecentProductBar() {
           <div className="mx-auto flex max-w-4xl items-center gap-2 px-3 py-2 sm:gap-3 sm:px-4">
             <Link
               href={routes.product(recent.id)}
-              className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-lg sm:h-12 sm:w-12"
+              className={cn(
+                "relative block shrink-0 overflow-hidden rounded-lg",
+                "h-12 w-12 sm:h-14 sm:w-14",
+              )}
               style={{ boxShadow: `0 0 0 1.5px ${accent.rgb}` }}
               aria-label={recent.name}
             >
-              <div className="relative h-[calc(100%-3px)] w-[calc(100%-3px)] overflow-hidden rounded-[5px] bg-paper">
-                <ProductImage
-                  src={recent.image}
-                  alt={recent.name}
-                  sizes="48px"
-                  className="!object-contain object-center p-0.5"
-                />
-              </div>
+              <ProductImage
+                src={recent.image}
+                alt={recent.name}
+                sizes="56px"
+                className="!object-contain !scale-[1.38] sm:!scale-[1.48]"
+              />
             </Link>
 
             <div className="min-w-0 flex-1">
@@ -80,14 +82,12 @@ export function RecentProductBar() {
 
               <Link
                 href={routes.product(recent.id)}
-                className={cn(
-                  buttonClasses("primary", "sm", "whitespace-nowrap border px-3 text-xs text-white sm:px-4 sm:text-sm"),
+                className={buttonClasses(
+                  "primary",
+                  "sm",
+                  "whitespace-nowrap px-3 sm:px-4",
                 )}
-                style={{
-                  borderColor: accent.alpha(0.45),
-                  background: `linear-gradient(135deg, ${accent.alpha(0.88)} 0%, ${accent.alpha(0.72)} 100%)`,
-                  boxShadow: `0 6px 18px -6px ${accent.alpha(0.5)}`,
-                }}
+                style={brandButtonStyle(accent)}
               >
                 Voir
               </Link>
@@ -95,7 +95,7 @@ export function RecentProductBar() {
               <button
                 type="button"
                 onClick={hide}
-                className="shrink-0 rounded-full px-1.5 text-xs text-ink/40 transition-all hover:scale-105 hover:text-ink active:scale-[0.98]"
+                className="shrink-0 rounded-full px-1.5 text-xs text-ink/40 transition-all hover:scale-105 hover:text-ink active:scale-[0.96]"
                 aria-label="Fermer"
               >
                 ✕

@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { ResponsiveBackground } from "@/components/ui/responsive-background";
 import { buttonClasses } from "@/components/ui/button";
+import { brandButtonStyle } from "@/lib/brand-button";
 import { worldCupConfig } from "@/config/world-cup";
 
 /** Bannière World Cup pleine largeur — le visuel porte le texte, pas d’overlay rouge. */
@@ -29,11 +30,8 @@ export function WorldCupSection() {
               <div className="flex flex-col items-center gap-3 text-center">
                 {worldCupConfig.ctaLabel ? (
                   <span
-                    className={buttonClasses(
-                      "outline",
-                      "md",
-                      "border-paper/80 bg-ink/40 text-paper backdrop-blur-sm transition-colors group-hover:border-paper group-hover:bg-ink/60",
-                    )}
+                    className={buttonClasses("outline", "md", "btn-brand-light")}
+                    style={brandButtonStyle(undefined, "light")}
                   >
                     {worldCupConfig.ctaLabel}
                   </span>

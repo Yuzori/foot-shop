@@ -50,7 +50,6 @@ export function accentAlpha(rgb: AccentRgb, opacity: number): string {
   return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`;
 }
 
-/** Fond photo — pas le maillot. */
 function isLikelyBackdrop(r: number, g: number, b: number): boolean {
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
@@ -71,21 +70,23 @@ function classifyFabric(r: number, g: number, b: number): FabricKind {
   const lum = luminance(r, g, b);
 
   if (lum >= 236 && sat < 20) return "neutral";
-  if (lum <= 42 && sat < 22) return "neutral";
-  if (sat < 16) return "neutral";
+  if (lum <= 38 && sat < 24) return "neutral";
+  if (sat < 14) return "neutral";
 
-  // Beige, crème, sable — corps de maillot clair (pas du blanc pur).
+  // Bleu marine / bleu nuit — pas du noir.
+  if (b >= r && b >= g && b > 36 && sat >= 14) return "chromatic";
+
   if (lum >= 132 && lum <= 238 && sat >= 8 && sat <= 62) {
     return "warm";
   }
 
-  if (sat >= 32) return "chromatic";
+  if (sat >= 26) return "chromatic";
 
   return "neutral";
 }
 
 function quantize(r: number, g: number, b: number): AccentRgb {
-  const step = 12;
+  const step = 10;
   return {
     r: Math.round(r / step) * step,
     g: Math.round(g / step) * step,
@@ -109,14 +110,36 @@ function addPixel(
   else bucket.set(key, { rgb, weight });
 }
 
-function pickDominantByArea(bucket: Bucket): AccentRgb | null {
+function isMuddyBrown(r: number, g: number, b: number): boolean {
+  const sat = Math.max(r, g, b) - Math.min(r, g, b);
+  return r > 55 && g > 28 && g < r * 0.9 && b < g * 0.95 && sat < 135;
+}
+
+function isNearBlack(r: number, g: number, b: number): boolean {
+  const lum = luminance(r, g, b);
+  const sat = Math.max(r, g, b) - Math.min(r, g, b);
+  return lum < 50 && sat < 50;
+}
+
+function pickBestChromatic(bucket: Bucket): AccentRgb | null {
   let best: { rgb: AccentRgb; score: number } | null = null;
 
   for (const entry of bucket.values()) {
     const { r, g, b } = entry.rgb;
     const sat = Math.max(r, g, b) - Math.min(r, g, b);
-    // Surface d'abord ; saturation seulement en cas d'égalité proche.
-    const score = entry.weight + sat * 0.04;
+    const lum = luminance(r, g, b);
+
+    let score = entry.weight * (1 + Math.min(sat, 200) / 50);
+
+    if (sat >= 95) score *= 1.45;
+    if (isMuddyBrown(r, g, b)) score *= 0.22;
+    if (isNearBlack(r, g, b)) score *= 0.12;
+
+    if (b > r + 10 && b > g + 6 && b > 40) score *= 1.28;
+    if (r > g + 15 && r > b + 15 && sat >= 65) score *= 1.3;
+    if (g > r + 10 && g > b + 8 && sat >= 55) score *= 1.28;
+
+    if (lum < 55 && sat < 70) score *= 0.35;
 
     if (!best || score > best.score) {
       best = { rgb: entry.rgb, score };
@@ -126,23 +149,17 @@ function pickDominantByArea(bucket: Bucket): AccentRgb | null {
   return best?.rgb ?? null;
 }
 
-function mergeBuckets(...buckets: Bucket[]): Bucket {
-  const merged: Bucket = new Map();
-  for (const bucket of buckets) {
-    for (const entry of bucket.values()) {
-      const key = `${entry.rgb.r}-${entry.rgb.g}-${entry.rgb.b}`;
-      const prev = merged.get(key);
-      if (prev) prev.weight += entry.weight;
-      else merged.set(key, { rgb: entry.rgb, weight: entry.weight });
+function pickDominantByArea(bucket: Bucket): AccentRgb | null {
+  let best: { rgb: AccentRgb; score: number } | null = null;
+
+  for (const entry of bucket.values()) {
+    const score = entry.weight;
+    if (!best || score > best.score) {
+      best = { rgb: entry.rgb, score };
     }
   }
-  return merged;
-}
 
-function totalWeight(bucket: Bucket): number {
-  let total = 0;
-  for (const entry of bucket.values()) total += entry.weight;
-  return total;
+  return best?.rgb ?? null;
 }
 
 function normalizeFabricNeutral(rgb: AccentRgb): AccentRgb {
@@ -181,12 +198,11 @@ export function extractAccentFromRgba(
     }
   }
 
-  const fabricArea = totalWeight(warm) + totalWeight(chromatic);
+  const vivid = pickBestChromatic(chromatic);
+  if (vivid) return buildImageAccent(vivid);
 
-  if (fabricArea > 0) {
-    const dominant = pickDominantByArea(mergeBuckets(warm, chromatic));
-    if (dominant) return buildImageAccent(dominant);
-  }
+  const warmRgb = pickDominantByArea(warm);
+  if (warmRgb) return buildImageAccent(warmRgb);
 
   const bestNeutral = pickDominantByArea(neutral);
   if (bestNeutral) {

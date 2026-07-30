@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { Reveal } from "@/components/motion/reveal";
-import { buttonClasses } from "@/components/ui/button";
+import { buttonClasses, buttonStyle } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { promoPopup } from "@/config/promotions";
 import { routes } from "@/config/site";
@@ -40,6 +40,7 @@ export function PromoBanner() {
               <Link
                 href={promoPopup.cta.href || routes.catalogue}
                 className={buttonClasses("accent", "lg")}
+                style={buttonStyle("accent")}
               >
                 {promoPopup.cta.label}
               </Link>

@@ -10,7 +10,8 @@ import { motion } from "framer-motion";
 
 import { ResponsiveBackground } from "@/components/ui/responsive-background";
 
-import { buttonClasses } from "@/components/ui/button";
+import { buttonClasses, buttonStyle } from "@/components/ui/button";
+import { brandButtonStyle } from "@/lib/brand-button";
 
 import { Container } from "@/components/ui/container";
 
@@ -145,31 +146,17 @@ export function Hero() {
         >
 
           <Link
-
             href={catalogNav.maillots.href}
-
             className={buttonClasses("accent", "lg")}
-
+            style={buttonStyle("accent")}
           >
-
             Voir les maillots
-
           </Link>
 
           <Link
-
             href={catalogNav.shorts.href}
-
-            className={buttonClasses(
-
-              "outline",
-
-              "lg",
-
-              "border-paper/35 text-paper hover:border-accent hover:bg-accent/15 hover:text-paper",
-
-            )}
-
+            className={buttonClasses("outline", "lg", "btn-brand-light")}
+            style={brandButtonStyle(undefined, "light")}
           >
 
             Voir les shorts

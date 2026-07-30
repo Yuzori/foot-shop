@@ -18,6 +18,8 @@ import { worldCupConfig } from "@/config/world-cup";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import { useCatalogNav } from "@/hooks/use-catalog-nav";
 import { drawerPanelMotion, overlayMotion } from "@/lib/motion";
+import { brandButtonStyle } from "@/lib/brand-button";
+import { buttonClasses } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useWorldCupNavStore } from "@/store/world-cup-nav-store";
 
@@ -82,15 +84,16 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6 [-webkit-overflow-scrolling:touch]">
               <div className="flex flex-col gap-1">
                 {worldCupConfig.enabled ? (
-                  <Link
-                    href={worldCupConfig.href}
-                    onClick={onClose}
-                    className={cn(
-                      "group relative mb-4 flex items-center justify-center gap-2 overflow-hidden rounded-full bg-ink px-5 py-3.5 text-xs font-semibold uppercase tracking-[0.16em] text-paper",
-                      "border border-transparent transition-all hover:scale-105 hover:bg-accent active:scale-[0.98]",
-                      worldCupActive && "bg-accent text-ink ring-2 ring-accent/40",
-                    )}
-                  >
+                <Link
+                  href={worldCupConfig.href}
+                  onClick={onClose}
+                  className={cn(
+                    buttonClasses("accent", "md"),
+                    "mb-4 w-full",
+                    worldCupActive && "ring-2 ring-accent/40",
+                  )}
+                  style={brandButtonStyle()}
+                >
                     <TrophyIcon className="h-4 w-4 shrink-0" />
                     {worldCupConfig.label}
                   </Link>
