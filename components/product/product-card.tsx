@@ -11,7 +11,6 @@ import { ProductBadges } from "@/components/product/product-badges";
 import { Price } from "@/components/ui/price";
 import { routes } from "@/config/site";
 import { cardButtonClasses, useCardScale } from "@/hooks/use-card-scale";
-import { useImageAccentColor } from "@/hooks/use-image-accent-color";
 import { accentFromProductCover } from "@/lib/image-accent-client";
 import { effectiveProductPrice } from "@/lib/product-price";
 import { cn } from "@/lib/utils";
@@ -23,6 +22,26 @@ interface ProductCardProps {
   className?: string;
 }
 
+const CardImage = memo(function CardImage({
+  href,
+  imageUrl,
+  alt,
+  priority,
+}: {
+  href: string;
+  imageUrl: string | null;
+  alt: string;
+  priority?: boolean;
+}) {
+  return (
+    <Link href={href} className="absolute inset-0 z-0 block">
+      <div className="absolute inset-0 will-change-transform transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]">
+        <ProductImage src={imageUrl} alt={alt} priority={priority} />
+      </div>
+    </Link>
+  );
+});
+
 /** Generic product card — receives a domain Product via props only. */
 export const ProductCard = memo(function ProductCard({
   product,
@@ -31,18 +50,12 @@ export const ProductCard = memo(function ProductCard({
 }: ProductCardProps) {
   const href = routes.product(product.id);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
-  const [hovered, setHovered] = useState(false);
   const { ref: cardRef, scale } = useCardScale();
   const imageUrl = product.cover?.url ?? product.images?.[0]?.url ?? null;
-  const serverAccent = useMemo(
+  const accent = useMemo(
     () => accentFromProductCover(product.coverAccent),
     [product.coverAccent],
   );
-  const { accent: clientAccent, ready: clientReady } = useImageAccentColor(imageUrl, {
-    enabled: hovered,
-  });
-  const accent = clientReady ? clientAccent : serverAccent;
-  const accentReady = clientReady || Boolean(product.coverAccent);
   const displayPrice = effectiveProductPrice(product);
 
   function handleQuickAdd(e: React.MouseEvent) {
@@ -53,28 +66,16 @@ export const ProductCard = memo(function ProductCard({
 
   return (
     <>
-      <article
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        className={cn("group relative flex flex-col", className)}
-      >
+      <article className={cn("group relative flex flex-col", className)}>
         <div ref={cardRef} className="relative w-full">
-          <CardLaserFrame accent={accent} hovered={hovered}>
-            <div
-              className={cn(
-                "relative aspect-[4/5] w-full overflow-hidden rounded-2xl bg-paper-soft",
-                !hovered && "ring-1 ring-ink/[0.04]",
-              )}
-            >
-              <Link href={href} className="absolute inset-0 z-0 block">
-                <div className="absolute inset-0 transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]">
-                  <ProductImage
-                    src={imageUrl}
-                    alt={product.cover?.alt ?? product.name}
-                    priority={priority}
-                  />
-                </div>
-              </Link>
+          <CardLaserFrame accent={accent}>
+            <div className="relative aspect-[4/5] w-full overflow-hidden rounded-2xl bg-paper-soft ring-1 ring-ink/[0.04] transition-shadow duration-300 group-hover:ring-transparent">
+              <CardImage
+                href={href}
+                imageUrl={imageUrl}
+                alt={product.cover?.alt ?? product.name}
+                priority={priority}
+              />
 
               <div className="pointer-events-none absolute left-3 top-3 z-10 flex flex-col gap-1.5">
                 <ProductBadges product={product} className="flex flex-col gap-1.5" />
@@ -96,23 +97,14 @@ export const ProductCard = memo(function ProductCard({
                     "group-hover:translate-y-0 group-hover:opacity-100",
                     "max-sm:translate-y-0 max-sm:opacity-100",
                   )}
-                  style={
-                    accentReady
-                      ? {
-                          borderWidth: 1,
-                          borderStyle: "solid",
-                          borderColor: "rgba(255,255,255,0.38)",
-                          background: `linear-gradient(135deg, ${accent.alpha(0.78)} 0%, ${accent.alpha(0.58)} 100%)`,
-                          boxShadow: `0 10px 28px -8px ${accent.alpha(0.55)}, inset 0 1px 0 rgba(255,255,255,0.3)`,
-                          textShadow: "0 1px 2px rgba(0,0,0,0.22)",
-                        }
-                      : {
-                          borderWidth: 1,
-                          borderStyle: "solid",
-                          borderColor: "rgba(255,255,255,0.38)",
-                          background: "rgba(30,30,35,0.72)",
-                        }
-                  }
+                  style={{
+                    borderWidth: 1,
+                    borderStyle: "solid",
+                    borderColor: "rgba(255,255,255,0.38)",
+                    background: `linear-gradient(135deg, ${accent.alpha(0.78)} 0%, ${accent.alpha(0.58)} 100%)`,
+                    boxShadow: `0 10px 28px -8px ${accent.alpha(0.55)}, inset 0 1px 0 rgba(255,255,255,0.3)`,
+                    textShadow: "0 1px 2px rgba(0,0,0,0.22)",
+                  }}
                   aria-label={`Ajouter ${product.name} au panier`}
                 >
                   Choisir options

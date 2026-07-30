@@ -41,7 +41,6 @@ export function useImageAccentColor(
     }
 
     let cancelled = false;
-    setReady(false);
 
     const img = new Image();
     img.decoding = "async";

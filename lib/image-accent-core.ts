@@ -50,7 +50,7 @@ export function accentAlpha(rgb: AccentRgb, opacity: number): string {
   return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`;
 }
 
-/** Fond photo / carte — pas la couleur du maillot. */
+/** Fond photo — pas le maillot. */
 function isLikelyBackdrop(r: number, g: number, b: number): boolean {
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
@@ -60,49 +60,63 @@ function isLikelyBackdrop(r: number, g: number, b: number): boolean {
   return false;
 }
 
-/** Noir / blanc / gris du maillot — exclus si une couleur existe. */
-function isNeutralFabric(r: number, g: number, b: number): boolean {
+type FabricKind = "backdrop" | "warm" | "chromatic" | "neutral";
+
+function classifyFabric(r: number, g: number, b: number): FabricKind {
+  if (isLikelyBackdrop(r, g, b)) return "backdrop";
+
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
   const sat = max - min;
   const lum = luminance(r, g, b);
-  if (sat < 30) return true;
-  if (lum >= 198 && sat < 48) return true;
-  if (lum <= 58 && sat < 42) return true;
-  return false;
+
+  if (lum >= 236 && sat < 20) return "neutral";
+  if (lum <= 42 && sat < 22) return "neutral";
+  if (sat < 16) return "neutral";
+
+  // Beige, crème, sable — corps de maillot clair (pas du blanc pur).
+  if (lum >= 132 && lum <= 238 && sat >= 8 && sat <= 62) {
+    return "warm";
+  }
+
+  if (sat >= 32) return "chromatic";
+
+  return "neutral";
 }
 
-function normalizeFabricNeutral(rgb: AccentRgb): AccentRgb {
-  const lum = luminance(rgb.r, rgb.g, rgb.b);
-  if (lum >= 185) return { r: 206, g: 206, b: 210 };
-  if (lum <= 70) return { r: 42, g: 42, b: 48 };
-  return rgb;
+function quantize(r: number, g: number, b: number): AccentRgb {
+  const step = 12;
+  return {
+    r: Math.round(r / step) * step,
+    g: Math.round(g / step) * step,
+    b: Math.round(b / step) * step,
+  };
 }
 
-function chromaticWeight(r: number, g: number, b: number, sat: number): number {
-  const lum = luminance(r, g, b);
-  let w = (sat + 1) * (sat + 1);
-  if (lum < 45 || lum > 215) w *= 0.2;
-  else if (lum < 70 || lum > 190) w *= 0.55;
-  return w;
+type Bucket = Map<string, { rgb: AccentRgb; weight: number }>;
+
+function addPixel(
+  bucket: Bucket,
+  r: number,
+  g: number,
+  b: number,
+  weight = 1,
+): void {
+  const rgb = quantize(r, g, b);
+  const key = `${rgb.r}-${rgb.g}-${rgb.b}`;
+  const prev = bucket.get(key);
+  if (prev) prev.weight += weight;
+  else bucket.set(key, { rgb, weight });
 }
 
-function pickBestChromatic(
-  chromatic: Map<string, { rgb: AccentRgb; weight: number }>,
-): AccentRgb | null {
+function pickDominantByArea(bucket: Bucket): AccentRgb | null {
   let best: { rgb: AccentRgb; score: number } | null = null;
 
-  for (const entry of chromatic.values()) {
+  for (const entry of bucket.values()) {
     const { r, g, b } = entry.rgb;
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    const sat = max - min;
-    let score = entry.weight * (1 + Math.min(sat, 200) / 95);
-
-    // Évite orange/jaune secondaire quand le motif a du rose/rouge plus saturé.
-    if (r > g && g >= b - 24 && sat < 115 && r < 235) {
-      score *= 0.68;
-    }
+    const sat = Math.max(r, g, b) - Math.min(r, g, b);
+    // Surface d'abord ; saturation seulement en cas d'égalité proche.
+    const score = entry.weight + sat * 0.04;
 
     if (!best || score > best.score) {
       best = { rgb: entry.rgb, score };
@@ -112,12 +126,39 @@ function pickBestChromatic(
   return best?.rgb ?? null;
 }
 
+function mergeBuckets(...buckets: Bucket[]): Bucket {
+  const merged: Bucket = new Map();
+  for (const bucket of buckets) {
+    for (const entry of bucket.values()) {
+      const key = `${entry.rgb.r}-${entry.rgb.g}-${entry.rgb.b}`;
+      const prev = merged.get(key);
+      if (prev) prev.weight += entry.weight;
+      else merged.set(key, { rgb: entry.rgb, weight: entry.weight });
+    }
+  }
+  return merged;
+}
+
+function totalWeight(bucket: Bucket): number {
+  let total = 0;
+  for (const entry of bucket.values()) total += entry.weight;
+  return total;
+}
+
+function normalizeFabricNeutral(rgb: AccentRgb): AccentRgb {
+  const lum = luminance(rgb.r, rgb.g, rgb.b);
+  if (lum >= 185) return { r: 206, g: 206, b: 210 };
+  if (lum <= 70) return { r: 42, g: 42, b: 48 };
+  return rgb;
+}
+
 /** Extrait la couleur dominante depuis un buffer RGBA (48×48 typiquement). */
 export function extractAccentFromRgba(
   data: ArrayLike<number>,
   width: number,
   height: number,
 ): ImageAccentData {
+  const warm = new Map<string, { rgb: AccentRgb; weight: number }>();
   const chromatic = new Map<string, { rgb: AccentRgb; weight: number }>();
   const neutral = new Map<string, { rgb: AccentRgb; weight: number }>();
 
@@ -126,47 +167,30 @@ export function extractAccentFromRgba(
       const i = (y * width + x) * 4;
       const a = data[i + 3] ?? 0;
       if (a < 100) continue;
+
       const r = data[i] ?? 0;
       const g = data[i + 1] ?? 0;
       const b = data[i + 2] ?? 0;
-      if (isLikelyBackdrop(r, g, b)) continue;
+      const kind = classifyFabric(r, g, b);
 
-      const max = Math.max(r, g, b);
-      const min = Math.min(r, g, b);
-      const sat = max - min;
+      if (kind === "backdrop") continue;
 
-      const qr = Math.round(r / 14) * 14;
-      const qg = Math.round(g / 14) * 14;
-      const qb = Math.round(b / 14) * 14;
-      const key = `${qr}-${qg}-${qb}`;
-      const rgb = { r: qr, g: qg, b: qb };
-
-      if (isNeutralFabric(r, g, b)) {
-        const weight = Math.max(1, 90 - sat * 3);
-        const prev = neutral.get(key);
-        if (prev) prev.weight += weight;
-        else neutral.set(key, { rgb, weight });
-      } else {
-        const weight = chromaticWeight(r, g, b, sat);
-        const prev = chromatic.get(key);
-        if (prev) prev.weight += weight;
-        else chromatic.set(key, { rgb, weight });
-      }
+      if (kind === "warm") addPixel(warm, r, g, b);
+      else if (kind === "chromatic") addPixel(chromatic, r, g, b);
+      else addPixel(neutral, r, g, b);
     }
   }
 
-  const bestRgb = pickBestChromatic(chromatic);
-  if (bestRgb) {
-    return buildImageAccent(bestRgb);
+  const fabricArea = totalWeight(warm) + totalWeight(chromatic);
+
+  if (fabricArea > 0) {
+    const dominant = pickDominantByArea(mergeBuckets(warm, chromatic));
+    if (dominant) return buildImageAccent(dominant);
   }
 
-  let bestNeutral: { rgb: AccentRgb; weight: number } | null = null;
-  for (const entry of neutral.values()) {
-    if (!bestNeutral || entry.weight > bestNeutral.weight) bestNeutral = entry;
-  }
-
+  const bestNeutral = pickDominantByArea(neutral);
   if (bestNeutral) {
-    return buildImageAccent(normalizeFabricNeutral(bestNeutral.rgb));
+    return buildImageAccent(normalizeFabricNeutral(bestNeutral));
   }
 
   return DEFAULT_IMAGE_ACCENT;

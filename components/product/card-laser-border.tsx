@@ -3,7 +3,6 @@
 import type { CSSProperties, ReactNode } from "react";
 
 import type { ImageAccent } from "@/lib/image-accent-client";
-import { cn } from "@/lib/utils";
 
 const RING_MASK: CSSProperties = {
   padding: "1.5px",
@@ -15,19 +14,15 @@ const RING_MASK: CSSProperties = {
 
 interface CardLaserFrameProps {
   accent: ImageAccent;
-  hovered: boolean;
   children: ReactNode;
 }
 
-/** Contour discret au survol — anneau léger + balayage lent. */
-export function CardLaserFrame({ accent, hovered, children }: CardLaserFrameProps) {
+/** Contour discret au survol — anneau léger + balayage lent (CSS group-hover, pas de re-render). */
+export function CardLaserFrame({ accent, children }: CardLaserFrameProps) {
   return (
     <div className="relative w-full rounded-2xl">
       <div
-        className={cn(
-          "pointer-events-none absolute inset-0 z-20 rounded-2xl transition-opacity duration-500",
-          hovered ? "opacity-100" : "opacity-0",
-        )}
+        className="pointer-events-none absolute inset-0 z-20 rounded-2xl opacity-0 transition-opacity duration-500 group-hover:opacity-100"
         aria-hidden
       >
         <div
