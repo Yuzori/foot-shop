@@ -35,7 +35,7 @@ export async function GET(
     const input = Buffer.from(await upstream.arrayBuffer());
     const { body } = await processImageToWebp(input, { productId, imageId });
 
-    return new Response(body, {
+    return new Response(new Uint8Array(body), {
       status: 200,
       headers: {
         "Content-Type": "image/webp",

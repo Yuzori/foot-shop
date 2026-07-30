@@ -1,6 +1,5 @@
 import {
   accentAlpha,
-  buildImageAccent,
   DEFAULT_IMAGE_ACCENT,
   type ImageAccentData,
 } from "@/lib/image-accent-core";
