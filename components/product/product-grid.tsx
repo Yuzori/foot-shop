@@ -25,7 +25,7 @@ export function ProductGrid({
   className,
 }: ProductGridProps) {
   const grid = cn(
-    "grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 lg:grid-cols-4",
+    "grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-4 sm:gap-y-10 md:grid-cols-3 lg:grid-cols-4",
     className,
   );
   const [visibleCount, setVisibleCount] = useState(INITIAL_BATCH);

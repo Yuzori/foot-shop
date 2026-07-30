@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { SortSelect } from "@/components/catalogue/sort-select";
+import { CatalogToolbar } from "@/components/catalogue/catalog-toolbar";
 import {
   CountryFilter,
   filterProductsByCountry,
@@ -171,19 +172,21 @@ export function CategoryDetailView({ id }: { id: string }) {
         : "Aucun produit dans cette catégorie";
 
   return (
-    <Container className="py-12 lg:py-16">
-      <header className="mb-12 max-w-2xl">
+    <Container className="py-8 sm:py-12 lg:py-16">
+      <header className="mb-6 max-w-2xl sm:mb-10 lg:mb-12">
         <Link
           href={routes.catalogHub({
             kind: collectionKind ?? undefined,
             audience: audience ?? undefined,
           })}
-          className="mb-6 inline-flex items-center gap-1 text-xs font-medium text-ink/45 transition-colors hover:text-ink"
+          className="mb-4 inline-flex items-center gap-1 text-xs font-medium text-ink/45 transition-colors hover:text-ink sm:mb-6"
         >
           ← Changer de division
         </Link>
-        <p className="eyebrow mb-3">Collection</p>
-        <h1 className="display-2">{pageTitle}</h1>
+        <p className="eyebrow mb-2 sm:mb-3">Collection</p>
+        <h1 className="display-2 text-[clamp(1.65rem,5.5vw,4rem)] leading-[1]">
+          {pageTitle}
+        </h1>
         {showCategorySubtitle ? (
           <p className="mt-3 text-sm font-medium text-ink/55">{category.name}</p>
         ) : null}
@@ -203,19 +206,19 @@ export function CategoryDetailView({ id }: { id: string }) {
         />
       ) : (
         <>
-          <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-            <div className="flex flex-1 flex-wrap items-center gap-3">
+          <CatalogToolbar
+            count={products.length}
+            filter={
               <CountryFilter
                 products={baseProducts}
                 value={countryFilter}
                 onChange={setCountryFilter}
               />
-              <p className="text-sm text-ink/50">
-                {products.length} produit{products.length > 1 ? "s" : ""}
-              </p>
-            </div>
-            <SortSelect value={sort} onChange={setSort} />
-          </div>
+            }
+            sort={
+              <SortSelect value={sort} onChange={setSort} compact />
+            }
+          />
 
           {products.length === 0 ? (
             <EmptyState

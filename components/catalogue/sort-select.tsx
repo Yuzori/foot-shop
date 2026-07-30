@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "@/lib/utils";
 import type { SortOption } from "@/types/domain";
 
 const options: { value: SortOption; label: string }[] = [
@@ -13,6 +14,8 @@ const options: { value: SortOption; label: string }[] = [
 interface SortSelectProps {
   value: SortOption;
   onChange: (value: SortOption) => void;
+  className?: string;
+  compact?: boolean;
 }
 
 function ChevronDown({ className }: { className?: string }) {
@@ -32,17 +35,36 @@ function ChevronDown({ className }: { className?: string }) {
   );
 }
 
-export function SortSelect({ value, onChange }: SortSelectProps) {
+export function SortSelect({
+  value,
+  onChange,
+  className,
+  compact = false,
+}: SortSelectProps) {
   const current = options.find((o) => o.value === value)?.label ?? "Trier";
 
   return (
-    <label className="inline-flex items-center gap-2 text-sm">
-      <span className="shrink-0 text-ink/50">Trier</span>
+    <label
+      className={cn(
+        "inline-flex items-center gap-1.5 text-sm sm:gap-2",
+        className,
+      )}
+    >
+      <span
+        className={cn(
+          "shrink-0 text-ink/50",
+          compact && "sr-only sm:not-sr-only",
+        )}
+      >
+        Trier
+      </span>
       <span className="relative inline-flex items-center">
         <select
           value={value}
           onChange={(e) => onChange(e.target.value as SortOption)}
-          className="h-10 cursor-pointer appearance-none rounded-full border border-ink/15 bg-paper py-0 pl-3.5 pr-8 text-sm font-medium text-ink outline-none transition-colors hover:border-ink/30 focus:border-ink"
+          className={cn(
+            "h-9 max-w-[7.75rem] cursor-pointer appearance-none truncate rounded-full border border-ink/15 bg-paper py-0 pl-2.5 pr-7 text-xs font-medium text-ink outline-none transition-colors hover:border-ink/30 focus:border-ink sm:h-10 sm:max-w-none sm:pl-3.5 sm:pr-8 sm:text-sm",
+          )}
           aria-label={`Trier par : ${current}`}
         >
           {options.map((option) => (

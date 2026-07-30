@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { SortSelect } from "@/components/catalogue/sort-select";
+import { CatalogToolbar } from "@/components/catalogue/catalog-toolbar";
 import { ProductGrid } from "@/components/product/product-grid";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -49,18 +50,24 @@ export function CatalogueView({
 
   return (
     <div>
-      <div className="mb-10 flex items-center justify-between gap-4">
-        <p className="text-sm text-ink/50">
-          {isLoading ? "Chargement…" : `${products.length} produit${products.length > 1 ? "s" : ""}`}
-        </p>
-        <SortSelect
-          value={sort}
-          onChange={(value) => {
-            setSort(value);
-            setLimit(PAGE_SIZE);
-          }}
-        />
-      </div>
+      <CatalogToolbar
+        count={products.length}
+        countLabel={
+          isLoading
+            ? "Chargement…"
+            : `${products.length} produit${products.length === 1 ? "" : "s"}`
+        }
+        sort={
+          <SortSelect
+            value={sort}
+            onChange={(value) => {
+              setSort(value);
+              setLimit(PAGE_SIZE);
+            }}
+            compact
+          />
+        }
+      />
 
       {showEmpty ? (
         <EmptyState
