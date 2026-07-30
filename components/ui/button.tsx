@@ -6,7 +6,7 @@ export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "acc
 export type ButtonSize = "sm" | "md" | "lg";
 
 const base =
-  "inline-flex items-center justify-center gap-2 font-semibold tracking-wide transition-all duration-300 ease-premium disabled:pointer-events-none disabled:opacity-40 active:scale-[0.98] select-none";
+  "inline-flex items-center justify-center gap-2 font-bold tracking-wide transition-all duration-200 ease-premium select-none disabled:pointer-events-none disabled:opacity-40 hover:scale-105 active:scale-[0.98]";
 
 const variants: Record<ButtonVariant, string> = {
   primary: "bg-ink text-paper hover:bg-ink-soft shadow-sm",

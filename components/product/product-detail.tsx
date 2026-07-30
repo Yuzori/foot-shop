@@ -47,6 +47,13 @@ export function ProductDetail({ product, kitOptions = [] }: ProductDetailProps) 
       price: product.price,
       currency: product.currency,
       inStock: productHasStock(product),
+      accent: product.coverAccent
+        ? {
+            r: product.coverAccent.r,
+            g: product.coverAccent.g,
+            b: product.coverAccent.b,
+          }
+        : null,
     });
   }, [product, setRecent]);
 

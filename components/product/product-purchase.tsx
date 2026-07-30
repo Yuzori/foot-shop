@@ -203,7 +203,7 @@ export function ProductPurchase({ product }: ProductPurchaseProps) {
                       optionStock
                         ? isActive
                           ? "border-ink bg-ink text-paper scale-105"
-                          : "border-ink/15 text-ink hover:border-ink hover:scale-105"
+                          : "border-ink/15 text-ink hover:border-ink hover:scale-105 active:scale-[0.98]"
                         : "border-ink/10 bg-paper-soft text-ink/35 line-through",
                     )}
                   >

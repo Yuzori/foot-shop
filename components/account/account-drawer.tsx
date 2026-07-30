@@ -13,6 +13,7 @@ import { welcomePromo } from "@/config/promotions";
 import { useWelcomePromo } from "@/components/checkout/welcome-promo-banner";
 import { useLogout, useSession } from "@/hooks/use-auth";
 import { drawerPanelMotion, overlayMotion } from "@/lib/motion";
+import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import { useUIStore } from "@/store/ui-store";
 
 const quickLinks = [
@@ -34,14 +35,7 @@ export function AccountDrawer() {
     close();
   }, [pathname, close]);
 
-  useEffect(() => {
-    if (!open) return;
-    const original = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = original;
-    };
-  }, [open]);
+  useBodyScrollLock(open);
 
   useEffect(() => {
     if (!open) return;

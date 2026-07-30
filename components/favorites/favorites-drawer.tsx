@@ -14,6 +14,7 @@ import { useHydrated } from "@/hooks/use-hydrated";
 import { useFavoriteProducts } from "@/hooks/use-favorite-products";
 import { formatPrice } from "@/lib/format";
 import { drawerPanelMotion, overlayMotion } from "@/lib/motion";
+import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import { useFavoritesStore } from "@/store/favorites-store";
 import { useUIStore } from "@/store/ui-store";
 
@@ -29,14 +30,7 @@ export function FavoritesDrawer() {
     close();
   }, [pathname, close]);
 
-  useEffect(() => {
-    if (!open) return;
-    const original = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = original;
-    };
-  }, [open]);
+  useBodyScrollLock(open);
 
   useEffect(() => {
     if (!open) return;

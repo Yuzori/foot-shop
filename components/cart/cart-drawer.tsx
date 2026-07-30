@@ -11,6 +11,7 @@ import { ProductImage } from "@/components/product/product-image";
 import { buttonClasses } from "@/components/ui/button";
 import { routes } from "@/config/site";
 import { drawerPanelMotion, overlayMotion } from "@/lib/motion";
+import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { useCartBogo, cartLineUnitPrice } from "@/hooks/use-cart-bogo";
 import { formatPrice } from "@/lib/format";
@@ -38,14 +39,7 @@ export function CartDrawer() {
   }, [pathname, close]);
 
   // Lock body scroll while the drawer is open.
-  useEffect(() => {
-    if (!open) return;
-    const original = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = original;
-    };
-  }, [open]);
+  useBodyScrollLock(open);
 
   // Close on Escape.
   useEffect(() => {

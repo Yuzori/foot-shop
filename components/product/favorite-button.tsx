@@ -28,10 +28,8 @@ export function FavoriteButton({
   const active = hydrated && ids.includes(productId);
 
   return (
-    <motion.button
+    <button
       type="button"
-      whileTap={{ scale: 0.85 }}
-      whileHover={{ scale: 1.06 }}
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -40,7 +38,7 @@ export function FavoriteButton({
       aria-pressed={active}
       aria-label={active ? "Retirer des favoris" : "Ajouter aux favoris"}
       className={cn(
-        "relative flex shrink-0 items-center justify-center rounded-full bg-paper/90 text-ink shadow-soft backdrop-blur transition-colors hover:bg-paper",
+        "relative flex shrink-0 items-center justify-center rounded-full bg-paper/90 text-ink shadow-soft backdrop-blur transition-all hover:scale-105 hover:bg-paper active:scale-[0.98]",
         "aspect-square h-11 w-11 min-h-11 min-w-11 p-0",
         className,
       )}
@@ -89,6 +87,6 @@ export function FavoriteButton({
       >
         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
       </svg>
-    </motion.button>
+    </button>
   );
 }

@@ -10,6 +10,7 @@ export interface RecentProductSnapshot {
   price: number;
   currency: string;
   inStock: boolean;
+  accent?: { r: number; g: number; b: number } | null;
 }
 
 interface RecentProductState {

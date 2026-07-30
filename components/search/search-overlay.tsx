@@ -12,6 +12,7 @@ import { routes } from "@/config/site";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useSearch } from "@/hooks/use-search";
 import { overlayMotion, searchPanelMotion } from "@/lib/motion";
+import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import { useUIStore } from "@/store/ui-store";
 
 /**
@@ -31,16 +32,13 @@ export function SearchOverlay() {
     close();
   }, [pathname, close]);
 
+  useBodyScrollLock(open);
+
   useEffect(() => {
     if (!open) return;
-    const original = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
     window.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = original;
-      window.removeEventListener("keydown", onKey);
-    };
+    return () => window.removeEventListener("keydown", onKey);
   }, [open, close]);
 
   useEffect(() => {
