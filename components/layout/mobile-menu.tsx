@@ -6,6 +6,8 @@ import { AnimatePresence, motion } from "framer-motion";
 
 import Link from "next/link";
 
+import { usePathname } from "next/navigation";
+
 import { useState } from "react";
 
 
@@ -28,6 +30,7 @@ import { worldCupConfig } from "@/config/world-cup";
 import { useCatalogNav } from "@/hooks/use-catalog-nav";
 
 import { cn } from "@/lib/utils";
+import { useWorldCupNavStore } from "@/store/world-cup-nav-store";
 
 
 
@@ -58,6 +61,11 @@ const accountLinks = [
 export function MobileMenu({ open, onClose }: MobileMenuProps) {
 
   const catalogNav = useCatalogNav();
+  const pathname = usePathname();
+  const worldCupProductActive = useWorldCupNavStore((s) => s.productActive);
+  const worldCupActive =
+    pathname.includes(`/categories/${worldCupConfig.categoryId}`) ||
+    worldCupProductActive;
 
 
 
@@ -128,6 +136,7 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
                   className={cn(
                     "group relative mb-4 flex items-center justify-center gap-2 overflow-hidden rounded-full bg-ink px-5 py-3.5 text-xs font-semibold uppercase tracking-[0.16em] text-paper",
                     "transition-[transform,background-color] duration-300 hover:scale-[1.02] hover:bg-accent",
+                    worldCupActive && "bg-accent text-ink ring-2 ring-accent/40",
                   )}
                 >
                   <TrophyIcon className="h-4 w-4 shrink-0" />

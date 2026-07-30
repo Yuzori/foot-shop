@@ -5,6 +5,8 @@ import crypto from "node:crypto";
 
 import { serverConfig } from "@/config";
 import { productImportConfig } from "@/config/product-import";
+import { readAccentCache } from "@/lib/image-accent-cache";
+import { syncProductStockFromVariants } from "@/lib/product-stock";
 import { syncProductPriceFromVariants } from "@/lib/product-price";
 import { slugify } from "@/lib/product-import/slug";
 import type {
@@ -291,6 +293,7 @@ class PrestaShopService {
     let items = raw.slice(0, limit).map(mapProduct);
 
     await Promise.all([this.applyStock(items), this.normalizeProductPrices(items)]);
+    await this.enrichCoverAccents(items);
 
     items = sortProducts(items, query.sort);
 
@@ -376,8 +379,10 @@ class PrestaShopService {
     await this.applyVariantStock(id, variants);
     product.variants = variants;
     product.optionGroups = buildOptionGroups(variants);
+    syncProductStockFromVariants(product);
     syncProductPriceFromVariants(product);
     await this.normalizeProductPrices([product]);
+    await this.enrichCoverAccents([product]);
 
     return product;
   }
@@ -409,6 +414,7 @@ class PrestaShopService {
         this.applyStock(mapped),
         this.normalizeProductPrices(mapped),
       ]);
+      await this.enrichCoverAccents(mapped);
       items.push(...mapped);
     }
 
@@ -418,11 +424,19 @@ class PrestaShopService {
     return items;
   }
 
+  private async enrichCoverAccents(products: Product[]): Promise<void> {
+    await Promise.all(
+      products.map(async (product) => {
+        if (!product.cover) return;
+        const accent = await readAccentCache(product.id, product.cover.id);
+        if (accent) product.coverAccent = accent;
+      }),
+    );
+  }
+
   /**
-   * Fetch the real stock for a set of products in ONE batched request and patch
-   * `quantity` / `inStock` on each. PrestaShop stores stock in the
-   * `stock_availables` resource; the row with `id_product_attribute = 0` is the
-   * authoritative per-product total (fallback: sum of combination rows).
+   * Fetch the real stock for a set of products in batched requests and patch
+   * `quantity` / `inStock` on each.
    */
   private async applyStock(products: Product[]): Promise<void> {
     const ids = products.map((p) => p.id);
@@ -444,41 +458,48 @@ class PrestaShopService {
     const map = new Map<string, number>();
     if (productIds.length === 0) return map;
 
-    const { data } = await this.request<{
-      stock_availables?: PsStockAvailable[];
-    }>("/stock_availables", {
-      display: "full",
-      "filter[id_product]": `[${productIds.join("|")}]`,
-    });
+    const shopId = this.resolveShopId();
+    const chunkSize = 40;
 
-    const rows = asArray<PsStockAvailable>(data as never, "stock_availables");
+    for (let offset = 0; offset < productIds.length; offset += chunkSize) {
+      const chunk = productIds.slice(offset, offset + chunkSize);
 
-    const base = new Map<string, number>();
-    const summed = new Map<string, number>();
+      const { data } = await this.request<{
+        stock_availables?: PsStockAvailable[];
+      }>("/stock_availables", {
+        display: "full",
+        "filter[id_product]": `[${chunk.join("|")}]`,
+        "filter[id_shop]": shopId,
+      });
 
-    for (const row of rows) {
-      const pid = row.id_product;
-      if (!pid) continue;
-      const qty = Number.parseInt(row.quantity ?? "0", 10) || 0;
-      if (row.id_product_attribute === "0") {
-        base.set(pid, qty);
-      } else {
-        summed.set(pid, (summed.get(pid) ?? 0) + qty);
+      const rows = asArray<PsStockAvailable>(data as never, "stock_availables");
+
+      const base = new Map<string, number>();
+      const summed = new Map<string, number>();
+
+      for (const row of rows) {
+        if (row.id_shop && String(row.id_shop) !== shopId) continue;
+        const pid = row.id_product;
+        if (!pid) continue;
+        const qty = Number.parseInt(row.quantity ?? "0", 10) || 0;
+        if (row.id_product_attribute === "0") {
+          base.set(pid, qty);
+        } else {
+          summed.set(pid, (summed.get(pid) ?? 0) + qty);
+        }
       }
-    }
 
-    for (const pid of productIds) {
-      const baseQty = base.get(pid);
-      const sumQty = summed.get(pid);
-      // Produits à déclinaisons : la ligne attribute=0 est parfois à 0 alors
-      // que les tailles ont du stock — prendre le max des deux.
-      let value: number | undefined;
-      if (baseQty !== undefined && sumQty !== undefined) {
-        value = Math.max(baseQty, sumQty);
-      } else {
-        value = baseQty ?? sumQty;
+      for (const pid of chunk) {
+        const baseQty = base.get(pid);
+        const sumQty = summed.get(pid);
+        let value: number | undefined;
+        if (baseQty !== undefined && sumQty !== undefined) {
+          value = Math.max(baseQty, sumQty);
+        } else {
+          value = baseQty ?? sumQty;
+        }
+        if (value !== undefined) map.set(pid, value);
       }
-      if (value !== undefined) map.set(pid, value);
     }
 
     return map;
@@ -642,17 +663,21 @@ class PrestaShopService {
   ): Promise<void> {
     if (!variants.length) return;
 
+    const shopId = this.resolveShopId();
+
     const { data } = await this.request<{
       stock_availables?: PsStockAvailable[];
     }>("/stock_availables", {
       display: "full",
       "filter[id_product]": productId,
+      "filter[id_shop]": shopId,
     });
 
     const rows = asArray<PsStockAvailable>(data as never, "stock_availables");
     const byAttr = new Map<string, number>();
 
     for (const row of rows) {
+      if (row.id_shop && String(row.id_shop) !== shopId) continue;
       const attrId = row.id_product_attribute;
       if (!attrId || String(attrId) === "0") continue;
       const qty = Number.parseInt(row.quantity ?? "0", 10) || 0;
@@ -664,9 +689,6 @@ class PrestaShopService {
       if (qty !== undefined) {
         variant.quantity = qty;
         variant.inStock = qty > 0;
-      } else if (rows.length > 0) {
-        variant.quantity = 0;
-        variant.inStock = false;
       }
     }
   }

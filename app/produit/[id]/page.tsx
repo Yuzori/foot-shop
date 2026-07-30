@@ -6,6 +6,7 @@ import { ProductDetail } from "@/components/product/product-detail";
 import { publicConfig } from "@/config";
 import { routes } from "@/config/site";
 import { stripHtml, truncate } from "@/lib/utils";
+import { productHasStock } from "@/lib/product-stock";
 import { prestashop } from "@/services/prestashop";
 
 interface PageProps {
@@ -65,7 +66,7 @@ export default async function ProductPage({ params }: PageProps) {
       "@type": "Offer",
       priceCurrency: product.currency,
       price: product.price,
-      availability: product.inStock
+      availability: productHasStock(product)
         ? "https://schema.org/InStock"
         : "https://schema.org/OutOfStock",
       url: `${base}${routes.product(product.id)}`,

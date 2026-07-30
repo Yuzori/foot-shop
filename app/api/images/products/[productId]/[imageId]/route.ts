@@ -1,12 +1,8 @@
 import { serverConfig } from "@/config";
+import { processImageToWebp } from "@/lib/image-proxy-process";
 
 /**
- * Image proxy.
- *
- * PrestaShop Webservice image URLs require HTTP Basic Auth (the secret key),
- * which the browser cannot send. We fetch the image server-side WITH the key
- * and stream it back same-origin, so <Image> just works and the key stays
- * secret. This keeps the front fully decoupled (no PrestaShop host exposed).
+ * Image proxy — fetch PrestaShop, convert to WebP, cache accent color.
  */
 export async function GET(
   _request: Request,
@@ -14,7 +10,6 @@ export async function GET(
 ) {
   const { productId, imageId } = await params;
 
-  // Only allow numeric ids (prevents SSRF / path traversal).
   if (!/^\d+$/.test(productId) || !/^\d+$/.test(imageId)) {
     return new Response(null, { status: 400 });
   }
@@ -30,21 +25,23 @@ export async function GET(
   try {
     const upstream = await fetch(url, {
       headers: { Authorization: `Basic ${auth}` },
-      // Cache at the fetch layer too.
       next: { revalidate: 86400 },
     });
 
-    if (!upstream.ok || !upstream.body) {
+    if (!upstream.ok) {
       return new Response(null, { status: upstream.status || 502 });
     }
 
-    const contentType = upstream.headers.get("content-type") ?? "image/jpeg";
+    const input = Buffer.from(await upstream.arrayBuffer());
+    const { body } = await processImageToWebp(input, { productId, imageId });
 
-    return new Response(upstream.body, {
+    return new Response(body, {
       status: 200,
       headers: {
-        "Content-Type": contentType,
-        "Cache-Control": "public, max-age=604800, s-maxage=604800, stale-while-revalidate=86400, immutable",
+        "Content-Type": "image/webp",
+        "Cache-Control":
+          "public, max-age=604800, s-maxage=604800, stale-while-revalidate=86400, immutable",
+        Vary: "Accept",
       },
     });
   } catch {

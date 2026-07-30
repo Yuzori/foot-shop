@@ -26,7 +26,7 @@ const ACTIVE_SIZE = "h-[4.75rem] w-[4.75rem]";
 const INACTIVE_SIZE = "h-[4rem] w-[4rem]";
 const SLOT_CLASS = "w-[4.75rem]";
 
-import type { ImageAccent } from "@/hooks/use-image-accent-color";
+import type { ImageAccent } from "@/lib/image-accent-client";
 
 function accentRing(
   accent: ImageAccent,

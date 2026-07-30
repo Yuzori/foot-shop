@@ -11,6 +11,7 @@ import { StockAlertBell } from "@/components/product/stock-alert-bell";
 import { shopConfig } from "@/config/shop";
 import { isJerseyProduct } from "@/lib/product-collection";
 import { effectiveProductPrice } from "@/lib/product-price";
+import { productHasStock } from "@/lib/product-stock";
 import { requiresRetroFlocage } from "@/lib/retro-jersey";
 import { stockForVariant } from "@/lib/stock-display";
 import { Button } from "@/components/ui/button";
@@ -93,8 +94,8 @@ export function ProductPurchase({ product }: ProductPurchaseProps) {
   const inStock = hasVariants
     ? sizeSelected
       ? (matchedVariant?.inStock ?? false)
-      : true
-    : product.inStock;
+      : productHasStock(product)
+    : productHasStock(product);
 
   const flocageValid = retroFlocageRequired
     ? flocageName.trim().length >= 2 &&
@@ -103,7 +104,7 @@ export function ProductPurchase({ product }: ProductPurchaseProps) {
       (flocageName.trim().length >= 2 &&
         flocageNumber.trim().length >= shopConfig.flocageNumberMin);
 
-  const canAdd = inStock && sizeSelected && flocageValid;
+  const canAdd = productHasStock(product) && inStock && sizeSelected && flocageValid;
 
   function addToCart(): boolean {
     if (!canAdd) return false;

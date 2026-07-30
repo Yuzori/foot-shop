@@ -1,13 +1,7 @@
 import { serverConfig } from "@/config";
+import { processImageToWebp } from "@/lib/image-proxy-process";
 
-/**
- * Category image proxy.
- *
- * PrestaShop serves category images at `/api/images/categories/{id}` behind
- * HTTP Basic Auth (the secret key). The browser can't send that, so we fetch it
- * server-side and stream it back same-origin. Missing images return 404, which
- * makes <ProductImage> fall back to the neutral placeholder.
- */
+/** Category image proxy — WebP optimisé. */
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -32,20 +26,19 @@ export async function GET(
       next: { revalidate: 86400 },
     });
 
-    if (!upstream.ok || !upstream.body) {
-      if (process.env.NODE_ENV !== "production") {
-        console.info(`[img] category ${id} upstream ${upstream.status} (${url})`);
-      }
+    if (!upstream.ok) {
       return new Response(null, { status: upstream.status || 404 });
     }
 
-    const contentType = upstream.headers.get("content-type") ?? "image/jpeg";
+    const input = Buffer.from(await upstream.arrayBuffer());
+    const { body } = await processImageToWebp(input);
 
-    return new Response(upstream.body, {
+    return new Response(body, {
       status: 200,
       headers: {
-        "Content-Type": contentType,
-        "Cache-Control": "public, max-age=604800, s-maxage=604800, stale-while-revalidate=86400, immutable",
+        "Content-Type": "image/webp",
+        "Cache-Control":
+          "public, max-age=604800, s-maxage=604800, stale-while-revalidate=86400, immutable",
       },
     });
   } catch {

@@ -2,7 +2,7 @@
 
 import type { CSSProperties, ReactNode } from "react";
 
-import type { ImageAccent } from "@/hooks/use-image-accent-color";
+import type { ImageAccent } from "@/lib/image-accent-client";
 import { cn } from "@/lib/utils";
 
 const RING_MASK: CSSProperties = {

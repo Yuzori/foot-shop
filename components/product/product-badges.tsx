@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { shopConfig } from "@/config/shop";
+import { productHasStock } from "@/lib/product-stock";
 import { isLowStock, totalVariantStock } from "@/lib/stock-display";
 import type { Product } from "@/types/domain";
 
@@ -18,6 +19,7 @@ export function ProductBadges({
 }: ProductBadgesProps) {
   const totalStock = totalVariantStock(product);
   const lowStock = showLowStock && isLowStock(totalStock);
+  const outOfStock = !productHasStock(product);
 
   return (
     <div className={className}>
@@ -28,7 +30,7 @@ export function ProductBadges({
       {lowStock ? (
         <Badge tone="accent">Bientôt épuisé ({totalStock})</Badge>
       ) : null}
-      {!product.inStock ? <Badge tone="muted">Épuisé</Badge> : null}
+      {outOfStock ? <Badge tone="muted">Épuisé</Badge> : null}
     </div>
   );
 }

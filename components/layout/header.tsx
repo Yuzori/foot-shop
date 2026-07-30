@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { cartSelectors, useCartStore } from "@/store/cart-store";
 import { useFavoritesStore } from "@/store/favorites-store";
 import { useUIStore } from "@/store/ui-store";
+import { useWorldCupNavStore } from "@/store/world-cup-nav-store";
 
 export function Header() {
   const pathname = usePathname();
@@ -38,6 +39,11 @@ export function Header() {
   const openAccount = useUIStore((s) => s.openAccount);
   const openSearch = useUIStore((s) => s.openSearch);
   const catalogNav = useCatalogNav();
+  const worldCupProductActive = useWorldCupNavStore((s) => s.productActive);
+  const worldCupCategoryActive = pathname.includes(
+    `/categories/${worldCupConfig.categoryId}`,
+  );
+  const worldCupActive = worldCupCategoryActive || worldCupProductActive;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -122,7 +128,7 @@ export function Header() {
               <WorldCupNavLink
                 href={worldCupConfig.href}
                 label={worldCupConfig.label}
-                active={pathname === worldCupConfig.href}
+                active={worldCupActive}
               />
             ) : null}
             <IconButton label="Recherche" onClick={openSearch}>

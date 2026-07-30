@@ -168,7 +168,8 @@ export function mapProduct(ps: PsProduct): Product {
   const rawQuantity = ps.quantity ?? nestedQuantity;
   const hasQuantity = rawQuantity !== undefined && rawQuantity !== "";
   const quantity = hasQuantity ? toNumber(rawQuantity) : 0;
-  const inStock = hasQuantity ? quantity > 0 : true;
+  /** Corrigé par `applyStock()` — évite « Épuisé » si PrestaShop renvoie quantity=0. */
+  const inStock = true;
 
   const createdAt = ps.date_add ?? null;
 

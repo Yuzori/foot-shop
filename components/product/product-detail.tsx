@@ -15,7 +15,10 @@ import { StockAlertBell } from "@/components/product/stock-alert-bell";
 import { Container } from "@/components/ui/container";
 import { routes } from "@/config/site";
 import { useProducts } from "@/hooks/use-products";
+import { productHasStock } from "@/lib/product-stock";
+import { isWorldCupProduct } from "@/lib/world-cup-product";
 import { useRecentProductStore } from "@/store/recent-product-store";
+import { useWorldCupNavStore } from "@/store/world-cup-nav-store";
 import type { Product } from "@/types/domain";
 
 interface ProductDetailProps {
@@ -25,6 +28,7 @@ interface ProductDetailProps {
 
 export function ProductDetail({ product, kitOptions = [] }: ProductDetailProps) {
   const setRecent = useRecentProductStore((s) => s.setRecent);
+  const setWorldCupNav = useWorldCupNavStore((s) => s.setProductActive);
   const related = useProducts(
     product.defaultCategoryId
       ? { category: product.defaultCategoryId, limit: 4 }
@@ -42,9 +46,14 @@ export function ProductDetail({ product, kitOptions = [] }: ProductDetailProps) 
       image: product.cover?.url ?? null,
       price: product.price,
       currency: product.currency,
-      inStock: product.inStock,
+      inStock: productHasStock(product),
     });
   }, [product, setRecent]);
+
+  useEffect(() => {
+    setWorldCupNav(isWorldCupProduct(product));
+    return () => setWorldCupNav(false);
+  }, [product, setWorldCupNav]);
 
   return (
     <>
@@ -75,7 +84,7 @@ export function ProductDetail({ product, kitOptions = [] }: ProductDetailProps) 
                 <h1 className="display-2 text-3xl sm:text-4xl">{product.name}</h1>
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                {!product.inStock ? (
+                {!productHasStock(product) ? (
                   <StockAlertBell
                     productId={product.id}
                     productName={product.name}

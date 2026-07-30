@@ -6,6 +6,8 @@
  * mappers in `services/` change.
  */
 
+import type { ImageAccentData } from "@/lib/image-accent-core";
+
 export interface ProductImage {
   id: string;
   url: string;
@@ -48,6 +50,8 @@ export interface Product {
   currency: string;
   images: ProductImage[];
   cover: ProductImage | null;
+  /** Couleur d'accent pré-calculée côté serveur (image cover). */
+  coverAccent?: ImageAccentData | null;
   inStock: boolean;
   quantity: number;
   categoryIds: string[];

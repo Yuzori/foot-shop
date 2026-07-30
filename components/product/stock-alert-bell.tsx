@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 
+import { Portal } from "@/components/ui/portal";
 import { Spinner } from "@/components/ui/spinner";
 import { useSession } from "@/hooks/use-auth";
 import { http, getErrorMessage } from "@/lib/http";
@@ -80,6 +81,20 @@ export function StockAlertBell({
     setJustSubscribed(false);
   }, [userEmail, productId, variantId]);
 
+  useEffect(() => {
+    if (!open) return;
+    const original = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = original;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
   function playDingDong() {
     setRinging(true);
     window.setTimeout(() => setRinging(false), 1200);
@@ -132,8 +147,9 @@ export function StockAlertBell({
 
   function handleBellClick(e: React.MouseEvent) {
     e.stopPropagation();
+    e.preventDefault();
     if (active) return;
-    setOpen((o) => !o);
+    setOpen(true);
   }
 
   const accountPanel = user?.email ? (
@@ -148,7 +164,7 @@ export function StockAlertBell({
         type="button"
         onClick={() => subscribe(user.email)}
         disabled={pending}
-        className="w-full rounded-full bg-ink py-2 text-xs font-semibold text-paper"
+        className="w-full rounded-full bg-ink py-2.5 text-xs font-semibold text-paper"
       >
         {pending ? <Spinner className="mx-auto h-3.5 w-3.5 border-paper/30 border-t-paper" /> : "Activer l'alerte"}
       </button>
@@ -167,7 +183,7 @@ export function StockAlertBell({
         type="button"
         onClick={() => subscribe()}
         disabled={pending}
-        className="w-full rounded-full bg-ink py-2 text-xs font-semibold text-paper"
+        className="w-full rounded-full bg-ink py-2.5 text-xs font-semibold text-paper"
       >
         {pending ? <Spinner className="mx-auto h-3.5 w-3.5 border-paper/30 border-t-paper" /> : "Confirmer"}
       </button>
@@ -175,7 +191,7 @@ export function StockAlertBell({
   );
 
   return (
-    <div className={cn(overlay ? "contents" : "relative", className)}>
+    <>
       <motion.button
         type="button"
         whileTap={{ scale: 0.9 }}
@@ -195,7 +211,7 @@ export function StockAlertBell({
         onClick={handleBellClick}
         disabled={pending || active || statusQuery.isLoading}
         className={cn(
-          "relative flex items-center justify-center rounded-full transition-colors",
+          "relative flex shrink-0 items-center justify-center rounded-full transition-colors",
           overlay
             ? "absolute -right-1 -top-1 z-10 h-6 w-6 border border-paper bg-paper text-ink/70 shadow-sm hover:bg-accent hover:text-paper"
             : "gap-2 rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-wide",
@@ -204,9 +220,12 @@ export function StockAlertBell({
           !active &&
             !overlay &&
             "border-ink/15 hover:border-accent hover:text-accent",
+          className,
         )}
         aria-label={active ? "Alerte activée" : "Alerte retour en stock"}
         aria-pressed={active}
+        aria-haspopup="dialog"
+        aria-expanded={open}
       >
         <AnimatePresence>
           {ringing ? (
@@ -243,17 +262,36 @@ export function StockAlertBell({
         ) : null}
       </motion.button>
 
-      {open && !active && !overlay ? (
-        <div className="mt-2 rounded-xl border border-ink/10 bg-paper p-3 shadow-soft">
-          {accountPanel}
-        </div>
+      {open && !active ? (
+        <Portal>
+          <div className="overlay-root z-[90]" role="dialog" aria-modal aria-label="Alerte stock">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-gradient-to-b from-accent/20 via-ink/30 to-ink/45 backdrop-blur-md"
+              onClick={() => setOpen(false)}
+              aria-hidden
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 16, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              className="overlay-panel max-w-sm p-5"
+            >
+              <h3 className="text-sm font-semibold text-ink">Alerte retour en stock</h3>
+              <p className="mt-1 text-xs text-ink/55">{productName}</p>
+              <div className="mt-4">{accountPanel}</div>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="mt-4 w-full rounded-full border border-ink/15 py-2 text-xs font-semibold text-ink/70"
+              >
+                Fermer
+              </button>
+            </motion.div>
+          </div>
+        </Portal>
       ) : null}
-
-      {open && !active && overlay ? (
-        <div className="absolute left-1/2 top-full z-30 mt-2 min-w-[240px] -translate-x-1/2 rounded-xl border border-ink/10 bg-paper p-3 shadow-lift">
-          {accountPanel}
-        </div>
-      ) : null}
-    </div>
+    </>
   );
 }
