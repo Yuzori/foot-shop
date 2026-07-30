@@ -39,6 +39,7 @@ export async function GET(
       status: 200,
       headers: {
         "Content-Type": "image/webp",
+        "Access-Control-Allow-Origin": "*",
         "Cache-Control":
           "public, max-age=604800, s-maxage=604800, stale-while-revalidate=86400, immutable",
         Vary: "Accept",

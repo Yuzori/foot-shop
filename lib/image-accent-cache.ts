@@ -3,10 +3,11 @@ import path from "node:path";
 
 import type { ImageAccentData } from "@/lib/image-accent-core";
 
+const CACHE_VERSION = 2;
 const CACHE_DIR = path.join(process.cwd(), ".data", "image-accents");
 
 function cachePath(productId: string, imageId: string): string {
-  return path.join(CACHE_DIR, `${productId}-${imageId}.json`);
+  return path.join(CACHE_DIR, `v${CACHE_VERSION}-${productId}-${imageId}.json`);
 }
 
 export async function readAccentCache(

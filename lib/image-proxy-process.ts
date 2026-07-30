@@ -30,7 +30,7 @@ export async function processImageToWebp(
     await writeAccentCache(options.productId, options.imageId, accent);
   }
 
-  const body = await base.webp({ quality: 82, effort: 4 }).toBuffer();
+  const body = await base.webp({ quality: 76, effort: 4 }).toBuffer();
 
   return { body, accent };
 }

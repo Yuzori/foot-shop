@@ -11,9 +11,8 @@ import { Price } from "@/components/ui/price";
 import { routes } from "@/config/site";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useSearch } from "@/hooks/use-search";
+import { overlayMotion, searchPanelMotion } from "@/lib/motion";
 import { useUIStore } from "@/store/ui-store";
-
-const EASE = [0.16, 1, 0.3, 1] as const;
 
 /**
  * Full-screen search overlay. Opens in place (blurred backdrop) instead of
@@ -59,26 +58,20 @@ export function SearchOverlay() {
     <AnimatePresence>
       {open ? (
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.25 }}
+          {...overlayMotion}
           className="fixed inset-0 z-[80]"
           role="dialog"
           aria-modal
           aria-label="Recherche"
         >
           <div
-            className="absolute inset-0 bg-ink/25 backdrop-blur-xl"
+            className="absolute inset-0 bg-ink/25 backdrop-blur-md"
             onClick={close}
           />
 
           <motion.div
-            initial={{ y: -24, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -24, opacity: 0 }}
-            transition={{ duration: 0.4, ease: EASE }}
-            className="absolute inset-x-0 top-0 mx-auto max-h-full w-full max-w-3xl overflow-y-auto overscroll-contain px-4 pb-16 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5 sm:pt-12"
+            {...searchPanelMotion}
+            className="absolute inset-x-0 top-0 mx-auto max-h-full w-full max-w-3xl overflow-y-auto overscroll-contain px-4 pb-16 pt-[max(1.25rem,env(safe-area-inset-top))] will-change-transform sm:px-5 sm:pt-12"
             style={{ maxHeight: "100dvh" }}
           >
             <div className="relative">

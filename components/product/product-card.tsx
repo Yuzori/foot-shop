@@ -11,6 +11,7 @@ import { ProductBadges } from "@/components/product/product-badges";
 import { Price } from "@/components/ui/price";
 import { routes } from "@/config/site";
 import { cardButtonClasses, useCardScale } from "@/hooks/use-card-scale";
+import { useImageAccentColor } from "@/hooks/use-image-accent-color";
 import { accentFromProductCover } from "@/lib/image-accent-client";
 import { effectiveProductPrice } from "@/lib/product-price";
 import { cn } from "@/lib/utils";
@@ -33,10 +34,15 @@ export const ProductCard = memo(function ProductCard({
   const [hovered, setHovered] = useState(false);
   const { ref: cardRef, scale } = useCardScale();
   const imageUrl = product.cover?.url ?? product.images?.[0]?.url ?? null;
-  const accent = useMemo(
+  const serverAccent = useMemo(
     () => accentFromProductCover(product.coverAccent),
     [product.coverAccent],
   );
+  const { accent: clientAccent, ready: clientReady } = useImageAccentColor(imageUrl, {
+    enabled: hovered,
+  });
+  const accent = clientReady ? clientAccent : serverAccent;
+  const accentReady = clientReady || Boolean(product.coverAccent);
   const displayPrice = effectiveProductPrice(product);
 
   function handleQuickAdd(e: React.MouseEvent) {
@@ -90,14 +96,23 @@ export const ProductCard = memo(function ProductCard({
                     "group-hover:translate-y-0 group-hover:opacity-100",
                     "max-sm:translate-y-0 max-sm:opacity-100",
                   )}
-                  style={{
-                    borderWidth: 1,
-                    borderStyle: "solid",
-                    borderColor: "rgba(255,255,255,0.38)",
-                    background: `linear-gradient(135deg, ${accent.alpha(0.78)} 0%, ${accent.alpha(0.58)} 100%)`,
-                    boxShadow: `0 10px 28px -8px ${accent.alpha(0.55)}, inset 0 1px 0 rgba(255,255,255,0.3)`,
-                    textShadow: "0 1px 2px rgba(0,0,0,0.22)",
-                  }}
+                  style={
+                    accentReady
+                      ? {
+                          borderWidth: 1,
+                          borderStyle: "solid",
+                          borderColor: "rgba(255,255,255,0.38)",
+                          background: `linear-gradient(135deg, ${accent.alpha(0.78)} 0%, ${accent.alpha(0.58)} 100%)`,
+                          boxShadow: `0 10px 28px -8px ${accent.alpha(0.55)}, inset 0 1px 0 rgba(255,255,255,0.3)`,
+                          textShadow: "0 1px 2px rgba(0,0,0,0.22)",
+                        }
+                      : {
+                          borderWidth: 1,
+                          borderStyle: "solid",
+                          borderColor: "rgba(255,255,255,0.38)",
+                          background: "rgba(30,30,35,0.72)",
+                        }
+                  }
                   aria-label={`Ajouter ${product.name} au panier`}
                 >
                   Choisir options

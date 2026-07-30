@@ -319,6 +319,11 @@ export function displayJerseyProductName(name: string): string {
   return normalizeJerseyProductName(name) ?? name;
 }
 
+/** Pays / club extrait du nom produit (filtres catalogue). */
+export function extractTeamFromProductName(name: string): string | null {
+  return detectTeam(name);
+}
+
 function detectKitType(text: string): string {
   return kitTypeToFrenchLabel(detectKitTypeFromName(text) ?? "domicile");
 }

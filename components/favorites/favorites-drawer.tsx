@@ -13,10 +13,9 @@ import { routes } from "@/config/site";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { useFavoriteProducts } from "@/hooks/use-favorite-products";
 import { formatPrice } from "@/lib/format";
+import { drawerPanelMotion, overlayMotion } from "@/lib/motion";
 import { useFavoritesStore } from "@/store/favorites-store";
 import { useUIStore } from "@/store/ui-store";
-
-const EASE = [0.16, 1, 0.3, 1] as const;
 
 export function FavoritesDrawer() {
   const hydrated = useHydrated();
@@ -50,25 +49,20 @@ export function FavoritesDrawer() {
     <AnimatePresence>
       {open ? (
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+          {...overlayMotion}
           className="fixed inset-0 z-[70]"
           aria-modal
           role="dialog"
           aria-label="Favoris"
         >
           <div
-            className="absolute inset-0 bg-ink/30 backdrop-blur-xl"
+            className="absolute inset-0 bg-ink/30 backdrop-blur-md"
             onClick={close}
           />
 
           <motion.aside
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ duration: 0.45, ease: EASE }}
-            className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col bg-paper shadow-lift drawer-safe-top drawer-safe-bottom"
+            {...drawerPanelMotion}
+            className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col bg-paper shadow-lift will-change-transform drawer-safe-top drawer-safe-bottom"
           >
             <header className="flex items-center justify-between border-b border-ink/8 px-5 py-4 sm:px-6 sm:py-5">
               <h2 className="text-lg font-semibold tracking-tightest">

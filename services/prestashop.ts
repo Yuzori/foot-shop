@@ -5,7 +5,9 @@ import crypto from "node:crypto";
 
 import { serverConfig } from "@/config";
 import { productImportConfig } from "@/config/product-import";
+import type { ImageAccentData } from "@/lib/image-accent-core";
 import { readAccentCache } from "@/lib/image-accent-cache";
+import { warmProductAccentsPool } from "@/lib/image-accent-warm";
 import { syncProductStockFromVariants } from "@/lib/product-stock";
 import { syncProductPriceFromVariants } from "@/lib/product-price";
 import { slugify } from "@/lib/product-import/slug";
@@ -425,13 +427,30 @@ class PrestaShopService {
   }
 
   private async enrichCoverAccents(products: Product[]): Promise<void> {
-    await Promise.all(
-      products.map(async (product) => {
-        if (!product.cover) return;
-        const accent = await readAccentCache(product.id, product.cover.id);
-        if (accent) product.coverAccent = accent;
-      }),
-    );
+    const toWarm: Array<{ productId: string; imageId: string }> = [];
+    const accentByKey = new Map<string, ImageAccentData>();
+
+    for (const product of products) {
+      if (!product.cover) continue;
+      const key = `${product.id}-${product.cover.id}`;
+      const cached = await readAccentCache(product.id, product.cover.id);
+      if (cached) {
+        accentByKey.set(key, cached);
+      } else {
+        toWarm.push({ productId: product.id, imageId: product.cover.id });
+      }
+    }
+
+    if (toWarm.length > 0) {
+      const warmed = await warmProductAccentsPool(toWarm, 6);
+      for (const [key, accent] of warmed) accentByKey.set(key, accent);
+    }
+
+    for (const product of products) {
+      if (!product.cover) continue;
+      const accent = accentByKey.get(`${product.id}-${product.cover.id}`);
+      if (accent) product.coverAccent = accent;
+    }
   }
 
   /**

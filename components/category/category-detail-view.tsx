@@ -5,6 +5,10 @@ import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { SortSelect } from "@/components/catalogue/sort-select";
+import {
+  CountryFilter,
+  filterProductsByCountry,
+} from "@/components/catalogue/country-filter";
 import { ProductGrid } from "@/components/product/product-grid";
 import { Container } from "@/components/ui/container";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -56,6 +60,7 @@ export function CategoryDetailView({ id }: { id: string }) {
     : null;
 
   const [sort, setSort] = useState<SortOption>("newest");
+  const [countryFilter, setCountryFilter] = useState<string | null>(null);
 
   const catalogNav = useCatalogNav();
   const { data, isLoading, isError } = useCategory(id, {
@@ -92,7 +97,7 @@ export function CategoryDetailView({ id }: { id: string }) {
             )
       : null);
 
-  const products = useMemo(() => {
+  const baseProducts = useMemo(() => {
     let list = applyKindFilter(rawProducts, collectionKind);
     if (audience === "kids") {
       list = filterProductsByAudience(list, "kids");
@@ -101,6 +106,11 @@ export function CategoryDetailView({ id }: { id: string }) {
     }
     return list;
   }, [audience, collectionKind, rawProducts]);
+
+  const products = useMemo(
+    () => filterProductsByCountry(baseProducts, countryFilter),
+    [baseProducts, countryFilter],
+  );
 
   const pageTitle = useMemo(() => {
     const aud = audienceLabel(audience);
@@ -179,7 +189,7 @@ export function CategoryDetailView({ id }: { id: string }) {
         ) : null}
       </header>
 
-      {products.length === 0 ? (
+      {baseProducts.length === 0 ? (
         <EmptyState
           title={emptyTitle}
           description="Les produits correspondants apparaîtront ici dès publication."
@@ -193,13 +203,28 @@ export function CategoryDetailView({ id }: { id: string }) {
         />
       ) : (
         <>
-          <div className="mb-10 flex items-center justify-between gap-4">
-            <p className="text-sm text-ink/50">
-              {products.length} produit{products.length > 1 ? "s" : ""}
-            </p>
+          <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            <div className="flex flex-1 flex-wrap items-center gap-3">
+              <CountryFilter
+                products={baseProducts}
+                value={countryFilter}
+                onChange={setCountryFilter}
+              />
+              <p className="text-sm text-ink/50">
+                {products.length} produit{products.length > 1 ? "s" : ""}
+              </p>
+            </div>
             <SortSelect value={sort} onChange={setSort} />
           </div>
-          <ProductGrid products={products} />
+
+          {products.length === 0 ? (
+            <EmptyState
+              title="Aucun résultat pour ce pays"
+              description="Essayez un autre pays ou effacez le filtre."
+            />
+          ) : (
+            <ProductGrid products={products} />
+          )}
         </>
       )}
     </Container>
