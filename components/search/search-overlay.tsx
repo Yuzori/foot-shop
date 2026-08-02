@@ -77,9 +77,8 @@ export function SearchOverlay() {
           >
             <div
               className={cn(
-                "relative rounded-full transition-shadow duration-300",
-                searchFocused &&
-                  "shadow-[0_0_0_1px_rgba(255,255,255,0.35),inset_0_1px_0_rgba(255,255,255,0.55)]",
+                "relative rounded-full transition-all duration-300",
+                searchFocused && "scale-[1.01]",
               )}
             >
               <SearchIcon className="pointer-events-none absolute left-5 top-1/2 z-10 h-5 w-5 -translate-y-1/2 text-accent-dark" />
@@ -93,11 +92,27 @@ export function SearchOverlay() {
                 className={cn(
                   "h-16 w-full rounded-full border bg-paper/95 pl-14 pr-16 text-base outline-none transition-all duration-300 placeholder:text-ink/35",
                   searchFocused
-                    ? "border-accent/50 bg-gradient-to-b from-accent/15 to-paper/95"
+                    ? "border-white/40"
                     : "border-ink/[0.08] shadow-panel",
                 )}
+                style={
+                  searchFocused
+                    ? {
+                        background:
+                          "linear-gradient(135deg, rgba(102,186,255,0.28) 0%, rgba(102,186,255,0.12) 100%)",
+                        boxShadow:
+                          "0 10px 28px -8px rgba(102,186,255,0.45), inset 0 1px 0 rgba(255,255,255,0.55)",
+                      }
+                    : undefined
+                }
                 aria-label="Rechercher un produit"
               />
+              {searchFocused ? (
+                <span
+                  className="pointer-events-none absolute inset-x-3 top-0 h-1/2 rounded-t-full bg-gradient-to-b from-white/35 to-transparent"
+                  aria-hidden
+                />
+              ) : null}
               <button
                 onClick={close}
                 aria-label="Fermer la recherche"

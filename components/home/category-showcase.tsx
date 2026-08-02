@@ -131,11 +131,23 @@ function CollectionPanel({
             variants={{ hover: { x: 4, scale: 1.05 } }}
             transition={{ duration: 0.35, ease }}
             className={cn(
-              "btn-brand flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-transform duration-300",
-              "shadow-lg backdrop-blur-md",
+              "relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border transition-colors duration-300",
+              isAccent
+                ? "border-white/35 bg-ink text-paper group-hover:border-white/40 group-hover:bg-accent group-hover:text-ink"
+                : isDark || backgroundSrc
+                  ? "border-white/20 bg-paper/10 text-paper group-hover:border-white/40 group-hover:bg-accent group-hover:text-ink"
+                  : "border-white/35 bg-ink text-paper group-hover:border-white/40 group-hover:bg-accent group-hover:text-ink",
             )}
+            style={{
+              boxShadow:
+                "0 10px 28px -8px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.3)",
+            }}
           >
-            <ArrowIcon />
+            <span
+              className="pointer-events-none absolute inset-x-0 top-0 h-1/2 rounded-t-full bg-gradient-to-b from-white/30 to-transparent"
+              aria-hidden
+            />
+            <ArrowIcon className="relative" />
           </motion.span>
         </div>
       </Link>
@@ -171,10 +183,10 @@ export function CategoryShowcase() {
           </div>
           <Link
             href={routes.categories}
-            className="btn-brand-light inline-flex items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-bold uppercase tracking-wide shadow-lg backdrop-blur-md transition-all duration-300 hover:scale-105 hover:-translate-y-px active:scale-[0.96]"
+            className="group inline-flex items-center gap-2 text-sm font-semibold text-paper/70 transition-colors hover:text-paper"
           >
             Toutes les collections
-            <ArrowIcon className="transition-transform duration-300 group-hover:translate-x-1" />
+            <ArrowIcon className="transition-transform duration-300 group-hover:translate-x-1 group-hover:text-accent" />
           </Link>
         </div>
 

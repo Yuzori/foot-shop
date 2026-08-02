@@ -173,15 +173,28 @@ function WorldCupNavLink({
     <Link
       href={href}
       className={cn(
-        "group relative mr-1 hidden items-center gap-2 overflow-hidden rounded-full px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] transition-all duration-300 ease-premium lg:inline-flex",
-        "border border-transparent hover:scale-[1.04] active:scale-[0.97]",
+        "group relative mr-1 hidden items-center gap-2 overflow-hidden rounded-full border px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-white transition-all duration-300 ease-premium lg:inline-flex",
+        "backdrop-blur-md hover:scale-[1.04] hover:-translate-y-px active:scale-[0.97]",
         active
-          ? "bg-accent text-ink shadow-[0_8px_24px_-8px_rgba(102,186,255,0.55),inset_0_1px_0_rgba(255,255,255,0.45)] ring-2 ring-amber-300/55 ring-offset-2 ring-offset-paper"
-          : "bg-ink text-paper hover:bg-accent hover:text-ink hover:shadow-glow-sm",
+          ? "border-white/40 bg-accent text-ink ring-2 ring-amber-300/60 ring-offset-2 ring-offset-paper"
+          : "border-white/35 bg-ink text-paper hover:border-white/40 hover:bg-accent hover:text-ink",
       )}
+      style={
+        active
+          ? {
+              boxShadow:
+                "0 10px 28px -8px rgba(102,186,255,0.55), inset 0 1px 0 rgba(255,255,255,0.45)",
+              textShadow: "0 1px 2px rgba(0,0,0,0.12)",
+            }
+          : {
+              boxShadow:
+                "0 10px 28px -8px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.28)",
+              textShadow: "0 1px 2px rgba(0,0,0,0.28)",
+            }
+      }
     >
       <span
-        className="absolute inset-0 -translate-x-full bg-paper/10 transition-transform duration-500 ease-premium group-hover:translate-x-full"
+        className="pointer-events-none absolute inset-x-0 top-0 h-1/2 rounded-t-full bg-gradient-to-b from-white/25 to-transparent opacity-90"
         aria-hidden
       />
       <TrophyIcon className="relative h-4 w-4 shrink-0 transition-transform duration-300 ease-premium group-hover:-rotate-12 group-hover:scale-110" />

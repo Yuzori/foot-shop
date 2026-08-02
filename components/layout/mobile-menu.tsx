@@ -86,16 +86,25 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
                   href={worldCupConfig.href}
                   onClick={onClose}
                   className={cn(
-                    "group relative mb-4 flex w-full items-center justify-center gap-2 overflow-hidden rounded-full px-5 py-3.5 text-xs font-semibold uppercase tracking-[0.16em] transition-all duration-300",
-                    "hover:scale-[1.02] active:scale-[0.98]",
+                    "group relative mb-4 flex w-full items-center justify-center gap-2 overflow-hidden rounded-full border px-5 py-3.5 text-xs font-semibold uppercase tracking-[0.16em] text-white transition-all duration-300",
+                    "backdrop-blur-md hover:scale-[1.02] hover:-translate-y-px active:scale-[0.98]",
                     worldCupActive
-                      ? "bg-accent text-ink shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] ring-2 ring-amber-300/55"
-                      : "bg-ink text-paper hover:bg-accent hover:text-ink",
+                      ? "border-white/40 bg-accent text-ink ring-2 ring-amber-300/60"
+                      : "border-white/35 bg-ink text-paper hover:border-white/40 hover:bg-accent hover:text-ink",
                   )}
+                  style={{
+                    boxShadow: worldCupActive
+                      ? "0 10px 28px -8px rgba(102,186,255,0.55), inset 0 1px 0 rgba(255,255,255,0.45)"
+                      : "0 10px 28px -8px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.28)",
+                  }}
                 >
-                    <TrophyIcon className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover:-rotate-12 group-hover:scale-110" />
-                    {worldCupConfig.label}
-                  </Link>
+                  <span
+                    className="pointer-events-none absolute inset-x-0 top-0 h-1/2 rounded-t-full bg-gradient-to-b from-white/25 to-transparent"
+                    aria-hidden
+                  />
+                  <TrophyIcon className="relative h-4 w-4 shrink-0 transition-transform duration-300 group-hover:-rotate-12 group-hover:scale-110" />
+                  <span className="relative">{worldCupConfig.label}</span>
+                </Link>
                 ) : null}
 
                 <MobileCatalogGroup

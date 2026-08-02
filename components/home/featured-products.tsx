@@ -23,10 +23,18 @@ function CollectionLink({ href }: { href: string }) {
   return (
     <Link
       href={href}
-      className="btn-brand inline-flex items-center gap-2 rounded-full border px-5 py-2.5 text-xs font-bold uppercase tracking-wide shadow-lg backdrop-blur-md transition-all duration-300 hover:scale-105 hover:-translate-y-px active:scale-[0.96] sm:text-sm"
+      className="group relative inline-flex items-center gap-2 text-sm font-semibold"
     >
-      Explorer la collection
-      <ArrowIcon className="shrink-0" />
+      <span className="text-ink transition-opacity duration-500 ease-out group-hover:opacity-0">
+        Explorer la collection
+      </span>
+      <span
+        className="absolute left-0 text-accent opacity-0 transition-opacity duration-500 ease-out group-hover:opacity-100"
+        aria-hidden
+      >
+        Explorer la collection
+      </span>
+      <ArrowIcon className="relative shrink-0 text-ink transition-[color,transform,opacity] duration-500 ease-out group-hover:translate-x-1 group-hover:text-accent" />
     </Link>
   );
 }
@@ -50,11 +58,13 @@ export function FeaturedProducts() {
     sort: "newest",
     limit: 4,
     kind: "jersey",
+    category: catalogNav.maillots.categoryId || undefined,
   });
   const shortsQuery = useProducts({
     sort: "newest",
     limit: 4,
     kind: "short",
+    category: catalogNav.shorts.categoryId || undefined,
   });
 
   const jerseys = jerseysQuery.data?.items ?? [];

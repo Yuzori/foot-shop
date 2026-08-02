@@ -60,38 +60,28 @@ export async function GET(request: Request) {
 
 
   const query = {
-
     category: searchParams.get("category") ?? undefined,
-
     search: searchParams.get("search") ?? undefined,
-
     page: Number(searchParams.get("page") ?? 1) || 1,
-
     limit: Number(searchParams.get("limit") ?? 24) || 24,
-
     sort,
-
   };
 
-
-
   if (searchParams.get("debug") === "1") {
-
     if (process.env.NODE_ENV === "production" && !isAdminAuthorized(request)) {
-
       return NextResponse.json({ message: "unauthorized" }, { status: 401 });
-
     }
-
     const diagnostics = await prestashop.getProductsDiagnostics(query);
-
     return NextResponse.json({ query, diagnostics });
-
   }
 
+  // Si on filtre par kind (maillot/short), élargir le pool avant filtrage
+  // sinon limit=4 ne ramène souvent que des maillots → shorts vides.
+  const fetchQuery = kind
+    ? { ...query, limit: Math.max(query.limit * 25, 80) }
+    : query;
 
-
-  const result = await prestashop.getProducts(query);
+  const result = await prestashop.getProducts(fetchQuery);
 
   void maybeProcessStockAlerts().catch((err) => {
     console.error("[stock] background processing failed", err);
@@ -116,21 +106,19 @@ export async function GET(request: Request) {
   }
 
   if (kind) {
-
     const filtered = filterProductsByKind(result.items, kind);
-
+    const page = query.page;
+    const limit = query.limit;
+    const start = (page - 1) * limit;
+    const items = filtered.slice(start, start + limit);
     return NextResponse.json({
-
       ...result,
-
-      items: filtered,
-
+      items,
       total: filtered.length,
-
-      hasMore: false,
-
+      page,
+      limit,
+      hasMore: start + limit < filtered.length,
     });
-
   }
 
 
