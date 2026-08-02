@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { ArrowIcon } from "@/components/layout/icons";
 import { ProductCard } from "@/components/product/product-card";
@@ -11,7 +11,6 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Container } from "@/components/ui/container";
 import { useCatalogNav } from "@/hooks/use-catalog-nav";
 import { useProducts } from "@/hooks/use-products";
-import { filterProductsByKind } from "@/lib/product-collection";
 import { cn } from "@/lib/utils";
 
 import type { Product } from "@/types/domain";
@@ -24,18 +23,10 @@ function CollectionLink({ href }: { href: string }) {
   return (
     <Link
       href={href}
-      className="group relative inline-flex items-center gap-2 text-sm font-semibold"
+      className="btn-brand inline-flex items-center gap-2 rounded-full border px-5 py-2.5 text-xs font-bold uppercase tracking-wide shadow-lg backdrop-blur-md transition-all duration-300 hover:scale-105 hover:-translate-y-px active:scale-[0.96] sm:text-sm"
     >
-      <span className="text-ink transition-opacity duration-500 ease-out group-hover:opacity-0">
-        Explorer la collection
-      </span>
-      <span
-        className="absolute left-0 text-accent opacity-0 transition-opacity duration-500 ease-out group-hover:opacity-100"
-        aria-hidden
-      >
-        Explorer la collection
-      </span>
-      <ArrowIcon className="relative shrink-0 text-ink transition-[color,transform,opacity] duration-500 ease-out group-hover:translate-x-1 group-hover:text-accent" />
+      Explorer la collection
+      <ArrowIcon className="shrink-0" />
     </Link>
   );
 }
@@ -54,19 +45,23 @@ function FeaturedGrid({ products }: { products: Product[] }) {
 export function FeaturedProducts() {
   const catalogNav = useCatalogNav();
   const [tab, setTab] = useState<DropTab>("jersey");
-  const { data, isLoading, isError } = useProducts({
+
+  const jerseysQuery = useProducts({
     sort: "newest",
-    limit: 20,
+    limit: 4,
+    kind: "jersey",
+  });
+  const shortsQuery = useProducts({
+    sort: "newest",
+    limit: 4,
+    kind: "short",
   });
 
-  const jerseys = useMemo(
-    () => filterProductsByKind(data?.items ?? [], "jersey").slice(0, 4),
-    [data?.items],
-  );
-  const shorts = useMemo(
-    () => filterProductsByKind(data?.items ?? [], "short").slice(0, 4),
-    [data?.items],
-  );
+  const jerseys = jerseysQuery.data?.items ?? [];
+  const shorts = shortsQuery.data?.items ?? [];
+  const isLoading =
+    tab === "jersey" ? jerseysQuery.isLoading : shortsQuery.isLoading;
+  const isError = jerseysQuery.isError && shortsQuery.isError;
 
   const activeProducts = tab === "jersey" ? jerseys : shorts;
   const activeHref =
@@ -76,7 +71,7 @@ export function FeaturedProducts() {
       ? "Aucun maillot pour le moment"
       : "Aucun short pour le moment";
 
-  if (!isLoading && isError) {
+  if (!jerseysQuery.isLoading && !shortsQuery.isLoading && isError) {
     return (
       <section className="border-y border-ink/6 bg-paper-soft/35">
         <Container className="py-24">
@@ -89,7 +84,13 @@ export function FeaturedProducts() {
     );
   }
 
-  if (!isLoading && !isError && jerseys.length === 0 && shorts.length === 0) {
+  if (
+    !jerseysQuery.isLoading &&
+    !shortsQuery.isLoading &&
+    !isError &&
+    jerseys.length === 0 &&
+    shorts.length === 0
+  ) {
     return (
       <section className="border-y border-ink/6 bg-paper-soft/35">
         <Container className="py-24">

@@ -83,7 +83,7 @@ export function CountryFilter({
   if (countries.length < 2) return null;
 
   return (
-    <div ref={rootRef} className={cn("relative w-full min-w-0", className)}>
+    <div ref={rootRef} className={cn("relative w-full min-w-0 sm:max-w-[14rem]", className)}>
       <label htmlFor={listId} className="sr-only">
         Filtrer par pays ou équipe
       </label>

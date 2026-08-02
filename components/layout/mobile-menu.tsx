@@ -18,8 +18,6 @@ import { worldCupConfig } from "@/config/world-cup";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import { useCatalogNav } from "@/hooks/use-catalog-nav";
 import { drawerPanelMotion, overlayMotion } from "@/lib/motion";
-import { brandButtonStyle } from "@/lib/brand-button";
-import { buttonClasses } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useWorldCupNavStore } from "@/store/world-cup-nav-store";
 
@@ -88,13 +86,14 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
                   href={worldCupConfig.href}
                   onClick={onClose}
                   className={cn(
-                    buttonClasses("accent", "md"),
-                    "mb-4 w-full",
-                    worldCupActive && "ring-2 ring-accent/40",
+                    "group relative mb-4 flex w-full items-center justify-center gap-2 overflow-hidden rounded-full px-5 py-3.5 text-xs font-semibold uppercase tracking-[0.16em] transition-all duration-300",
+                    "hover:scale-[1.02] active:scale-[0.98]",
+                    worldCupActive
+                      ? "bg-accent text-ink shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] ring-2 ring-amber-300/55"
+                      : "bg-ink text-paper hover:bg-accent hover:text-ink",
                   )}
-                  style={brandButtonStyle()}
                 >
-                    <TrophyIcon className="h-4 w-4 shrink-0" />
+                    <TrophyIcon className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover:-rotate-12 group-hover:scale-110" />
                     {worldCupConfig.label}
                   </Link>
                 ) : null}

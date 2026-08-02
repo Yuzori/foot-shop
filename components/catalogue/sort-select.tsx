@@ -63,7 +63,8 @@ export function SortSelect({
           value={value}
           onChange={(e) => onChange(e.target.value as SortOption)}
           className={cn(
-            "h-9 max-w-[7.75rem] cursor-pointer appearance-none truncate rounded-full border border-ink/15 bg-paper py-0 pl-2.5 pr-7 text-xs font-medium text-ink outline-none transition-colors hover:border-ink/30 focus:border-ink sm:h-10 sm:max-w-none sm:pl-3.5 sm:pr-8 sm:text-sm",
+            "h-9 cursor-pointer appearance-none truncate rounded-full border border-ink/15 bg-paper py-0 pl-2.5 pr-7 text-xs font-medium text-ink outline-none transition-colors hover:border-ink/30 focus:border-ink sm:h-10 sm:pl-3.5 sm:pr-8 sm:text-sm",
+            compact ? "max-w-[7.75rem] sm:max-w-none" : "max-w-none",
           )}
           aria-label={`Trier par : ${current}`}
         >

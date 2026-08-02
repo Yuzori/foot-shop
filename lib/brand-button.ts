@@ -51,11 +51,12 @@ export function brandButtonStyle(
   };
 }
 
-/** Halo focus (recherche, champs). */
+/** Halo focus subtil (ligne claire en haut — comme « Choisir options »). */
 export function brandFocusRingStyle(accent?: ImageAccent): CSSProperties {
   const a = accent ?? toImageAccent();
   return {
-    borderColor: a.alpha(0.55),
-    boxShadow: `0 10px 28px -8px ${a.alpha(0.45)}, inset 0 1px 0 rgba(255,255,255,0.35)`,
+    borderColor: a.alpha(0.45),
+    background: `linear-gradient(180deg, ${a.alpha(0.16)} 0%, transparent 55%)`,
+    boxShadow: `inset 0 1px 0 rgba(255,255,255,0.55)`,
   };
 }

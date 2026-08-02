@@ -16,7 +16,6 @@ import {
 import { Logo } from "@/components/layout/logo";
 import { MobileMenu } from "@/components/layout/mobile-menu";
 import { Container } from "@/components/ui/container";
-import { buttonClasses, buttonStyle } from "@/components/ui/button";
 import { primaryNav, routes } from "@/config/site";
 import { worldCupConfig } from "@/config/world-cup";
 import { useCatalogNav } from "@/hooks/use-catalog-nav";
@@ -174,13 +173,18 @@ function WorldCupNavLink({
     <Link
       href={href}
       className={cn(
-        buttonClasses("accent", "sm"),
-        "relative mr-1 hidden overflow-hidden lg:inline-flex",
-        active && "ring-2 ring-accent/40 ring-offset-2",
+        "group relative mr-1 hidden items-center gap-2 overflow-hidden rounded-full px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] transition-all duration-300 ease-premium lg:inline-flex",
+        "border border-transparent hover:scale-[1.04] active:scale-[0.97]",
+        active
+          ? "bg-accent text-ink shadow-[0_8px_24px_-8px_rgba(102,186,255,0.55),inset_0_1px_0_rgba(255,255,255,0.45)] ring-2 ring-amber-300/55 ring-offset-2 ring-offset-paper"
+          : "bg-ink text-paper hover:bg-accent hover:text-ink hover:shadow-glow-sm",
       )}
-      style={buttonStyle("accent")}
     >
-      <TrophyIcon className="relative h-4 w-4 shrink-0" />
+      <span
+        className="absolute inset-0 -translate-x-full bg-paper/10 transition-transform duration-500 ease-premium group-hover:translate-x-full"
+        aria-hidden
+      />
+      <TrophyIcon className="relative h-4 w-4 shrink-0 transition-transform duration-300 ease-premium group-hover:-rotate-12 group-hover:scale-110" />
       <span className="relative">{label}</span>
     </Link>
   );

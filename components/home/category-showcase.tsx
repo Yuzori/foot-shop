@@ -131,12 +131,8 @@ function CollectionPanel({
             variants={{ hover: { x: 4, scale: 1.05 } }}
             transition={{ duration: 0.35, ease }}
             className={cn(
-              "flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors duration-300",
-              isAccent
-                ? "bg-ink text-paper group-hover:bg-accent group-hover:text-ink"
-                : isDark || backgroundSrc
-                  ? "bg-paper/10 text-paper group-hover:bg-accent group-hover:text-ink"
-                  : "bg-ink text-paper group-hover:bg-accent group-hover:text-ink",
+              "btn-brand flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-transform duration-300",
+              "shadow-lg backdrop-blur-md",
             )}
           >
             <ArrowIcon />
@@ -175,10 +171,10 @@ export function CategoryShowcase() {
           </div>
           <Link
             href={routes.categories}
-            className="group inline-flex items-center gap-2 text-sm font-semibold text-paper/70 transition-colors hover:text-paper"
+            className="btn-brand-light inline-flex items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-bold uppercase tracking-wide shadow-lg backdrop-blur-md transition-all duration-300 hover:scale-105 hover:-translate-y-px active:scale-[0.96]"
           >
             Toutes les collections
-            <ArrowIcon className="transition-transform duration-300 group-hover:translate-x-1 group-hover:text-accent" />
+            <ArrowIcon className="transition-transform duration-300 group-hover:translate-x-1" />
           </Link>
         </div>
 

@@ -11,9 +11,9 @@ import { Price } from "@/components/ui/price";
 import { routes } from "@/config/site";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useSearch } from "@/hooks/use-search";
-import { brandFocusRingStyle } from "@/lib/brand-button";
 import { overlayMotion, searchPanelMotion } from "@/lib/motion";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
+import { cn } from "@/lib/utils";
 import { useUIStore } from "@/store/ui-store";
 
 /**
@@ -53,6 +53,7 @@ export function SearchOverlay() {
   const results = data ?? [];
   const hasQuery = debounced.trim().length >= 2;
   const showEmpty = hasQuery && !isLoading && results.length === 0;
+  const showResults = hasQuery && !isLoading && results.length > 0;
 
   return (
     <AnimatePresence>
@@ -74,8 +75,14 @@ export function SearchOverlay() {
             className="absolute inset-x-0 top-0 mx-auto max-h-full w-full max-w-3xl overflow-y-auto overscroll-contain px-4 pb-16 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5 sm:pt-12"
             style={{ maxHeight: "100dvh" }}
           >
-            <div className="relative">
-              <SearchIcon className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-accent-dark" />
+            <div
+              className={cn(
+                "relative rounded-full transition-shadow duration-300",
+                searchFocused &&
+                  "shadow-[0_0_0_1px_rgba(255,255,255,0.35),inset_0_1px_0_rgba(255,255,255,0.55)]",
+              )}
+            >
+              <SearchIcon className="pointer-events-none absolute left-5 top-1/2 z-10 h-5 w-5 -translate-y-1/2 text-accent-dark" />
               <input
                 autoFocus
                 value={term}
@@ -83,65 +90,73 @@ export function SearchOverlay() {
                 onFocus={() => setSearchFocused(true)}
                 onBlur={() => setSearchFocused(false)}
                 placeholder="Rechercher un maillot, un club, une équipe…"
-                className="h-16 w-full rounded-full border border-ink/[0.08] bg-paper/95 pl-14 pr-16 text-base shadow-panel outline-none transition-all duration-300 placeholder:text-ink/35"
-                style={searchFocused ? brandFocusRingStyle() : undefined}
+                className={cn(
+                  "h-16 w-full rounded-full border bg-paper/95 pl-14 pr-16 text-base outline-none transition-all duration-300 placeholder:text-ink/35",
+                  searchFocused
+                    ? "border-accent/50 bg-gradient-to-b from-accent/15 to-paper/95"
+                    : "border-ink/[0.08] shadow-panel",
+                )}
                 aria-label="Rechercher un produit"
               />
               <button
                 onClick={close}
                 aria-label="Fermer la recherche"
-                className="absolute right-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-ink/50 transition-colors hover:bg-accent-muted hover:text-ink"
+                className="absolute right-3 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-ink/50 transition-colors hover:bg-accent-muted hover:text-ink"
               >
                 <CloseIcon />
               </button>
             </div>
 
-            <div className="mt-8 rounded-3xl border border-ink/[0.06] bg-paper/90 p-2 shadow-panel backdrop-blur-md">
-              {!hasQuery ? (
-                <p className="px-4 py-3 text-sm text-ink/40">
-                  Saisissez au moins 2 caractères pour lancer la recherche.
-                </p>
-              ) : isLoading ? (
-                <p className="px-4 py-3 text-sm text-ink/40">Recherche en cours…</p>
-              ) : showEmpty ? (
-                <p className="px-4 py-3 text-sm text-ink/50">
-                  {isError
-                    ? "La connexion au back office a échoué."
-                    : `Aucun résultat pour « ${debounced} ».`}
-                </p>
-              ) : (
-                <ul className="divide-y divide-ink/[0.05]">
-                  {results.map((product) => (
-                    <li key={product.id}>
-                      <Link
-                        href={routes.product(product.id)}
-                        onClick={close}
-                        className="group flex items-center gap-4 rounded-2xl px-3 py-3 transition-colors hover:bg-accent-muted/60"
-                      >
-                        <div className="relative aspect-square w-14 shrink-0 overflow-hidden rounded-xl bg-paper-soft ring-1 ring-ink/[0.05]">
-                          <ProductImage
-                            src={product.cover?.url ?? null}
-                            alt={product.cover?.alt ?? product.name}
-                            sizes="56px"
+            {!hasQuery ? (
+              <p className="mt-3 px-2 text-center text-xs text-ink/40 sm:text-sm">
+                Saisissez au moins 2 caractères pour lancer la recherche.
+              </p>
+            ) : null}
+
+            {hasQuery ? (
+              <div className="mt-5">
+                {isLoading ? (
+                  <p className="px-2 text-sm text-ink/40">Recherche en cours…</p>
+                ) : showEmpty ? (
+                  <p className="px-2 text-sm text-ink/50">
+                    {isError
+                      ? "La connexion au back office a échoué."
+                      : `Aucun résultat pour « ${debounced} ».`}
+                  </p>
+                ) : showResults ? (
+                  <ul className="overflow-hidden rounded-3xl border border-ink/[0.06] bg-paper/90 shadow-panel backdrop-blur-md divide-y divide-ink/[0.05]">
+                    {results.map((product) => (
+                      <li key={product.id}>
+                        <Link
+                          href={routes.product(product.id)}
+                          onClick={close}
+                          className="group flex items-center gap-4 px-4 py-3 transition-colors hover:bg-accent-muted/60"
+                        >
+                          <div className="relative aspect-square w-14 shrink-0 overflow-hidden rounded-xl bg-paper-soft ring-1 ring-ink/[0.05]">
+                            <ProductImage
+                              src={product.cover?.url ?? null}
+                              alt={product.cover?.alt ?? product.name}
+                              sizes="56px"
+                            />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium group-hover:text-accent-dark">
+                              {product.name}
+                            </p>
+                          </div>
+                          <Price
+                            amount={product.price}
+                            currency={product.currency}
+                            showDiscount={false}
+                            className="shrink-0 text-sm"
                           />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium group-hover:text-accent-dark">
-                            {product.name}
-                          </p>
-                        </div>
-                        <Price
-                          amount={product.price}
-                          currency={product.currency}
-                          showDiscount={false}
-                          className="shrink-0 text-sm"
-                        />
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ) : null}
           </motion.div>
         </motion.div>
       ) : null}
