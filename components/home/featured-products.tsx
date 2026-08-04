@@ -2,16 +2,23 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { ArrowIcon } from "@/components/layout/icons";
+import { Reveal } from "@/components/motion/reveal";
+import { Stagger, StaggerItem } from "@/components/motion/stagger";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductGrid } from "@/components/product/product-grid";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Container } from "@/components/ui/container";
 import { useCatalogNav } from "@/hooks/use-catalog-nav";
 import { useProducts } from "@/hooks/use-products";
+import { filterProductsByKind } from "@/lib/product-collection";
+import { BRAND_BUTTON_BASE, brandButtonStyle } from "@/lib/brand-button";
+import { toImageAccent } from "@/lib/image-accent-client";
 import { cn } from "@/lib/utils";
+
+const siteAccent = toImageAccent();
 
 import type { Product } from "@/types/domain";
 
@@ -41,11 +48,13 @@ function CollectionLink({ href }: { href: string }) {
 
 function FeaturedGrid({ products }: { products: Product[] }) {
   return (
-    <div className="grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 lg:grid-cols-4">
+    <Stagger className="grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 lg:grid-cols-4">
       {products.map((product, i) => (
-        <ProductCard key={product.id} product={product} priority={i < 4} />
+        <StaggerItem key={product.id}>
+          <ProductCard product={product} priority={i < 4} />
+        </StaggerItem>
       ))}
-    </div>
+    </Stagger>
   );
 }
 
@@ -54,24 +63,22 @@ export function FeaturedProducts() {
   const catalogNav = useCatalogNav();
   const [tab, setTab] = useState<DropTab>("jersey");
 
-  const jerseysQuery = useProducts({
+  const productsQuery = useProducts({
     sort: "newest",
-    limit: 4,
-    kind: "jersey",
-    category: catalogNav.maillots.categoryId || undefined,
-  });
-  const shortsQuery = useProducts({
-    sort: "newest",
-    limit: 4,
-    kind: "short",
-    category: catalogNav.shorts.categoryId || undefined,
+    limit: 120,
   });
 
-  const jerseys = jerseysQuery.data?.items ?? [];
-  const shorts = shortsQuery.data?.items ?? [];
-  const isLoading =
-    tab === "jersey" ? jerseysQuery.isLoading : shortsQuery.isLoading;
-  const isError = jerseysQuery.isError && shortsQuery.isError;
+  const jerseys = useMemo(
+    () => filterProductsByKind(productsQuery.data?.items ?? [], "jersey").slice(0, 4),
+    [productsQuery.data],
+  );
+  const shorts = useMemo(
+    () => filterProductsByKind(productsQuery.data?.items ?? [], "short").slice(0, 4),
+    [productsQuery.data],
+  );
+
+  const isLoading = productsQuery.isLoading;
+  const isError = productsQuery.isError;
 
   const activeProducts = tab === "jersey" ? jerseys : shorts;
   const activeHref =
@@ -81,32 +88,13 @@ export function FeaturedProducts() {
       ? "Aucun maillot pour le moment"
       : "Aucun short pour le moment";
 
-  if (!jerseysQuery.isLoading && !shortsQuery.isLoading && isError) {
+  if (!isLoading && isError) {
     return (
       <section className="border-y border-ink/6 bg-paper-soft/35">
         <Container className="py-24">
           <EmptyState
             title="Catalogue momentanément indisponible"
             description="Impossible de joindre la boutique pour le moment. Vérifiez que PrestaShop est démarré, puis rechargez la page."
-          />
-        </Container>
-      </section>
-    );
-  }
-
-  if (
-    !jerseysQuery.isLoading &&
-    !shortsQuery.isLoading &&
-    !isError &&
-    jerseys.length === 0 &&
-    shorts.length === 0
-  ) {
-    return (
-      <section className="border-y border-ink/6 bg-paper-soft/35">
-        <Container className="py-24">
-          <EmptyState
-            title="Les drops arrivent bientôt"
-            description="Dès qu'un produit est publié sur PrestaShop, il apparaît ici."
           />
         </Container>
       </section>
@@ -126,7 +114,7 @@ export function FeaturedProducts() {
 
       <Container className="relative py-20 lg:py-28">
         <div className="grid gap-12 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.55fr)] lg:items-start lg:gap-16">
-          <div className="lg:sticky lg:top-28">
+          <Reveal className="lg:sticky lg:top-28">
             <p className="eyebrow text-accent">Fresh drops</p>
             <h2 className="display-2 mt-4 max-w-sm">Derniers arrivages</h2>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-ink/55">
@@ -135,7 +123,7 @@ export function FeaturedProducts() {
             </p>
 
             <div
-              className="mt-8 inline-flex w-fit max-w-full self-start rounded-full border border-ink/10 bg-paper p-1 shadow-sm"
+              className="mt-8 inline-flex w-fit max-w-full gap-1 self-start rounded-full border border-ink/10 bg-paper p-1 shadow-sm"
               role="tablist"
               aria-label="Type de produit"
             >
@@ -144,32 +132,37 @@ export function FeaturedProducts() {
                   ["jersey", "Maillots"],
                   ["short", "Shorts"],
                 ] as const
-              ).map(([id, label]) => (
-                <button
-                  key={id}
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === id}
-                  onClick={() => setTab(id)}
-                  className={cn(
-                    "relative shrink-0 rounded-full px-5 py-2.5 text-sm font-semibold transition-colors",
-                    tab === id ? "text-ink" : "text-ink/55 hover:text-ink",
-                  )}
-                >
-                  {tab === id ? (
-                    <motion.span
-                      layoutId="featured-tab"
-                      className="absolute inset-0 rounded-full bg-accent shadow-glow-sm"
-                      transition={{ duration: 0.28, ease }}
-                    />
-                  ) : null}
-                  <span className="relative z-10">{label}</span>
-                </button>
-              ))}
+              ).map(([id, label]) => {
+                const active = tab === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setTab(id)}
+                    className={cn(
+                      "relative shrink-0 rounded-full px-5 py-2.5 text-sm transition-all duration-300",
+                      active
+                        ? cn(BRAND_BUTTON_BASE, "normal-case !shadow-lg")
+                        : "font-semibold text-ink/55 hover:text-ink",
+                    )}
+                    style={active ? brandButtonStyle(siteAccent) : undefined}
+                  >
+                    {active ? (
+                      <span
+                        className="pointer-events-none absolute inset-x-0 top-0 h-1/2 rounded-t-full bg-gradient-to-b from-white/35 to-transparent"
+                        aria-hidden
+                      />
+                    ) : null}
+                    <span className="relative z-10">{label}</span>
+                  </button>
+                );
+              })}
             </div>
-          </div>
+          </Reveal>
 
-          <div className="flex min-w-0 flex-col">
+          <Reveal delay={0.08} className="flex min-w-0 flex-col">
             {(isLoading || activeProducts.length > 0) ? (
               <div className="mb-5 flex justify-end sm:mb-6">
                 <CollectionLink href={activeHref} />
@@ -205,7 +198,7 @@ export function FeaturedProducts() {
                 )}
               </motion.div>
             </AnimatePresence>
-          </div>
+          </Reveal>
         </div>
       </Container>
     </section>

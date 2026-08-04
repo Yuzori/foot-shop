@@ -10,6 +10,7 @@ import {
   CountryFilter,
   filterProductsByCountry,
 } from "@/components/catalogue/country-filter";
+import { Reveal } from "@/components/motion/reveal";
 import { ProductGrid } from "@/components/product/product-grid";
 import { Container } from "@/components/ui/container";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -173,7 +174,8 @@ export function CategoryDetailView({ id }: { id: string }) {
 
   return (
     <Container className="py-8 sm:py-12 lg:py-16">
-      <header className="mb-6 max-w-2xl sm:mb-10 lg:mb-12">
+      <Reveal>
+        <header className="mb-6 max-w-2xl sm:mb-10 lg:mb-12">
         <Link
           href={routes.catalogHub({
             kind: collectionKind ?? undefined,
@@ -190,7 +192,8 @@ export function CategoryDetailView({ id }: { id: string }) {
         {showCategorySubtitle ? (
           <p className="mt-3 text-sm font-medium text-ink/55">{category.name}</p>
         ) : null}
-      </header>
+        </header>
+      </Reveal>
 
       {baseProducts.length === 0 ? (
         <EmptyState
@@ -205,7 +208,7 @@ export function CategoryDetailView({ id }: { id: string }) {
           }}
         />
       ) : (
-        <>
+        <Reveal delay={0.06}>
           <CatalogToolbar
             count={products.length}
             filter={
@@ -228,7 +231,7 @@ export function CategoryDetailView({ id }: { id: string }) {
           ) : (
             <ProductGrid products={products} />
           )}
-        </>
+        </Reveal>
       )}
     </Container>
   );

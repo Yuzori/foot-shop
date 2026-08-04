@@ -1,5 +1,6 @@
 "use client";
 
+import { motion, useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 
 import { ProductCard } from "@/components/product/product-card";
@@ -9,6 +10,7 @@ import type { Product } from "@/types/domain";
 
 const INITIAL_BATCH = 24;
 const LOAD_BATCH = 24;
+const ease = [0.16, 1, 0.3, 1] as const;
 
 interface ProductGridProps {
   products: Product[];
@@ -24,6 +26,7 @@ export function ProductGrid({
   skeletonCount = 8,
   className,
 }: ProductGridProps) {
+  const reduced = useReducedMotion();
   const grid = cn(
     "grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-4 sm:gap-y-10 md:grid-cols-3 lg:grid-cols-4",
     className,
@@ -77,12 +80,20 @@ export function ProductGrid({
     <>
       <div className={grid}>
         {visibleProducts.map((product, i) => (
-          <div
+          <motion.div
             key={product.id}
+            initial={reduced ? false : { opacity: 0, y: 18 }}
+            whileInView={reduced ? undefined : { opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-40px" }}
+            transition={{
+              duration: 0.5,
+              ease,
+              delay: Math.min(i % 4, 3) * 0.05,
+            }}
             className="[content-visibility:auto] [contain-intrinsic-size:320px_420px]"
           >
             <ProductCard product={product} priority={i < 4} />
-          </div>
+          </motion.div>
         ))}
       </div>
 

@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { SortSelect } from "@/components/catalogue/sort-select";
 import { CatalogToolbar } from "@/components/catalogue/catalog-toolbar";
+import { Reveal } from "@/components/motion/reveal";
 import { ProductGrid } from "@/components/product/product-grid";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -50,7 +51,8 @@ export function CatalogueView({
 
   return (
     <div>
-      <CatalogToolbar
+      <Reveal>
+        <CatalogToolbar
         count={products.length}
         countLabel={
           isLoading
@@ -68,9 +70,11 @@ export function CatalogueView({
           />
         }
       />
+      </Reveal>
 
       {showEmpty ? (
-        <EmptyState
+        <Reveal delay={0.05}>
+          <EmptyState
           title={isError ? "Catalogue indisponible" : "Aucun produit trouvé"}
           description={
             isError
@@ -81,8 +85,9 @@ export function CatalogueView({
           }
           action={{ label: "Retour à la boutique", href: routes.catalogue }}
         />
+        </Reveal>
       ) : (
-        <>
+        <Reveal delay={0.05}>
           <ProductGrid products={products} loading={isLoading} skeletonCount={limit > 12 ? 12 : limit} />
 
           {hasMore ? (
@@ -97,7 +102,7 @@ export function CatalogueView({
               </Button>
             </div>
           ) : null}
-        </>
+        </Reveal>
       )}
     </div>
   );

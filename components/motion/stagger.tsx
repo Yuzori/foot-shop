@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, type Variants } from "framer-motion";
+import { motion, useReducedMotion, type Variants } from "framer-motion";
 import { type ReactNode } from "react";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -27,11 +27,13 @@ export function Stagger({
   children: ReactNode;
   className?: string;
 }) {
+  const reduced = useReducedMotion();
+
   return (
     <motion.div
-      variants={container}
-      initial="hidden"
-      whileInView="show"
+      variants={reduced ? undefined : container}
+      initial={reduced ? false : "hidden"}
+      whileInView={reduced ? undefined : "show"}
       viewport={{ once: true, margin: "-60px" }}
       className={className}
     >

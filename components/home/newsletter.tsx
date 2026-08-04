@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { ResponsiveBackground } from "@/components/ui/responsive-background";
+import { Reveal } from "@/components/motion/reveal";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { useSession } from "@/hooks/use-auth";
@@ -50,7 +51,7 @@ export function Newsletter() {
         aria-hidden
       />
       <Container className="relative">
-        <div className="mx-auto max-w-2xl text-center">
+        <Reveal className="mx-auto max-w-2xl text-center">
           <p className="eyebrow text-accent">Newsletter</p>
           <h2 className="display-2 mt-3 text-paper">Restez dans le jeu</h2>
           <p className="mt-4 text-sm leading-relaxed text-paper/70">
@@ -100,7 +101,7 @@ export function Newsletter() {
           {message && !done ? (
             <p className="mt-4 text-sm text-paper/80">{message}</p>
           ) : null}
-        </div>
+        </Reveal>
       </Container>
     </section>
   );

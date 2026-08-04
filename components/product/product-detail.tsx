@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect } from "react";
 
 import { SectionHeader } from "@/components/common/section-header";
+import { Reveal } from "@/components/motion/reveal";
 import { FavoriteButton } from "@/components/product/favorite-button";
 import { ProductEngagementTracker } from "@/components/product/product-engagement-tracker";
 import { ProductGallery } from "@/components/product/product-gallery";
@@ -76,11 +77,11 @@ export function ProductDetail({ product, kitOptions = [] }: ProductDetailProps) 
         </nav>
 
         <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
-          <div>
+          <Reveal>
             <ProductGallery images={product.images} name={product.name} />
-          </div>
+          </Reveal>
 
-          <div className="flex flex-col lg:sticky lg:top-28 lg:self-start">
+          <Reveal delay={0.08} className="flex flex-col lg:sticky lg:top-28 lg:self-start">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <ProductBadges
@@ -110,7 +111,7 @@ export function ProductDetail({ product, kitOptions = [] }: ProductDetailProps) 
               ) : null}
               <ProductPurchase product={product} />
             </div>
-          </div>
+          </Reveal>
         </div>
       </Container>
 

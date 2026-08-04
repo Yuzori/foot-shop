@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { Reveal } from "@/components/motion/reveal";
 import { ResponsiveBackground } from "@/components/ui/responsive-background";
 import { buttonClasses } from "@/components/ui/button";
 import { brandButtonStyle } from "@/lib/brand-button";
@@ -13,7 +14,8 @@ export function WorldCupSection() {
 
   return (
     <section className="relative w-full overflow-hidden">
-      <Link
+      <Reveal y={32}>
+        <Link
         href={worldCupConfig.href}
         aria-label={worldCupConfig.ariaLabel}
         className="group relative block w-full"
@@ -46,6 +48,7 @@ export function WorldCupSection() {
           ) : null}
         </div>
       </Link>
+      </Reveal>
     </section>
   );
 }

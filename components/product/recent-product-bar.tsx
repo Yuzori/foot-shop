@@ -54,7 +54,7 @@ export function RecentProductBar() {
                 src={recent.image}
                 alt={recent.name}
                 sizes="56px"
-                className="!object-contain !scale-[1.38] sm:!scale-[1.48]"
+                className="!object-contain !p-0.5"
               />
             </Link>
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Logo } from "@/components/layout/logo";
+import { Reveal } from "@/components/motion/reveal";
 import { Container } from "@/components/ui/container";
 import { publicConfig } from "@/config";
 import { footerNav, routes } from "@/config/site";
@@ -20,7 +21,8 @@ export function Footer() {
       />
 
       <Container className="relative py-16">
-        <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-4">
+        <Reveal>
+          <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-4">
           <div>
             <Link href={routes.home} aria-label="Accueil" className="inline-block">
               <Logo variant="footer" className="h-12 w-auto sm:h-14 lg:h-[4.25rem]" />
@@ -50,9 +52,11 @@ export function Footer() {
               </ul>
             </div>
           ))}
-        </div>
+          </div>
+        </Reveal>
 
-        <div className="mt-16 flex flex-col items-start justify-between gap-4 border-t border-paper/10 pt-8 text-xs text-paper/40 sm:flex-row sm:items-center">
+        <Reveal delay={0.1}>
+          <div className="mt-16 flex flex-col items-start justify-between gap-4 border-t border-paper/10 pt-8 text-xs text-paper/40 sm:flex-row sm:items-center">
           <p>
             © {year} {publicConfig.siteName}. Tous droits réservés.
           </p>
@@ -71,6 +75,7 @@ export function Footer() {
             </Link>
           </div>
         </div>
+        </Reveal>
       </Container>
     </footer>
   );

@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { SearchIcon } from "@/components/layout/icons";
+import { Reveal } from "@/components/motion/reveal";
 import { ProductGrid } from "@/components/product/product-grid";
 import { Container } from "@/components/ui/container";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -32,7 +33,7 @@ export function SearchView() {
 
   return (
     <Container className="py-12 lg:py-20">
-      <div className="mx-auto max-w-2xl">
+      <Reveal className="mx-auto max-w-2xl">
         <h1 className="display-2 text-center">Rechercher</h1>
         <div className="relative mt-8">
           <SearchIcon className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-ink/40" />
@@ -45,9 +46,9 @@ export function SearchView() {
             aria-label="Rechercher un produit"
           />
         </div>
-      </div>
+      </Reveal>
 
-      <div className="mt-16">
+      <Reveal delay={0.08} className="mt-16">
         {!hasQuery ? (
           <p className="text-center text-sm text-ink/40">
             Saisissez au moins 2 caractères pour lancer la recherche.
@@ -64,7 +65,7 @@ export function SearchView() {
         ) : (
           <ProductGrid products={results} loading={isLoading} skeletonCount={8} />
         )}
-      </div>
+      </Reveal>
     </Container>
   );
 }

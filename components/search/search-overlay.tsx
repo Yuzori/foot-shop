@@ -13,7 +13,6 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { useSearch } from "@/hooks/use-search";
 import { overlayMotion, searchPanelMotion } from "@/lib/motion";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
-import { cn } from "@/lib/utils";
 import { useUIStore } from "@/store/ui-store";
 
 /**
@@ -26,7 +25,6 @@ export function SearchOverlay() {
   const pathname = usePathname();
 
   const [term, setTerm] = useState("");
-  const [searchFocused, setSearchFocused] = useState(false);
   const debounced = useDebounce(term, 300);
   const { data, isLoading, isError } = useSearch(open ? debounced : "");
 
@@ -75,77 +73,53 @@ export function SearchOverlay() {
             className="absolute inset-x-0 top-0 mx-auto max-h-full w-full max-w-3xl overflow-y-auto overscroll-contain px-4 pb-16 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5 sm:pt-12"
             style={{ maxHeight: "100dvh" }}
           >
-            <div
-              className={cn(
-                "relative rounded-full transition-all duration-300",
-                searchFocused && "scale-[1.01]",
-              )}
-            >
-              <SearchIcon className="pointer-events-none absolute left-5 top-1/2 z-10 h-5 w-5 -translate-y-1/2 text-accent-dark" />
-              <input
-                autoFocus
-                value={term}
-                onChange={(e) => setTerm(e.target.value)}
-                onFocus={() => setSearchFocused(true)}
-                onBlur={() => setSearchFocused(false)}
-                placeholder="Rechercher un maillot, un club, une équipe…"
-                className={cn(
-                  "h-16 w-full rounded-full border bg-paper/95 pl-14 pr-16 text-base outline-none transition-all duration-300 placeholder:text-ink/35",
-                  searchFocused
-                    ? "border-white/40"
-                    : "border-ink/[0.08] shadow-panel",
-                )}
-                style={
-                  searchFocused
-                    ? {
-                        background:
-                          "linear-gradient(135deg, rgba(102,186,255,0.28) 0%, rgba(102,186,255,0.12) 100%)",
-                        boxShadow:
-                          "0 10px 28px -8px rgba(102,186,255,0.45), inset 0 1px 0 rgba(255,255,255,0.55)",
-                      }
-                    : undefined
-                }
-                aria-label="Rechercher un produit"
-              />
-              {searchFocused ? (
-                <span
-                  className="pointer-events-none absolute inset-x-3 top-0 h-1/2 rounded-t-full bg-gradient-to-b from-white/35 to-transparent"
-                  aria-hidden
+            <div className="overflow-hidden rounded-3xl border border-white/20 bg-paper shadow-panel">
+              <div className="relative border-b border-accent/45 bg-accent/40">
+                <SearchIcon className="pointer-events-none absolute left-5 top-1/2 z-10 h-5 w-5 -translate-y-1/2 text-white/90" />
+                <input
+                  autoFocus
+                  value={term}
+                  onChange={(e) => setTerm(e.target.value)}
+                  placeholder="Rechercher un maillot, un club, une équipe…"
+                  className="h-16 w-full bg-transparent pl-14 pr-16 text-base text-white outline-none placeholder:text-white/75"
+                  aria-label="Rechercher un produit"
                 />
-              ) : null}
-              <button
-                onClick={close}
-                aria-label="Fermer la recherche"
-                className="absolute right-3 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-ink/50 transition-colors hover:bg-accent-muted hover:text-ink"
-              >
-                <CloseIcon />
-              </button>
-            </div>
+                <button
+                  onClick={close}
+                  aria-label="Fermer la recherche"
+                  className="absolute right-3 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-white/75 transition-colors hover:bg-white/15 hover:text-white"
+                >
+                  <CloseIcon />
+                </button>
+              </div>
 
-            {!hasQuery ? (
-              <p className="mt-3 px-2 text-center text-xs text-ink/40 sm:text-sm">
-                Saisissez au moins 2 caractères pour lancer la recherche.
-              </p>
-            ) : null}
-
-            {hasQuery ? (
-              <div className="mt-5">
-                {isLoading ? (
-                  <p className="px-2 text-sm text-ink/40">Recherche en cours…</p>
+              <div className="bg-paper px-4 py-5 sm:px-5 sm:py-6">
+                {!hasQuery ? (
+                  <div
+                    role="status"
+                    className="rounded-full border border-accent/20 bg-accent-muted/40 px-5 py-3.5 text-center text-sm text-ink/55"
+                  >
+                    Saisissez au moins 2 caractères pour lancer la recherche.
+                  </div>
+                ) : isLoading ? (
+                  <p className="text-sm text-ink/40">Recherche en cours…</p>
                 ) : showEmpty ? (
-                  <p className="px-2 text-sm text-ink/50">
+                  <div
+                    role="status"
+                    className="rounded-full border border-ink/[0.08] bg-paper-soft px-5 py-3.5 text-center text-sm text-ink/55"
+                  >
                     {isError
                       ? "La connexion au back office a échoué."
                       : `Aucun résultat pour « ${debounced} ».`}
-                  </p>
+                  </div>
                 ) : showResults ? (
-                  <ul className="overflow-hidden rounded-3xl border border-ink/[0.06] bg-paper/90 shadow-panel backdrop-blur-md divide-y divide-ink/[0.05]">
+                  <ul className="divide-y divide-ink/[0.05]">
                     {results.map((product) => (
                       <li key={product.id}>
                         <Link
                           href={routes.product(product.id)}
                           onClick={close}
-                          className="group flex items-center gap-4 px-4 py-3 transition-colors hover:bg-accent-muted/60"
+                          className="group flex items-center gap-4 py-3 transition-colors hover:bg-accent-muted/40"
                         >
                           <div className="relative aspect-square w-14 shrink-0 overflow-hidden rounded-xl bg-paper-soft ring-1 ring-ink/[0.05]">
                             <ProductImage
@@ -171,7 +145,7 @@ export function SearchOverlay() {
                   </ul>
                 ) : null}
               </div>
-            ) : null}
+            </div>
           </motion.div>
         </motion.div>
       ) : null}
