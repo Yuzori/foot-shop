@@ -217,7 +217,11 @@ function MobileCatalogGroup({
                           onClick={onClose}
                           className="flex items-center gap-2 text-sm text-ink/75"
                         >
-                          <LeagueIcon src={league.icon} label={league.label} />
+                          <LeagueIcon
+                            src={league.icon}
+                            label={league.label}
+                            useInitials={league.useInitials}
+                          />
                           {league.label}
                         </Link>
                       </li>

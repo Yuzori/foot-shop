@@ -45,7 +45,6 @@ export type NavLink = {
 
 export const primaryNav: NavLink[] = [
   { label: "Collections", href: routes.categories },
-  { label: "Nouveautés", href: `${routes.catalogue}?sort=newest` },
   { label: "Contact", href: routes.contact },
 ];
 

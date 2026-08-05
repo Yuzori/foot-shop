@@ -54,10 +54,6 @@ export const metadata: Metadata = {
     canonical: publicConfig.siteUrl,
   },
   robots: { index: true, follow: true },
-  icons: {
-    icon: "/icon.png",
-    apple: "/icon.png",
-  },
 };
 
 export default function RootLayout({
@@ -70,6 +66,27 @@ export default function RootLayout({
       lang="fr"
       className={`${poppins.variable} ${kanit.variable} ${permanentMarker.variable}`}
     >
+      <head>
+        <link
+          rel="icon"
+          type="image/png"
+          href="/icon/ft-white.png"
+          media="(prefers-color-scheme: dark)"
+        />
+        <link
+          rel="icon"
+          type="image/png"
+          href="/icon/ft-black.png"
+          media="(prefers-color-scheme: light)"
+        />
+        <link
+          rel="icon"
+          type="image/png"
+          href="/icon/ft-black.png"
+          media="(prefers-color-scheme: no-preference)"
+        />
+        <link rel="apple-touch-icon" href="/icon/ft-black.png" />
+      </head>
       <body className="min-h-screen bg-paper text-ink">
         <script
           type="application/ld+json"

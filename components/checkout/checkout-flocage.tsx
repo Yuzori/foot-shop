@@ -11,6 +11,7 @@ import {
   isFlocageDraftValid,
 } from "@/lib/flocage-validation";
 import { isJerseyProduct } from "@/lib/product-collection";
+import { isRetroJersey } from "@/lib/retro-jersey";
 import { useCartStore } from "@/store/cart-store";
 import type { CartLine } from "@/types/domain";
 
@@ -30,7 +31,11 @@ export function CheckoutFlocage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const lines = useMemo(
-    () => cartLines.filter((line) => isJerseyProduct(line.name)),
+    () =>
+      cartLines.filter(
+        (line) =>
+          isJerseyProduct(line.name) && !isRetroJersey({ name: line.name }),
+      ),
     [cartLines],
   );
 

@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { PurchaseInfoTicker } from "@/components/product/purchase-info-ticker";
 import { ProductFlocagePicker } from "@/components/product/product-flocage-picker";
@@ -12,7 +12,7 @@ import { shopConfig } from "@/config/shop";
 import { isJerseyProduct } from "@/lib/product-collection";
 import { effectiveProductPrice } from "@/lib/product-price";
 import { productHasStock } from "@/lib/product-stock";
-import { requiresRetroFlocage } from "@/lib/retro-jersey";
+import { isRetroJersey } from "@/lib/retro-jersey";
 import { stockForVariant } from "@/lib/stock-display";
 import { Button } from "@/components/ui/button";
 import { Price } from "@/components/ui/price";
@@ -63,12 +63,8 @@ export function ProductPurchase({ product }: ProductPurchaseProps) {
   const addLine = useCartStore((s) => s.addLine);
   const markPurchased = useProductEngagementStore((s) => s.markPurchased);
   const router = useRouter();
-  const showFlocage = isJerseyProduct(product.name);
-  const retroFlocageRequired = requiresRetroFlocage(product);
-
-  useEffect(() => {
-    if (retroFlocageRequired) setFlocageEnabled(true);
-  }, [retroFlocageRequired]);
+  const showFlocage =
+    isJerseyProduct(product.name) && !isRetroJersey(product);
 
   const matchedVariant: ProductVariant | null = useMemo(() => {
     if (!hasVariants) return null;
@@ -84,7 +80,21 @@ export function ProductPurchase({ product }: ProductPurchaseProps) {
   );
 
   const activePrice = effectiveProductPrice(product, matchedVariant);
-  const displayTotal = activePrice * quantity;
+  const flocageUnit =
+    showFlocage && flocageEnabled ? shopConfig.flocagePrice : 0;
+  const lineTotal = (activePrice + flocageUnit) * quantity;
+  const compareAtTotal =
+    product.compareAtPrice != null
+      ? (product.compareAtPrice + flocageUnit) * quantity
+      : null;
+  const showPriceDetail = quantity > 1 || flocageUnit > 0;
+  const priceDetail = showPriceDetail
+    ? `${quantity} × ${formatPrice(activePrice, product.currency)}${
+        flocageUnit > 0
+          ? ` + flocage ${formatPrice(flocageUnit, product.currency)}`
+          : ""
+      }`
+    : "";
   const needsSize = hasVariants && !allGroupsSelected;
   const sizeSelected = !hasVariants || allGroupsSelected;
   const activeQuantity = stockForVariant(
@@ -97,12 +107,10 @@ export function ProductPurchase({ product }: ProductPurchaseProps) {
       : productHasStock(product)
     : productHasStock(product);
 
-  const flocageValid = retroFlocageRequired
-    ? flocageName.trim().length >= 2 &&
-      flocageNumber.trim().length >= shopConfig.flocageNumberMin
-    : !flocageEnabled ||
-      (flocageName.trim().length >= 2 &&
-        flocageNumber.trim().length >= shopConfig.flocageNumberMin);
+  const flocageValid =
+    !flocageEnabled ||
+    (flocageName.trim().length >= 2 &&
+      flocageNumber.trim().length >= shopConfig.flocageNumberMin);
 
   const canAdd = productHasStock(product) && inStock && sizeSelected && flocageValid;
 
@@ -122,7 +130,7 @@ export function ProductPurchase({ product }: ProductPurchaseProps) {
       optionsLabel,
       reference: matchedVariant?.reference ?? product.reference,
       flocage:
-        showFlocage && (retroFlocageRequired || flocageEnabled)
+        showFlocage && flocageEnabled
           ? {
               enabled: true,
               name: flocageName.trim().toUpperCase(),
@@ -148,20 +156,46 @@ export function ProductPurchase({ product }: ProductPurchaseProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <Price
-          amount={activePrice}
-          compareAt={product.compareAtPrice}
-          currency={product.currency}
-          className="text-2xl"
-        />
-        <StockIndicator quantity={activeQuantity} />
+      <div className="flex flex-col gap-1">
+        <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-2">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-ink/40">
+              Total
+            </p>
+            <motion.div
+              key={lineTotal}
+              initial={{ opacity: 0.55, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <Price
+                amount={lineTotal}
+                compareAt={compareAtTotal}
+                currency={product.currency}
+                className="text-2xl"
+              />
+            </motion.div>
+          </div>
+          <StockIndicator quantity={activeQuantity} />
+        </div>
+        <p
+          className="min-h-4 text-xs tabular-nums text-ink/50"
+          aria-hidden={!showPriceDetail}
+        >
+          <motion.span
+            animate={{ opacity: showPriceDetail ? 1 : 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="block"
+          >
+            {priceDetail || "\u00A0"}
+          </motion.span>
+        </p>
       </div>
 
       {showFlocage ? (
         <ProductFlocagePicker
           enabled={flocageEnabled}
-          required={retroFlocageRequired}
+          required={false}
           name={flocageName}
           number={flocageNumber}
           onEnabledChange={setFlocageEnabled}
@@ -316,7 +350,7 @@ export function ProductPurchase({ product }: ProductPurchaseProps) {
           ? "Choisissez une taille pour commander"
           : sizeSelected && !inStock
             ? "Taille indisponible"
-            : `Acheter maintenant — ${formatPrice(displayTotal + (flocageEnabled ? shopConfig.flocagePrice : 0) * quantity)}`}
+            : `Acheter maintenant — ${formatPrice(lineTotal, product.currency)}`}
       </Button>
 
       <PurchaseInfoTicker />

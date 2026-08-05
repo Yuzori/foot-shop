@@ -28,7 +28,7 @@ export function useCategory(
   const audience = options?.audience ?? null;
   const kind = options?.kind ?? null;
   const league = options?.league ?? null;
-  const sort = options?.sort;
+  const sort = options?.sort ?? "newest";
 
   return useQuery({
     queryKey: [

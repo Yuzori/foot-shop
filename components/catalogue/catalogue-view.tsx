@@ -31,7 +31,7 @@ export function CatalogueView({
   category,
   search,
   kind,
-  initialSort = "relevance",
+  initialSort = "newest",
 }: CatalogueViewProps) {
   const [sort, setSort] = useState<SortOption>(initialSort);
   const [limit, setLimit] = useState(PAGE_SIZE);

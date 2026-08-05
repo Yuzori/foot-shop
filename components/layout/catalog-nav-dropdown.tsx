@@ -209,7 +209,11 @@ export function CatalogNavDropdown({
                             onClick={close}
                             className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors hover:bg-paper-soft"
                           >
-                            <LeagueIcon src={league.icon} label={league.label} />
+                            <LeagueIcon
+                              src={league.icon}
+                              label={league.label}
+                              useInitials={league.useInitials}
+                            />
                             <span className="font-medium transition-transform group-hover:translate-x-0.5">
                               {league.label}
                             </span>

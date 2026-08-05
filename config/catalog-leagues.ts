@@ -19,6 +19,8 @@ export interface CatalogLeague {
   label: string;
   /** Chemin logo dans public/, ex. /leagues/ligue1.png */
   icon: string;
+  /** Initiales grises à la place du logo (Maillot Concept, Retro…). */
+  useInitials?: boolean;
   categoryId?: string;
   /** Sous-catégorie enfant directe (ex. Maillot - Enfant > Maillot Concept). */
   kidsCategoryId?: string;
@@ -101,14 +103,16 @@ function buildMaillotSpecialCatalogLeagues(): CatalogLeague[] {
     {
       id: "maillot-concept",
       label: "Maillot Concept",
-      icon: "/leagues/selections.png",
+      icon: "",
+      useInitials: true,
       categoryId: conceptAdultId || undefined,
       kidsCategoryId: conceptKidsId || undefined,
     },
     {
       id: "maillot-retro",
       label: "Maillot Retro",
-      icon: "/leagues/selections.png",
+      icon: "",
+      useInitials: true,
       categoryId: retroAdultId || undefined,
       kidsCategoryId: retroKidsId || undefined,
     },
@@ -145,13 +149,6 @@ export const catalogLeagues: CatalogLeague[] = [
   { id: "la-liga", label: "La Liga", icon: "/leagues/la-liga.png", categoryId: DIVISION_CATEGORY_IDS["la-liga"]?.adult, kidsCategoryId: DIVISION_CATEGORY_IDS["la-liga"]?.kids },
   { id: "serie-a", label: "Serie A", icon: "/leagues/serie-a.png", categoryId: DIVISION_CATEGORY_IDS["serie-a"]?.adult, kidsCategoryId: DIVISION_CATEGORY_IDS["serie-a"]?.kids },
   { id: "bundesliga", label: "Bundesliga", icon: "/leagues/bundesliga.png", categoryId: DIVISION_CATEGORY_IDS.bundesliga?.adult, kidsCategoryId: DIVISION_CATEGORY_IDS.bundesliga?.kids },
-  {
-    id: "ligue-des-champions",
-    label: "Ligue des champions",
-    icon: "/leagues/champions-league.png",
-    categoryId: DIVISION_CATEGORY_IDS["ligue-des-champions"]?.adult,
-    kidsCategoryId: DIVISION_CATEGORY_IDS["ligue-des-champions"]?.kids,
-  },
   { id: "selections", label: "Sélections", icon: "/leagues/selections.png", categoryId: DIVISION_CATEGORY_IDS.selections?.adult, kidsCategoryId: DIVISION_CATEGORY_IDS.selections?.kids },
   ...buildMaillotSpecialCatalogLeagues(),
 ];

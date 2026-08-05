@@ -23,7 +23,7 @@ export function CatalogueClient() {
   const kindParam = params.get("kind");
   const initialSort = VALID_SORTS.includes(sortParam as SortOption)
     ? (sortParam as SortOption)
-    : "relevance";
+    : "newest";
   const kind = VALID_KINDS.includes(kindParam as ProductCollectionKind)
     ? (kindParam as ProductCollectionKind)
     : undefined;

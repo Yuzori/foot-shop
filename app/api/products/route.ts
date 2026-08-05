@@ -42,10 +42,8 @@ export async function GET(request: Request) {
   const sortParam = searchParams.get("sort");
 
   const sort = SORTS.includes(sortParam as SortOption)
-
     ? (sortParam as SortOption)
-
-    : undefined;
+    : "newest";
 
 
 

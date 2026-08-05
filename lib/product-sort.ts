@@ -1,11 +1,14 @@
 import type { Product, SortOption } from "@/types/domain";
 
-/** Tri côté app : certaines configs PrestaShop refusent date_add/price en API. */
+const NEWEST_FIRST: SortOption = "newest";
+
+/** Tri côté app — par défaut : du plus récent au plus ancien. */
 export function sortProducts(items: Product[], sort?: SortOption): Product[] {
-  if (!sort || sort === "relevance") return items;
+  const effectiveSort =
+    !sort || sort === "relevance" ? NEWEST_FIRST : sort;
 
   const copy = [...items];
-  switch (sort) {
+  switch (effectiveSort) {
     case "newest":
       return copy.sort((a, b) => {
         const da = a.createdAt ? Date.parse(a.createdAt) : 0;

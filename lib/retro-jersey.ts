@@ -16,12 +16,14 @@ function retroCategoryIds(): Set<string> {
   );
 }
 
-/** Maillot rétro — flocage nom/numéro obligatoire à l'achat. */
-export function requiresRetroFlocage(product: {
+type RetroProduct = {
   name: string;
   categoryIds?: string[];
   defaultCategoryId?: string | null;
-}): boolean {
+};
+
+/** Maillot rétro — pas de flocage disponible. */
+export function isRetroJersey(product: RetroProduct): boolean {
   if (!/\bmaillot/i.test(product.name) || /\bshorts?\b/i.test(product.name)) {
     return false;
   }
@@ -35,4 +37,9 @@ export function requiresRetroFlocage(product: {
   if (defaultId && retroIds.has(defaultId)) return true;
 
   return (product.categoryIds ?? []).some((id) => retroIds.has(String(id).trim()));
+}
+
+/** @deprecated Utiliser isRetroJersey — le flocage n’est jamais obligatoire. */
+export function requiresRetroFlocage(product: RetroProduct): boolean {
+  return false;
 }

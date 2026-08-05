@@ -249,7 +249,11 @@ export function CatalogHub() {
                       )}
                       className="group flex items-center gap-4 rounded-2xl border border-ink/10 bg-paper px-5 py-4 transition-all hover:border-ink/25 hover:bg-paper-soft"
                     >
-                      <LeagueIcon src={league.icon} label={league.label} />
+                      <LeagueIcon
+                        src={league.icon}
+                        label={league.label}
+                        useInitials={league.useInitials}
+                      />
                       <span className="flex-1 text-left font-semibold tracking-tight">
                         {league.label}
                       </span>
