@@ -67,11 +67,15 @@ export function HeroPaint() {
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.65, ease, delay: 0.4 }}
-          className="mt-8 flex flex-wrap gap-3 sm:mt-12"
+          className="mt-8 grid w-full max-w-lg grid-cols-2 gap-3 sm:mt-12 sm:flex sm:w-auto sm:max-w-none"
         >
           <Link
             href={catalogNav.maillots.href}
-            className={buttonClasses("accent", "lg")}
+            className={buttonClasses(
+              "accent",
+              "lg",
+              "w-full justify-center px-4 text-xs sm:w-auto sm:px-8 sm:text-sm",
+            )}
             style={buttonStyle("accent")}
           >
             {cfg.ctaJerseys}
@@ -79,7 +83,11 @@ export function HeroPaint() {
 
           <Link
             href={catalogNav.shorts.href}
-            className={buttonClasses("outline", "lg", "btn-brand-light")}
+            className={buttonClasses(
+              "outline",
+              "lg",
+              "btn-brand-light w-full justify-center px-4 text-xs sm:w-auto sm:px-8 sm:text-sm",
+            )}
             style={brandButtonStyle(undefined, "light")}
           >
             {cfg.ctaShorts}
