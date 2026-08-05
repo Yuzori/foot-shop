@@ -570,10 +570,15 @@ export function BbdBuyPanel() {
 
   if (!secret) {
     return (
-      <Container className="py-16 lg:py-24">
-        <div className="mx-auto max-w-md">
-          <h1 className="display-2 text-center">Administration</h1>
-          <form onSubmit={unlock} className="mt-10 space-y-4">
+      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4 py-12 sm:py-16">
+        <div className="w-full max-w-sm">
+          <div className="text-center">
+            <h1 className="font-display text-2xl font-semibold uppercase tracking-[0.12em] text-ink sm:text-3xl">
+              Administration
+            </h1>
+            <p className="mt-2 text-sm text-ink/50">Accès réservé</p>
+          </div>
+          <form onSubmit={unlock} className="mt-8 space-y-4">
             <Field
               label="Secret admin"
               name="secret"
@@ -594,7 +599,7 @@ export function BbdBuyPanel() {
             </Button>
           </form>
         </div>
-      </Container>
+      </div>
     );
   }
 

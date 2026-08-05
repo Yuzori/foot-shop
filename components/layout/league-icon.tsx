@@ -4,8 +4,6 @@ import { useState } from "react";
 
 import { cn } from "@/lib/utils";
 
-const INITIALS_COLOR = "#A0A0A0";
-
 interface LeagueIconProps {
   src: string;
   label: string;
@@ -36,10 +34,9 @@ export function LeagueIcon({
     return (
       <span
         className={cn(
-          "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-transparent text-[10px] font-semibold tracking-tight !text-[#A0A0A0]",
+          "flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-paper-soft p-1 text-[9px] font-bold tracking-tight text-ink",
           className,
         )}
-        style={{ color: INITIALS_COLOR }}
         aria-hidden
       >
         {initials}

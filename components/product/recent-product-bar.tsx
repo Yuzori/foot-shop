@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { FavoriteButton } from "@/components/product/favorite-button";
 import { ProductImage } from "@/components/product/product-image";
@@ -16,12 +16,33 @@ import { cn } from "@/lib/utils";
 import { useRecentProductStore } from "@/store/recent-product-store";
 import { useUIStore } from "@/store/ui-store";
 
+const BOTTOM_THRESHOLD_PX = 96;
+
+function isNearPageBottom(): boolean {
+  if (typeof window === "undefined") return false;
+  const { scrollY, innerHeight } = window;
+  const docHeight = document.documentElement.scrollHeight;
+  return scrollY + innerHeight >= docHeight - BOTTOM_THRESHOLD_PX;
+}
+
 export function RecentProductBar() {
   const pathname = usePathname();
   const menuOpen = useUIStore((s) => s.menuOpen);
   const recent = useRecentProductStore((s) => s.recent);
   const hidden = useRecentProductStore((s) => s.hidden);
   const hide = useRecentProductStore((s) => s.hide);
+  const [nearBottom, setNearBottom] = useState(false);
+
+  useEffect(() => {
+    const update = () => setNearBottom(isNearPageBottom());
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, [pathname]);
 
   const accent = useMemo(
     () => accentFromProductCover(recent?.accent ?? null),
@@ -29,7 +50,8 @@ export function RecentProductBar() {
   );
 
   const onSameProduct = recent && pathname === routes.product(recent.id);
-  const visible = recent && !hidden && !onSameProduct && !menuOpen;
+  const visible =
+    recent && !hidden && !onSameProduct && !menuOpen && !nearBottom;
 
   return (
     <AnimatePresence>
@@ -38,6 +60,7 @@ export function RecentProductBar() {
           initial={{ y: 80, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 80, opacity: 0 }}
+          transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
           className="fixed bottom-0 left-0 right-0 z-40 border-t border-ink/10 bg-paper/95 shadow-lift backdrop-blur-md"
         >
           <div className="mx-auto flex max-w-4xl items-center gap-2 px-3 py-2 sm:gap-3 sm:px-4">

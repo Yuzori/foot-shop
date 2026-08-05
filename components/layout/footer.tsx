@@ -56,35 +56,37 @@ export function Footer() {
         </Reveal>
 
         <Reveal delay={0.1}>
-          <div className="mt-16 flex flex-col items-start justify-between gap-4 border-t border-paper/10 pt-8 text-xs text-paper/40 sm:flex-row sm:items-center">
-          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-6">
-          <p>
-            © {year} {publicConfig.siteName}. Tous droits réservés.
-          </p>
-          <a
-            href="https://webley.fr"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="transition-colors hover:text-accent"
-          >
-            by webley.fr
-          </a>
+          <div className="mt-16 space-y-6 border-t border-paper/10 pt-8">
+            <div className="flex justify-center">
+              <a
+                href="https://webley.fr"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-full border border-paper/10 bg-paper/[0.04] px-4 py-2 text-xs text-paper/55 transition-colors hover:border-accent/40 hover:text-accent"
+              >
+                <span className="text-paper/40">by</span>
+                <span className="font-semibold tracking-wide">webley.fr</span>
+              </a>
+            </div>
+
+            <div className="flex flex-col items-center justify-between gap-4 text-center text-xs text-paper/40 sm:flex-row sm:text-left">
+              <p>© {year} {publicConfig.siteName}. Tous droits réservés.</p>
+              <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 sm:justify-end">
+                <Link href={routes.legal} className="transition-colors hover:text-accent">
+                  Mentions légales
+                </Link>
+                <Link href={routes.privacy} className="transition-colors hover:text-accent">
+                  Confidentialité
+                </Link>
+                <Link href={routes.terms} className="transition-colors hover:text-accent">
+                  CGV
+                </Link>
+                <Link href={routes.contact} className="transition-colors hover:text-accent">
+                  Contact
+                </Link>
+              </div>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-x-6 gap-y-2">
-            <Link href={routes.legal} className="transition-colors hover:text-accent">
-              Mentions légales
-            </Link>
-            <Link href={routes.privacy} className="transition-colors hover:text-accent">
-              Confidentialité
-            </Link>
-            <Link href={routes.terms} className="transition-colors hover:text-accent">
-              CGV
-            </Link>
-            <Link href={routes.contact} className="transition-colors hover:text-accent">
-              Contact
-            </Link>
-          </div>
-        </div>
         </Reveal>
       </Container>
     </footer>
