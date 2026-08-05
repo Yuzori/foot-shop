@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 const channels = [
   { label: "Email", value: mailConfig.contactEmail },
   { label: "Horaires", value: "Lun — Ven · 9h à 18h" },
-  { label: "Retours", value: "30 jours pour changer d'avis" },
+  { label: "Retours", value: "14 jours pour changer d'avis" },
 ];
 
 export default function ContactPage() {

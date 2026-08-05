@@ -19,7 +19,7 @@ export default function AboutPage() {
         <p>
           Chaque pièce est choisie pour sa qualité. Nous
           travaillons à proposer une sélection claire, lisible et toujours à
-          jour, directement issue de notre catalogue officiel.
+          jour, directement issue de notre catalogue.
         </p>
       </section>
       <section>

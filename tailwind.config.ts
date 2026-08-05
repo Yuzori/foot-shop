@@ -41,6 +41,7 @@ const config: Config = {
       fontFamily: {
         sans: ["var(--font-sans)", "sans-serif"],
         display: ["var(--font-display)", "var(--font-sans)", "sans-serif"],
+        brush: ["var(--font-brush)", "cursive"],
       },
       letterSpacing: {
         tightest: "-0.04em",
@@ -95,6 +96,20 @@ const config: Config = {
           from: { transform: "rotate(0deg)" },
           to: { transform: "rotate(360deg)" },
         },
+        "season-ticker": {
+          "0%": { transform: "translateY(0)" },
+          "100%": { transform: "translateY(-50%)" },
+        },
+        "wc-pulse": {
+          "0%, 100%": {
+            boxShadow:
+              "0 0 0 0 rgba(102,186,255,0.45), 0 8px 24px -10px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.22)",
+          },
+          "50%": {
+            boxShadow:
+              "0 0 0 4px rgba(102,186,255,0.18), 0 12px 32px -8px rgba(102,186,255,0.35), inset 0 1px 0 rgba(255,255,255,0.3)",
+          },
+        },
       },
       animation: {
         "fade-up": "fade-up 0.6s cubic-bezier(0.16,1,0.3,1) both",
@@ -104,6 +119,8 @@ const config: Config = {
         "radar-ping": "radar-ping 2s cubic-bezier(0,0,0.2,1) infinite",
         "radar-sweep": "radar-sweep 2.4s linear infinite",
         "card-laser-spin": "card-laser-spin 2.8s linear infinite",
+        "season-ticker": "season-ticker 14s linear infinite",
+        "wc-pulse": "wc-pulse 2.8s ease-in-out infinite",
       },
     },
   },

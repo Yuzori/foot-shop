@@ -10,7 +10,7 @@ export function Footer() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="relative mt-32 overflow-hidden border-t border-ink/[0.06] bg-ink text-paper">
+    <footer className="relative overflow-hidden border-t border-paper/10 bg-ink text-paper">
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent to-transparent"
         aria-hidden
@@ -28,8 +28,8 @@ export function Footer() {
               <Logo variant="footer" className="h-12 w-auto sm:h-14 lg:h-[4.25rem]" />
             </Link>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-paper/55">
-              La référence du maillot de football. Sélection premium, qualité
-              officielle — livraison offerte sur votre 1ʳᵉ commande.
+              La référence du maillot de football. Sélection premium —
+              livraison offerte sur votre 1ʳᵉ commande.
             </p>
           </div>
 
@@ -57,9 +57,19 @@ export function Footer() {
 
         <Reveal delay={0.1}>
           <div className="mt-16 flex flex-col items-start justify-between gap-4 border-t border-paper/10 pt-8 text-xs text-paper/40 sm:flex-row sm:items-center">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-6">
           <p>
             © {year} {publicConfig.siteName}. Tous droits réservés.
           </p>
+          <a
+            href="https://webley.fr"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="transition-colors hover:text-accent"
+          >
+            by webley.fr
+          </a>
+          </div>
           <div className="flex flex-wrap gap-x-6 gap-y-2">
             <Link href={routes.legal} className="transition-colors hover:text-accent">
               Mentions légales

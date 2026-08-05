@@ -12,16 +12,22 @@ import { http, getErrorMessage } from "@/lib/http";
 /** Inscription newsletter — compte PrestaShop ou invité + email de bienvenue. */
 export function Newsletter() {
   const { data: user } = useSession();
+  const [mounted, setMounted] = useState(false);
   const [email, setEmail] = useState("");
   const [done, setDone] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
     if (user?.email && !email) {
       setEmail(user.email);
     }
-  }, [user?.email, email]);
+  }, [mounted, user?.email, email]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -44,10 +50,10 @@ export function Newsletter() {
   }
 
   return (
-    <section className="relative overflow-hidden bg-ink py-24 text-paper">
-      <ResponsiveBackground src="/bkd3.jpg" className="opacity-50" />
+    <section className="relative overflow-hidden bg-ink py-24 text-paper sm:py-28">
+      <ResponsiveBackground src="/bkd3.jpg" className="opacity-90" />
       <div
-        className="absolute inset-0 bg-gradient-to-t from-ink via-ink/70 to-ink/40"
+        className="absolute inset-0 bg-gradient-to-t from-ink/55 via-ink/25 to-transparent"
         aria-hidden
       />
       <Container className="relative">
@@ -58,7 +64,7 @@ export function Newsletter() {
             Nouveautés, éditions limitées et retours en stock. Inscrivez-vous et
             recevez nos meilleures sorties en avant-première.
           </p>
-          {user ? (
+          {mounted && user ? (
             <p className="mt-4 text-xs text-paper/55">
               Pas inscrit à la création du compte ? Vous pouvez activer la
               newsletter ici avec votre adresse de connexion.
@@ -82,7 +88,7 @@ export function Newsletter() {
                 placeholder="votre@email.com"
                 aria-label="Adresse email"
                 disabled={pending}
-                readOnly={Boolean(user?.email)}
+                readOnly={mounted && Boolean(user?.email)}
                 className="h-14 min-h-[3.5rem] w-full min-w-0 flex-1 rounded-full border border-paper/25 bg-paper/10 px-6 text-base text-paper outline-none transition-colors placeholder:text-paper/50 focus:border-accent focus:bg-paper/15 disabled:opacity-60 read-only:opacity-90 sm:flex-[2]"
               />
 

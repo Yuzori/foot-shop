@@ -41,7 +41,7 @@ export function Editorial() {
             Plus qu&apos;un maillot, une signature.
           </h2>
           <p className="mt-5 max-w-md text-sm leading-relaxed text-ink/60">
-            Des matières officielles, des finitions soignées et une
+            Des matières premium, des finitions soignées et une
             personnalisation à la hauteur des plus grands clubs. Chaque pièce est
             sélectionnée pour les vrais passionnés.
           </p>

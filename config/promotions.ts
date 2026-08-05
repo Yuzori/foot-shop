@@ -52,7 +52,7 @@ export const announcementMessages: string[] = [
   "2 achetés, 1 offert sur votre 1ʳᵉ commande — créez un compte",
   "Livraison offerte sur votre 1ʳᵉ commande",
   "Livraison express disponible",
-  "Retours gratuits sous 30 jours",
-  "Maillots & shorts officiels — flocage premium",
+  "Retours gratuits sous 14 jours",
+  "Maillots & shorts — flocage premium",
   "Paiement 100% sécurisé",
 ];

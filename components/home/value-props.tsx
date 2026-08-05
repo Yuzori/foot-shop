@@ -10,7 +10,7 @@ const items = [
 
     title: "Qualité garantie",
 
-    description: "Maillots officiels et matières premium, contrôlés un à un.",
+    description: "Maillots premium et matières soignées, contrôlés un à un.",
 
   },
 
@@ -34,7 +34,7 @@ const items = [
 
     title: "Retours simples",
 
-    description: "30 jours pour changer d'avis, sans complication.",
+    description: "14 jours pour changer d'avis, sans complication.",
 
   },
 

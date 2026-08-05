@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Kanit, Poppins } from "next/font/google";
+import { Kanit, Permanent_Marker, Poppins } from "next/font/google";
 
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
@@ -25,6 +25,14 @@ const kanit = Kanit({
   subsets: ["latin"],
   variable: "--font-display",
   weight: ["500", "600", "700", "800"],
+  display: "swap",
+});
+
+/** Brush / peinture — logo & accents header paint. */
+const permanentMarker = Permanent_Marker({
+  subsets: ["latin"],
+  variable: "--font-brush",
+  weight: ["400"],
   display: "swap",
 });
 
@@ -58,7 +66,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr" className={`${poppins.variable} ${kanit.variable}`}>
+    <html
+      lang="fr"
+      className={`${poppins.variable} ${kanit.variable} ${permanentMarker.variable}`}
+    >
       <body className="min-h-screen bg-paper text-ink">
         <script
           type="application/ld+json"

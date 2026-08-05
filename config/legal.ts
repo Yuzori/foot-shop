@@ -25,7 +25,7 @@ export const legalInfo = {
   ),
   withdrawalDays: 14,
   /** Délai commercial « changer d'avis » à compter de la réception. */
-  returnDays: 30,
+  returnDays: 14,
   odrUrl: "https://ec.europa.eu/consumers/odr",
   /** Médiateur de la consommation (obligatoire pour les professionnels). */
   mediatorName: envOr("LEGAL_MEDIATOR_NAME", "Médiateur de la consommation — à désigner"),

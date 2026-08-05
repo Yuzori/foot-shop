@@ -5,39 +5,42 @@ Next.js sert les fichiers de "public/" via des URLs commençant par "/".
 Noms en minuscules (Linux / VPS est sensible à la casse).
 
 ── MARQUE ──────────────────────────────────────────────────
-  logo.png              Header
-  logo-footer.png       Footer (optionnel : réutilise logo.png sinon)
-  icon.png              Favicon + icône Apple (onglet navigateur)
+  logo.png              Header                    ✅ présent
+  logo-footer.png       Footer                    ✅ présent
+  icon.png              Favicon + Apple           ❌ manquant
 
 ── PAGE D'ACCUEIL — FONDS ─────────────────────────────────
-  bkd.jpg               Hero (desktop)
-  bkd-tel.jpg           Hero (mobile, auto si absent)
-  flocage.jpg           Bloc éditorial « flocage » (desktop + mobile)
-  bkd3.jpg              Newsletter (desktop)
-  bkd3-tel.jpg          Newsletter (mobile, auto si absent)
+  bkd.jpg               Hero desktop              ✅ présent
+  bkd-tel.jpg           Hero mobile               ✅ présent
+  flocage.jpg           Bloc éditorial flocage    ✅ présent
+  bkd3.jpg              Newsletter desktop        ✅ présent
+  bkd3-tel.jpg          Newsletter mobile         ⚠️ optionnel (sinon bkd3.jpg)
 
 ── PAGE D'ACCUEIL — UNIVERS / SHOWCASE ───────────────────
-  myo.jpg               Panneau « Maillots »
-  short.jpg             Panneau « Shorts »
-  wc.jpg                Panneau + bannière World Cup
-  wc-tel.jpg            World Cup mobile (optionnel)
+  myo.jpg               Maillots desktop          ✅ présent
+  myo-tel.jpg           Maillots mobile           ❌ manquant
+  short.jpg             Shorts desktop            ✅ présent
+  short-tel.jpg         Shorts mobile             ❌ manquant
+  wc.jpg                Coupe du monde desktop    ✅ présent
+  wc-tel.jpg            Coupe du monde mobile     ❌ manquant
+  wc-trophy.png         Trophée découpé (PNG)     ✅ présent — desktop/tablette uniquement
+
+── BANNIÈRE WORLD CUP (accueil) ───────────────────────────
+  worldcup-banner.jpg       Desktop                 ✅ présent
+  worldcup-banner-tel.jpg   Mobile                  ✅ présent
 
 ── LOGOS LIGUES (dossier public/leagues/) ────────────────
-  leagues/world-cup.png
-  leagues/ligue1.png
-  leagues/premier-league.png
-  leagues/la-liga.png
-  leagues/serie-a.png
-  leagues/bundesliga.png
-  leagues/champions-league.png
-  leagues/selections.png    (Sélections, Concept, Retro, Reste du monde)
+  leagues/world-cup.png           ❌ manquant
+  leagues/ligue1.png              ❌ manquant
+  leagues/premier-league.png      ❌ manquant
+  leagues/la-liga.png             ❌ manquant
+  leagues/serie-a.png             ❌ manquant
+  leagues/bundesliga.png          ❌ manquant
+  leagues/champions-league.png    ❌ manquant
+  leagues/selections.png            ❌ manquant
 
-── DÉJÀ PRÉSENTS (ne pas renommer) ───────────────────────
-  bkd.jpg, bkd-tel.jpg, flocage.jpg, logo.png, logo-footer.png
-
-── OBSOLÈTE (plus utilisé par le code) ───────────────────
-  worldcup-banner.jpg       → remplacé par wc.jpg
-  bkd2.jpg                  → le code utilise flocage.jpg
+── FICHIERS PRÉSENTS MAIS NON RÉFÉRENCÉS PAR LE CODE ─────
+  (vous pouvez les garder en backup ou les supprimer)
 
 ── IMAGES PRODUITS ───────────────────────────────────────
   Pas dans public/ : servies par PrestaShop via /api/images/...

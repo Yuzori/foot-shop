@@ -42,10 +42,10 @@ export function CatalogueClient() {
         <h1 className="display-2">{title}</h1>
         <p className="mt-4 text-sm leading-relaxed text-ink/55">
           {kind === "short"
-            ? "Shorts officiels et éditions premium."
+            ? "Shorts et éditions premium."
             : kind === "jersey"
               ? "Maillots et éditions premium."
-              : "Maillots et éditions premium. Tous nos produits proviennent directement de notre catalogue officiel."}
+              : "Maillots et éditions premium, sélectionnés pour vous."}
         </p>
       </header>
 

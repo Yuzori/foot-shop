@@ -79,16 +79,6 @@ function CollectionPanelBackground({
       <ResponsiveBackground
         src={backgroundSrc}
         mobileSrc={mobileBackgroundSrc}
-        className="transition-transform duration-700 ease-premium group-hover:scale-[1.04]"
-      />
-      <div
-        className={cn(
-          "absolute inset-0",
-          variant === "wc"
-            ? "bg-gradient-to-t from-ink via-ink/55 to-ink/20"
-            : "bg-gradient-to-t from-ink/90 via-ink/50 to-ink/25",
-        )}
-        aria-hidden
       />
     </div>
   );
@@ -171,16 +161,6 @@ function CollectionPanel({
               <ResponsiveBackground
                 src={backgroundSrc}
                 mobileSrc={mobileBackgroundSrc}
-                className="transition-transform duration-700 ease-premium group-hover:scale-[1.04]"
-              />
-              <div
-                className={cn(
-                  "absolute inset-0",
-                  variant === "wc"
-                    ? "bg-gradient-to-t from-ink via-ink/55 to-ink/20"
-                    : "bg-gradient-to-t from-ink/90 via-ink/50 to-ink/25",
-                )}
-                aria-hidden
               />
             </div>
           </>
@@ -323,7 +303,7 @@ export function CategoryShowcase() {
                 href={routes.catalogHub({ kind: "short" })}
                 label="Performance"
                 title="Shorts"
-                description="Shorts officiels, même parcours guidé par division."
+                description="Shorts de match, même parcours guidé par division."
                 index="02"
                 variant="dark"
                 backgroundSrc={collectionShowcaseImages.short}
@@ -342,7 +322,6 @@ export function CategoryShowcase() {
                   index="03"
                   variant="wc"
                   backgroundSrc={collectionShowcaseImages.worldCup}
-                  mobileBackgroundSrc={collectionShowcaseImages.worldCup}
                   icon={<TrophyIcon className="h-6 w-6 text-paper/80" />}
                 />
               ) : (

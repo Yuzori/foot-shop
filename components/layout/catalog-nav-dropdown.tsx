@@ -23,6 +23,7 @@ interface CatalogNavDropdownProps {
   categories: CatalogNavCategories;
   allCategories?: Category[];
   active?: boolean;
+  theme?: "light" | "dark";
 }
 
 const panelMotion = {
@@ -45,6 +46,7 @@ export function CatalogNavDropdown({
   categories,
   allCategories = [],
   active,
+  theme = "light",
 }: CatalogNavDropdownProps) {
   const [open, setOpen] = useState(false);
   const [audience, setAudience] = useState<(typeof catalogAudiences)[number] | null>(
@@ -78,8 +80,11 @@ export function CatalogNavDropdown({
           setAudience(null);
         }}
         className={cn(
-          "link-underline inline-flex items-center gap-1 text-sm font-medium text-ink/70 transition-colors hover:text-ink",
-          active && "text-ink",
+          theme === "dark"
+            ? "header-paint-nav-link"
+            : "link-underline inline-flex items-center gap-1 text-sm font-medium text-ink/70 transition-colors hover:text-ink",
+          theme === "dark" && active && "header-paint-nav-link--active",
+          theme === "light" && active && "text-ink",
         )}
         aria-expanded={open}
       >
@@ -91,6 +96,7 @@ export function CatalogNavDropdown({
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
+          className="shrink-0 translate-y-px"
           animate={{ rotate: open ? 180 : 0 }}
           transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
           aria-hidden

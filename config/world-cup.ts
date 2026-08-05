@@ -5,7 +5,7 @@ import { routes } from "@/config/site";
  *
  * • categoryId : ID de la catégorie PrestaShop « Coupe du monde » (si définie).
  * • href : lien de la zone (catégorie ou page dédiée).
- * • Image bannière : placez wc.jpg dans public/ (anciennement worldcup-banner.jpg).
+ * • Image bannière : placez worldcup-banner.jpg dans public/.
  */
 export const worldCupConfig = {
   enabled: true,
@@ -13,8 +13,8 @@ export const worldCupConfig = {
   /** Lien nav + section accueil. Remplacez par routes.category("3") si besoin. */
   href: routes.category("11"),
   categoryId: "11",
-  bannerDesktop: "/wc.jpg",
-  bannerMobile: "/wc.jpg",
+  bannerDesktop: "/worldcup-banner.jpg",
+  bannerMobile: "/worldcup-banner-tel.jpg",
   /** Texte d’accessibilité — le visuel affiche déjà « World Cup ». */
   ariaLabel: "Collection World Cup",
   subline: "",

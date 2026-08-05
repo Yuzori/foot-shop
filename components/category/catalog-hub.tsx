@@ -27,7 +27,7 @@ const kindOptions: {
   hint: string;
 }[] = [
   { id: "jersey", label: "Maillots", hint: "Domicile, extérieur, third" },
-  { id: "short", label: "Shorts", hint: "Shorts officiels" },
+  { id: "short", label: "Shorts", hint: "Shorts & performance" },
 ];
 
 function StepProgress({

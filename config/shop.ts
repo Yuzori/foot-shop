@@ -25,7 +25,7 @@ export const shopConfig = {
     "Livraison offerte sur votre 1ʳᵉ commande",
     "Livraison 3,99 € / 3 articles à partir de la 2ᵉ commande",
     "Livraison estimée : 10 à 13 jours ouvrés",
-    "Retours gratuits sous 30 jours",
+    "Retours gratuits sous 14 jours",
     "Flocage premium disponible sur tous les maillots",
     "Paiement 100 % sécurisé",
   ],
