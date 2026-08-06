@@ -167,9 +167,16 @@ function mapPrestaShopOrderError(error: string | null): string {
   }
 
   if (error.includes("order_failed")) {
-
+    if (lower.includes("secure key")) {
+      return "Clé client PrestaShop invalide. Réessayez ou reconnectez-vous.";
+    }
+    if (
+      lower.includes("link to database") ||
+      lower.includes("cannot be established")
+    ) {
+      return "Le back-office PrestaShop est indisponible (connexion base de données). Réessayez dans quelques minutes.";
+    }
     return "Impossible de finaliser la commande dans PrestaShop.";
-
   }
 
   if (error.includes("secure_key") || lower.includes("secure key")) {

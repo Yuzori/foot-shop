@@ -1601,21 +1601,102 @@ class PrestaShopService {
     return row?.id ?? null;
   }
 
+  private guessCountryIso(input: string): string | null {
+    const normalized = input.trim().toLowerCase();
+    const aliases: Record<string, string> = {
+      france: "FR",
+      fr: "FR",
+      belgique: "BE",
+      belgium: "BE",
+      suisse: "CH",
+      switzerland: "CH",
+      luxembourg: "LU",
+      monaco: "MC",
+      canada: "CA",
+      "états-unis": "US",
+      "etats-unis": "US",
+      usa: "US",
+      espagne: "ES",
+      spain: "ES",
+      italie: "IT",
+      italy: "IT",
+      allemagne: "DE",
+      germany: "DE",
+      "royaume-uni": "GB",
+      "united kingdom": "GB",
+      uk: "GB",
+    };
+    if (aliases[normalized]) return aliases[normalized];
+    if (/^[a-z]{2}$/i.test(input.trim())) return input.trim().toUpperCase();
+    return null;
+  }
+
   private async resolveCountryId(name: string): Promise<string | null> {
     const trimmed = name.trim();
-    // Try ISO code first (e.g. "FR"), then by name.
-    if (/^[A-Za-z]{2}$/.test(trimmed)) {
-      const byIso = await this.resolveFirstId("/countries", {
-        "filter[iso_code]": trimmed.toUpperCase(),
-      });
-      if (byIso) return byIso;
+    const candidates = new Set<string>();
+    const guessed = this.guessCountryIso(trimmed);
+    if (guessed) candidates.add(guessed);
+    if (/^[A-Za-z]{2}$/.test(trimmed)) candidates.add(trimmed.toUpperCase());
+    candidates.add("FR");
+
+    for (const iso of candidates) {
+      for (const filterValue of [iso, `[${iso}]`]) {
+        const id = await this.resolveFirstId("/countries", {
+          "filter[iso_code]": filterValue,
+          "filter[active]": "1",
+        });
+        if (id) return id;
+      }
     }
-    const byName = await this.resolveFirstId("/countries", {
-      "filter[name]": `%[${trimmed}]%`,
+
+    const { data } = await this.request<Record<string, unknown>>("/countries", {
+      display: "full",
+      "filter[active]": "1",
+      limit: "250",
     });
-    if (byName) return byName;
-    // Sensible default: France (iso FR).
-    return this.resolveFirstId("/countries", { "filter[iso_code]": "FR" });
+    const countries = asArray<{
+      id?: string;
+      iso_code?: string;
+      name?: unknown;
+    }>(data as never, "countries");
+
+    const needle = trimmed.toLowerCase();
+    for (const country of countries) {
+      const id = country.id ? String(country.id) : null;
+      if (!id) continue;
+
+      const iso = country.iso_code?.trim().toUpperCase();
+      if (iso && (iso === needle.toUpperCase() || needle === iso.toLowerCase())) {
+        return id;
+      }
+
+      const labels: string[] = [];
+      const rawName = country.name;
+      if (typeof rawName === "string") {
+        labels.push(rawName);
+      } else if (rawName && typeof rawName === "object") {
+        for (const value of Object.values(rawName as Record<string, string>)) {
+          if (typeof value === "string" && value.trim()) labels.push(value);
+        }
+      }
+
+      for (const label of labels) {
+        const labelNorm = label.trim().toLowerCase();
+        if (
+          labelNorm === needle ||
+          labelNorm.includes(needle) ||
+          needle.includes(labelNorm)
+        ) {
+          return id;
+        }
+      }
+    }
+
+    console.error("[prestashop] resolveCountryId failed", {
+      input: trimmed,
+      countries: countries.length,
+    });
+    return null;
   }
 
   /**
