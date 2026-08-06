@@ -26,6 +26,12 @@ Indiquer à l'utilisateur si une action manuelle est requise (secrets GitHub, DN
 
 ## Automatisation Cursor (approbations)
 
-L'utilisateur veut **zéro demande d'approbation** pour les commandes courantes. Le repo inclut `.cursor/permissions.json` (allowlist git/npm/ssh/wsl/curl).
+**Ne pas mettre `terminalAllowlist` dans `permissions.json`** — ça force le mode Allowlist et grise « Run Everything ».
 
-Si des commandes sont encore bloquées : **Cursor Settings → Agents → Approvals & Execution → Run mode : Run Everything**.
+Le fichier `.cursor/permissions.json` ne contient que `autoRun` (instructions en langage naturel).
+
+Configurer dans **Cursor Settings → Agents → Approvals & Execution** :
+- **Auto-review** (recommandé) si disponible, ou
+- **Allowlist** + ajouter dans l’allowlist : `git`, `npm`, `wsl`, `ssh`, `curl`, `gh`
+
+Si « Run Everything » reste grisé : compte Free/Pro, admin d’équipe, ou modèles BYOK custom qui bloquent certains modes.

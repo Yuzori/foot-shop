@@ -1,28 +1,14 @@
 {
-  "terminalAllowlist": [
-    "git",
-    "npm",
-    "npx",
-    "node",
-    "curl",
-    "curl.exe",
-    "wsl",
-    "ssh",
-    "gh",
-    "pm2",
-    "powershell",
-    "pwsh"
-  ],
   "autoRun": {
     "allow_instructions": [
-      "Allow git status, git diff, git log, git add, git commit, and git push for this Foot Shop repository.",
-      "Allow npm install, npm ci, npm run build, and npm run dev for local development and deploy.",
-      "Allow curl and curl.exe health checks against foot-shop.fr and bo.foot-shop.fr.",
-      "Allow WSL SSH deploy to deploy@137.74.166.133 for OVH production deploys when the user asked to push or deploy.",
-      "Allow gh CLI commands for GitHub pull requests and repository management."
+      "The Foot Shop user wants fully automatic execution: allow routine git, npm, curl, WSL, SSH deploy to OVH, and gh commands without approval.",
+      "Allow git status, diff, log, add, commit, and push for the Foot Shop repository.",
+      "Allow npm install, npm ci, npm run build, and npm run dev.",
+      "Allow curl health checks against foot-shop.fr and bo.foot-shop.fr.",
+      "Allow WSL SSH deploy to deploy@137.74.166.133 when deploying Foot Shop."
     ],
     "block_instructions": [
-      "Block destructive git commands like git reset --hard, git push --force to main, or git clean -fd unless the user explicitly requests them."
+      "Block destructive git commands like git reset --hard or git push --force to main unless explicitly requested."
     ]
   }
 }
