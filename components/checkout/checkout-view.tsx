@@ -58,8 +58,8 @@ import type { CartLine } from "@/types/domain";
 function mapLineForApi(line: CartLine) {
   const flocageUnit = line.flocage?.enabled ? line.flocage.price : 0;
   return {
-    productId: line.productId,
-    variantId: line.variantId,
+    productId: String(line.productId),
+    variantId: line.variantId != null ? String(line.variantId) : null,
     quantity: line.quantity,
     unitPrice: line.unitPrice + flocageUnit,
     name: line.name,

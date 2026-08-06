@@ -41,7 +41,17 @@ function sameLine(a: CartLine, productId: string, variantId: string | null) {
   );
 }
 
-function lineTotal(line: CartLine): number {
+function normalizeCartLine(line: CartLine): CartLine {
+  return {
+    ...line,
+    productId: String(line.productId),
+    variantId: normalizeVariantId(line.variantId),
+  };
+}
+
+function normalizeCartLines(lines: CartLine[]): CartLine[] {
+  return lines.map(normalizeCartLine);
+}
   const flocageUnit = line.flocage?.enabled ? line.flocage.price : 0;
   return (line.unitPrice + flocageUnit) * line.quantity;
 }
@@ -58,11 +68,7 @@ export const useCartStore = create<CartState>()(
       checkoutLockCount: 0,
       addLine: (line) => {
         if (isMutationsBlocked(get)) return;
-        const normalized: CartLine = {
-          ...line,
-          productId: String(line.productId),
-          variantId: normalizeVariantId(line.variantId),
-        };
+        const normalized: CartLine = normalizeCartLine(line);
         set((state) => {
           const existing = state.lines.find((l) =>
             sameLine(l, normalized.productId, normalized.variantId),
@@ -136,7 +142,10 @@ export const useCartStore = create<CartState>()(
         const currentLines = Array.isArray(current.lines) ? current.lines : [];
         return {
           ...current,
-          lines: savedLines.length > 0 ? savedLines : currentLines,
+          lines:
+            savedLines.length > 0
+              ? normalizeCartLines(savedLines)
+              : normalizeCartLines(currentLines),
         };
       },
     },
@@ -160,7 +169,9 @@ export function readPersistedCartLines(): CartLine[] {
     const raw = localStorage.getItem("maillot-cart");
     if (!raw) return [];
     const parsed = JSON.parse(raw) as { state?: { lines?: CartLine[] } };
-    return Array.isArray(parsed.state?.lines) ? parsed.state.lines : [];
+    return Array.isArray(parsed.state?.lines)
+      ? normalizeCartLines(parsed.state.lines)
+      : [];
   } catch {
     return [];
   }
@@ -168,8 +179,8 @@ export function readPersistedCartLines(): CartLine[] {
 
 export function resolveCartLinesForCheckout(): CartLine[] {
   const storeLines = useCartStore.getState().lines;
-  if (storeLines.length > 0) return storeLines.map((l) => ({ ...l }));
+  if (storeLines.length > 0) return normalizeCartLines(storeLines);
   const snapshot = loadCheckoutCartSnapshot();
-  if (snapshot.length > 0) return snapshot.map((l) => ({ ...l }));
-  return readPersistedCartLines().map((l) => ({ ...l }));
+  if (snapshot.length > 0) return normalizeCartLines(snapshot);
+  return normalizeCartLines(readPersistedCartLines());
 }
