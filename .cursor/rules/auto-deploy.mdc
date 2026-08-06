@@ -1,0 +1,25 @@
+---
+description: Push GitHub et déployer sur OVH après chaque modification de code
+alwaysApply: true
+---
+
+# Déploiement automatique (GitHub + OVH)
+
+Après **chaque modification de code** demandée par l'utilisateur :
+
+1. **Commit** sur `main` avec un message clair (pourquoi, pas seulement quoi).
+2. **Push** : `git push origin main`
+3. **OVH** : le workflow `.github/workflows/deploy-vps.yml` déploie au push sur `main` si les secrets GitHub sont configurés.
+
+Si le workflow GitHub échoue ou les secrets manquent, déployer manuellement :
+
+```bash
+ssh deploy@137.74.166.133
+cd /var/www/foot-shop && git pull origin main && npm ci && npm run build && pm2 restart foot-shop
+```
+
+**Ne pas committer** : `.env*`, `.data/`, `public/rgegdg.png` et autres assets temporaires non demandés.
+
+**Préserver sur le VPS** : le dossier `.data/` (snapshots, préférences, archives) — ne jamais le supprimer au déploiement.
+
+Indiquer à l'utilisateur si une action manuelle est requise (secrets GitHub, DNS, PrestaShop, etc.).

@@ -10,7 +10,8 @@
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "reclone": "tsx scripts/reclone-missing-products.ts",
-    "reclone:dry-run": "tsx scripts/reclone-missing-products.ts --dry-run"
+    "reclone:dry-run": "tsx scripts/reclone-missing-products.ts --dry-run",
+    "test:emails": "tsx scripts/test-emails.ts"
   },
   "dependencies": {
     "@stripe/react-stripe-js": "^6.6.0",

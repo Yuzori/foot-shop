@@ -5,14 +5,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 
 import { api, type LoginInput, type RegisterInput, type RegisterVerifyInput } from "@/lib/api";
-import { useCartStore } from "@/store/cart-store";
-import { useFavoritesStore } from "@/store/favorites-store";
+import { welcomePromo } from "@/config/promotions";
 import { usePreferencesSyncStore } from "@/store/preferences-sync-store";
 
 const SESSION_KEY = ["session"] as const;
+const WELCOME_PROMO_KEY = ["welcome-promo"] as const;
 
 async function saveAccountPreferences(): Promise<void> {
   try {
+    const { useCartStore } = await import("@/store/cart-store");
+    const { useFavoritesStore } = await import("@/store/favorites-store");
     await api.savePreferences({
       cart: useCartStore.getState().lines,
       favorites: useFavoritesStore.getState().ids,
@@ -22,9 +24,15 @@ async function saveAccountPreferences(): Promise<void> {
   }
 }
 
-function clearLocalShoppingState(): void {
-  useCartStore.getState().clear();
-  useFavoritesStore.getState().clear();
+function clearWelcomePromoCache(qc: ReturnType<typeof useQueryClient>): void {
+  qc.setQueryData(WELCOME_PROMO_KEY, {
+    status: "none" as const,
+    enabled: welcomePromo.enabled,
+    code: null,
+    label: welcomePromo.label,
+    checkoutLabel: welcomePromo.checkoutLabel,
+    shortLabel: welcomePromo.shortLabel,
+  });
 }
 
 /** Current authenticated customer (or null). */
@@ -32,9 +40,9 @@ export function useSession() {
   return useQuery({
     queryKey: SESSION_KEY,
     queryFn: () => api.me(),
-    staleTime: 120_000,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
+    staleTime: 60_000,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -82,17 +90,18 @@ export function useLogout() {
     mutationFn: async () => {
       pause();
       await saveAccountPreferences();
-      await api.logout();
+      try {
+        await api.logout();
+      } catch {
+        /* on nettoie le client même si l'API échoue */
+      }
     },
-    onSuccess: () => {
+    onSettled: () => {
       qc.setQueryData(SESSION_KEY, null);
+      clearWelcomePromoCache(qc);
       qc.invalidateQueries({ queryKey: ["my-orders"] });
       qc.invalidateQueries({ queryKey: ["stock-alert-status"] });
-      clearLocalShoppingState();
       resetPrefs();
-      resume();
-    },
-    onError: () => {
       resume();
     },
   });

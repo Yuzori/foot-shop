@@ -6,6 +6,7 @@
  * PrestaShop exists. Swap the back office later and this file stays untouched.
  */
 import { http } from "@/lib/http";
+import type { CheckoutDeliveryProfile } from "@/lib/checkout-profile";
 import { toQueryString } from "@/lib/utils";
 import type {
   CartLine,
@@ -140,16 +141,23 @@ export const api = {
     await http.post("/account/logout");
   },
 
-  async getPreferences(): Promise<{ cart: CartLine[]; favorites: string[] }> {
-    const { data } = await http.get<{ cart: CartLine[]; favorites: string[] }>(
-      "/account/preferences",
-    );
+  async getPreferences(): Promise<{
+    cart: CartLine[];
+    favorites: string[];
+    checkoutProfile?: CheckoutDeliveryProfile | null;
+  }> {
+    const { data } = await http.get<{
+      cart: CartLine[];
+      favorites: string[];
+      checkoutProfile?: CheckoutDeliveryProfile | null;
+    }>("/account/preferences");
     return data;
   },
 
   async savePreferences(input: {
     cart: CartLine[];
     favorites: string[];
+    checkoutProfile?: CheckoutDeliveryProfile | null;
   }): Promise<void> {
     await http.put("/account/preferences", input);
   },
@@ -193,6 +201,7 @@ export const api = {
       items: { name: string; unitPrice: number; quantity: number }[];
       applyWelcomePromo?: boolean;
       promoCode?: string;
+      savePaymentMethod?: boolean;
     },
   ): Promise<{
     clientSecret: string | null;

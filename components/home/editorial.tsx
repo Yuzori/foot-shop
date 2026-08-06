@@ -58,7 +58,7 @@ export function Editorial() {
             ))}
           </ul>
           <Link
-            href={routes.catalogue}
+            href={routes.categories}
             className={buttonClasses("accent", "lg", "mt-10")}
             style={buttonStyle("accent")}
           >

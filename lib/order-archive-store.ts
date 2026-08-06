@@ -39,6 +39,8 @@ export interface OrderArchiveRecord {
   note?: string;
   stripeSessionId?: string | null;
   source: "checkout" | "stripe" | "admin_test";
+  /** false = stock décrémenté au paiement ; undefined = anciennes commandes (déjà réservé). */
+  stockReserved?: boolean;
 }
 
 async function readIndex(): Promise<OrderArchiveRecord[]> {
@@ -100,4 +102,26 @@ export async function getOrderArchive(id: string): Promise<OrderArchiveRecord | 
   } catch {
     return null;
   }
+}
+
+export async function getOrderArchiveByReference(
+  reference: string,
+): Promise<OrderArchiveRecord | null> {
+  const ref = reference.trim();
+  if (!ref) return null;
+  const index = await readIndex();
+  const hit = index.find((r) => r.reference === ref);
+  if (!hit) return null;
+  return getOrderArchive(hit.id);
+}
+
+export async function markOrderArchiveStockReserved(
+  reference: string,
+): Promise<void> {
+  const index = await readIndex();
+  const hit = index.find((r) => r.reference === reference);
+  if (!hit) return;
+  hit.stockReserved = true;
+  await writeIndex(index);
+  await fs.writeFile(fileFor(hit.id), JSON.stringify(hit, null, 2), "utf8");
 }

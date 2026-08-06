@@ -6,6 +6,10 @@ import type { CreateOrderLine } from "@/services/prestashop";
 
 const MAX_QTY_PER_LINE = 10;
 
+function lineKey(productId: string, variantId: string | null): string {
+  return `${productId}:${variantId ?? ""}`;
+}
+
 function validateFlocageFields(
   name: string | undefined,
   number: string | undefined,
@@ -39,6 +43,14 @@ export async function resolveCartLines(
     return { ok: false, message: "Panier vide." };
   }
 
+  const qtyByKey = new Map<string, number>();
+  for (const line of lines) {
+    let quantity = Math.floor(Number(line.quantity));
+    if (!Number.isFinite(quantity) || quantity < 1) quantity = 1;
+    const key = lineKey(line.productId, line.variantId);
+    qtyByKey.set(key, (qtyByKey.get(key) ?? 0) + quantity);
+  }
+
   const resolved: CreateOrderLine[] = [];
 
   for (const line of lines) {
@@ -59,6 +71,8 @@ export async function resolveCartLines(
       };
     }
 
+    const aggregateQty = qtyByKey.get(lineKey(line.productId, line.variantId)) ?? quantity;
+
     let unitPrice = product.price ?? 0;
     let variantId: string | null = line.variantId;
 
@@ -76,7 +90,7 @@ export async function resolveCartLines(
           message: `La taille pour « ${product.name} » n'existe plus.`,
         };
       }
-      if (!variant.inStock || variant.quantity < quantity) {
+      if (!variant.inStock || variant.quantity < aggregateQty) {
         return {
           ok: false,
           message: `Stock insuffisant pour « ${product.name} ».`,
@@ -85,7 +99,7 @@ export async function resolveCartLines(
       unitPrice = variant.price ?? unitPrice;
     } else {
       variantId = null;
-      if (!product.inStock || product.quantity < quantity) {
+      if (!product.inStock || product.quantity < aggregateQty) {
         return {
           ok: false,
           message: `« ${product.name} » est en rupture de stock.`,

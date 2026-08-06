@@ -65,6 +65,13 @@ export function UserPreferencesSync() {
         lastSavedCart.current = JSON.stringify(mergedCart);
 
         markLoaded(userId);
+
+        await api
+          .savePreferences({
+            cart: mergedCart,
+            favorites: mergedFavs,
+          })
+          .catch(() => {});
       } catch {
         if (!cancelled) markLoaded(userId);
       } finally {

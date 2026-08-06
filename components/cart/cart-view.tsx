@@ -15,6 +15,7 @@ import { routes } from "@/config/site";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { useCartPersistHydrated } from "@/hooks/use-cart-persist-hydrated";
 import { useCartBogo, cartLineUnitPrice } from "@/hooks/use-cart-bogo";
+import { WelcomePromoGuestNudge } from "@/components/marketing/welcome-promo-guest-nudge";
 import { useCartStockGuard } from "@/hooks/use-cart-stock-guard";
 import { formatPrice } from "@/lib/format";
 import { readPersistedCartLines, useCartStore } from "@/store/cart-store";
@@ -184,6 +185,7 @@ export function CartView() {
         </ul>
 
         <div className="space-y-4">
+          <WelcomePromoGuestNudge totalUnits={itemCount} />
           <OrderSummary
             lines={lines}
             freePerLine={freePerLine}

@@ -15,7 +15,7 @@ import {
 import { readGuestNewsletterEmails } from "@/lib/newsletter-subscribers";
 import { sendMail } from "@/lib/mailer";
 import { getSiteUrl, productPageUrl } from "@/lib/site-url";
-import { readSnapshot, writeSnapshot, type ProductSnapshot } from "@/lib/notify-state";
+import { readSnapshot, writeSnapshot, isSnapshotBootstrapped, withNotifyJobLock, type ProductSnapshot } from "@/lib/notify-state";
 import { processStockAlertEmails } from "@/lib/stock-alerts";
 import { filterProductsByKind } from "@/lib/product-collection";
 import { prestashop } from "@/services/prestashop";
@@ -29,6 +29,17 @@ function escapeHtml(value: string): string {
 
 /** Envoie alertes nouveautés + traite les cloches stock. */
 export async function runNotifyJob() {
+  const locked = await withNotifyJobLock(async () => runNotifyJobInner());
+  if (locked === null) {
+    return NextResponse.json({
+      message: "Job notify déjà en cours.",
+      skipped: true,
+    });
+  }
+  return locked;
+}
+
+async function runNotifyJobInner() {
   if (!prestashop.isConfigured) {
     return NextResponse.json({ message: "Back office non configuré." }, { status: 503 });
   }
@@ -37,7 +48,7 @@ export async function runNotifyJob() {
   const products = result.items;
 
   const previous = await readSnapshot();
-  const isFirstRun = !previous.updatedAt;
+  const isBootstrap = !isSnapshotBootstrapped(previous);
 
   const newArrivals = filterProductsByKind(
     products.filter((p) => !previous.items[p.id]),
@@ -66,12 +77,13 @@ export async function runNotifyJob() {
 
   const stockSent = await processStockAlertEmails();
 
-  if (isFirstRun) {
+  if (isBootstrap) {
     return NextResponse.json({
       message: "État initial enregistré. Aucune alerte nouveauté envoyée.",
       tracked: products.length,
       stockAlertsSent: stockSent,
       smtp: mailConfig.enabled,
+      bootstrap: true,
     });
   }
 

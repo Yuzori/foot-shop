@@ -703,6 +703,24 @@ class PrestaShopService {
       byAttr.set(String(attrId), qty);
     }
 
+    if (byAttr.size === 0) {
+      const fallback = await this.request<{
+        stock_availables?: PsStockAvailable[];
+      }>("/stock_availables", {
+        display: "full",
+        "filter[id_product]": productId,
+      });
+      for (const row of asArray<PsStockAvailable>(
+        fallback.data as never,
+        "stock_availables",
+      )) {
+        const attrId = row.id_product_attribute;
+        if (!attrId || String(attrId) === "0") continue;
+        const qty = Number.parseInt(row.quantity ?? "0", 10) || 0;
+        byAttr.set(String(attrId), qty);
+      }
+    }
+
     for (const variant of variants) {
       const qty = byAttr.get(String(variant.id));
       if (qty !== undefined) {
@@ -1082,6 +1100,14 @@ class PrestaShopService {
     if (!passwdHash) {
       const auth = await this.getCustomerAuthByEmail(ps.email);
       passwdHash = auth?.passwordHash?.trim();
+    }
+    if (!passwdHash) {
+      const tempPassword = crypto.randomBytes(24).toString("hex");
+      const pwResult = await this.updateCustomerPassword(id, tempPassword);
+      if (pwResult.ok) {
+        const auth = await this.getCustomerAuthByEmail(ps.email);
+        passwdHash = auth?.passwordHash?.trim();
+      }
     }
     if (!passwdHash) {
       console.error(
@@ -1712,8 +1738,6 @@ class PrestaShopService {
       if (input.note?.trim()) {
         await this.addOrderMessage(orderId, input.note.trim());
       }
-
-      await this.decrementStockForLines(input.lines);
 
       return {
         reference: reference ?? orderId,
@@ -2349,6 +2373,70 @@ ${ids
     const id = extractCreatedId(data, "combination");
     if (!id) throw new Error("Déclinaison créée mais identifiant introuvable.");
     return id;
+  }
+
+  /** Ajoute une déclinaison XXL si le produit a des tailles mais pas encore XXL. */
+  async ensureXxlForProduct(
+    productId: string,
+  ): Promise<{ created: boolean; error?: string }> {
+    try {
+      const product = await this.getProductById(productId);
+      if (!product?.variants.length) return { created: false };
+
+      const hasXxl = product.variants.some((variant) =>
+        variant.options.some((o) => o.label.trim().toUpperCase() === "XXL"),
+      );
+      if (hasXxl) return { created: false };
+
+      const xxlValues = await this.resolveSizeOptionValues(
+        ["XXL"],
+        productImportConfig.sizeAttributeGroupId || undefined,
+      );
+      const xxl = xxlValues[0];
+      if (!xxl) return { created: false, error: "xxl_attribute_missing" };
+
+      const combinationId = await this.createProductCombination({
+        productId,
+        optionValueId: xxl.id,
+      });
+      await this.setStockQuantity(
+        productId,
+        combinationId,
+        productImportConfig.defaultStock,
+      );
+      return { created: true };
+    } catch (err) {
+      return { created: false, error: String(err) };
+    }
+  }
+
+  /** Parcourt le catalogue et crée les déclinaisons XXL manquantes. */
+  async ensureXxlForCatalog(options?: {
+    pageSize?: number;
+    maxPages?: number;
+  }): Promise<{ scanned: number; created: number; errors: number }> {
+    const pageSize = options?.pageSize ?? 50;
+    const maxPages = options?.maxPages ?? 20;
+    let scanned = 0;
+    let created = 0;
+    let errors = 0;
+
+    for (let page = 1; page <= maxPages; page++) {
+      const batch = await this.getProducts({ page, limit: pageSize });
+      if (!batch.items.length) break;
+
+      for (const product of batch.items) {
+        if (!product.variants.length) continue;
+        scanned++;
+        const result = await this.ensureXxlForProduct(product.id);
+        if (result.created) created++;
+        if (result.error) errors++;
+      }
+
+      if (page * pageSize >= batch.total) break;
+    }
+
+    return { scanned, created, errors };
   }
 
   /** Fixe le stock absolu pour un produit ou une déclinaison. */

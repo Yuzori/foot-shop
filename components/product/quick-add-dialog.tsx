@@ -13,6 +13,7 @@ import { Portal } from "@/components/ui/portal";
 import { Price } from "@/components/ui/price";
 import { Spinner } from "@/components/ui/spinner";
 import { shopConfig } from "@/config/shop";
+import { formatPrice } from "@/lib/format";
 import { useProduct } from "@/hooks/use-products";
 import { isJerseyProduct } from "@/lib/product-collection";
 import { effectiveProductPrice } from "@/lib/product-price";
@@ -61,6 +62,7 @@ export function QuickAddDialog({ product, open, onClose }: QuickAddDialogProps) 
     resolved.optionGroups.length > 0 || resolved.variants.length > 0;
 
   const [selected, setSelected] = useState<Record<string, string>>({});
+  const [quantity, setQuantity] = useState(1);
   const [stockFeedback, setStockFeedback] = useState<string | null>(null);
   const [flocageEnabled, setFlocageEnabled] = useState(false);
   const [flocageName, setFlocageName] = useState("");
@@ -84,6 +86,17 @@ export function QuickAddDialog({ product, open, onClose }: QuickAddDialogProps) 
 
   const needsSize = hasVariants && !allGroupsSelected;
   const activePrice = effectiveProductPrice(resolved, matchedVariant);
+  const flocageUnit =
+    showFlocage && flocageEnabled ? shopConfig.flocagePrice : 0;
+  const lineTotal = (activePrice + flocageUnit) * quantity;
+  const showPriceDetail = quantity > 1 || flocageUnit > 0;
+  const priceDetail = showPriceDetail
+    ? `${quantity} × ${formatPrice(activePrice, resolved.currency)}${
+        flocageUnit > 0
+          ? ` + flocage ${formatPrice(flocageUnit, resolved.currency)}`
+          : ""
+      }`
+    : "";
   const inStock = hasVariants
     ? allGroupsSelected
       ? (matchedVariant?.inStock ?? false)
@@ -104,6 +117,7 @@ export function QuickAddDialog({ product, open, onClose }: QuickAddDialogProps) 
 
   function resetForm() {
     setSelected({});
+    setQuantity(1);
     setStockFeedback(null);
     setFlocageEnabled(false);
     setFlocageName("");
@@ -122,7 +136,7 @@ export function QuickAddDialog({ product, open, onClose }: QuickAddDialogProps) 
       name: resolved.name,
       image: resolved.cover?.url ?? null,
       unitPrice: activePrice,
-      quantity: 1,
+      quantity,
       optionsLabel,
       reference: matchedVariant?.reference ?? resolved.reference,
       flocage:
@@ -211,10 +225,13 @@ export function QuickAddDialog({ product, open, onClose }: QuickAddDialogProps) 
                 <div className="min-w-0 flex-1">
                   <h2 className="text-base font-semibold leading-tight">{resolved.name}</h2>
                   <Price
-                    amount={activePrice}
+                    amount={lineTotal}
                     currency={resolved.currency}
                     className="mt-2 text-lg"
                   />
+                  {showPriceDetail ? (
+                    <p className="mt-1 text-xs tabular-nums text-ink/50">{priceDetail}</p>
+                  ) : null}
                 </div>
               </div>
 
@@ -300,6 +317,33 @@ export function QuickAddDialog({ product, open, onClose }: QuickAddDialogProps) 
                       />
                     </div>
                   ) : null}
+
+                  <div className="mt-6">
+                    <p className="mb-2 text-sm font-bold uppercase tracking-wide">
+                      Quantité
+                    </p>
+                    <div className="inline-flex h-11 items-center rounded-full border border-ink/15">
+                      <button
+                        type="button"
+                        onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                        className="flex h-full w-11 items-center justify-center text-lg text-ink/60 hover:text-ink"
+                        aria-label="Diminuer la quantité"
+                      >
+                        −
+                      </button>
+                      <span className="w-10 text-center text-sm font-semibold tabular-nums">
+                        {quantity}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setQuantity((q) => Math.min(10, q + 1))}
+                        className="flex h-full w-11 items-center justify-center text-lg text-ink/60 hover:text-ink"
+                        aria-label="Augmenter la quantité"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
 
                   {hasVariants && resolved.optionGroups.length === 0 ? (
                     <p className="mt-4 text-sm text-ink/55">

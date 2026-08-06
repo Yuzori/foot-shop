@@ -1,8 +1,6 @@
 import "server-only";
 
-import { runNotifyJob } from "@/lib/run-notify-job";
-import { readSnapshot, writeSnapshot } from "@/lib/notify-state";
-
+import { readSnapshot, writeSnapshot, isSnapshotBootstrapped } from "@/lib/notify-state";
 const THROTTLE_MS = 3 * 60 * 1000;
 
 /**
@@ -16,6 +14,14 @@ export async function maybeRunCatalogNotifications(): Promise<void> {
     : 0;
   if (last && Date.now() - last < THROTTLE_MS) return;
 
+  // Premier passage après déploiement : enregistrer l'état sans envoyer d'emails.
+  if (!isSnapshotBootstrapped(snapshot)) {
+    const { runNotifyJob } = await import("@/lib/run-notify-job");
+    await runNotifyJob();
+    return;
+  }
+
+  const { runNotifyJob } = await import("@/lib/run-notify-job");
   await runNotifyJob();
 
   const next = await readSnapshot();

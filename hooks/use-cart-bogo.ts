@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 
+import { useSession } from "@/hooks/use-auth";
 import {
   shouldApplyWelcomePromo,
   useWelcomePromo,
@@ -23,6 +24,7 @@ export function useCartBogo() {
   const lines = useCartStore((s) => s.lines);
   const subtotal = useCartStore(cartSelectors.subtotal);
   const welcomePromoQuery = useWelcomePromo();
+  const sessionQuery = useSession();
 
   const bogoLines = useMemo(
     () =>
@@ -34,7 +36,9 @@ export function useCartBogo() {
     [lines],
   );
 
-  const eligible = shouldApplyWelcomePromo(welcomePromoQuery.data);
+  const eligible =
+    Boolean(sessionQuery.data?.id) &&
+    shouldApplyWelcomePromo(welcomePromoQuery.data);
 
   const freePerLine = useMemo(() => {
     if (!eligible) return lines.map(() => 0);

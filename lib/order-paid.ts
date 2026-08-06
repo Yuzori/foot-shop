@@ -2,9 +2,14 @@ import "server-only";
 
 import { paymentConfig } from "@/config/payment";
 import { countPaidOrdersByCustomer } from "@/lib/customer-order-history";
-import { markOrderArchivePaid } from "@/lib/order-archive-store";
+import {
+  getOrderArchiveByReference,
+  markOrderArchivePaid,
+  markOrderArchiveStockReserved,
+} from "@/lib/order-archive-store";
 import { sendFirstOrderThankYouEmail } from "@/lib/first-order-thank-you-email";
 import { sendOrderConfirmationEmail } from "@/lib/order-confirmation-email";
+import { sendShippingPendingEmail } from "@/lib/shipping-pending-email";
 import { notifySupplierOfOrder } from "@/lib/supplier-order";
 import {
   hasOrderBeenFulfilled,
@@ -25,6 +30,23 @@ export async function fulfillPaidOrder(
   const order = await prestashop.getOrderById(key);
   if (!order) {
     throw new Error(`Commande PrestaShop introuvable (id ${key}).`);
+  }
+
+  const archive = await getOrderArchiveByReference(order.reference);
+  if (archive?.stockReserved === false) {
+    const ctx = await prestashop.getSupplierOrderContext(key);
+    if (ctx?.lines.length) {
+      await prestashop.decrementStockForLines(
+        ctx.lines.map((line) => ({
+          productId: line.productId,
+          variantId: line.variantId,
+          quantity: line.quantity,
+          unitPrice: 0,
+          name: line.name,
+        })),
+      );
+      await markOrderArchiveStockReserved(order.reference);
+    }
   }
 
   const history = await prestashop.addOrderHistory(key, paymentConfig.paidStateId);
@@ -55,6 +77,14 @@ export async function fulfillPaidOrder(
     email
       ? sendOrderConfirmationEmail({ to: email, order }).catch((err) => {
           console.error("[order-paid] confirmation email failed", key, err);
+        })
+      : Promise.resolve(),
+    email
+      ? sendShippingPendingEmail({
+          to: email,
+          reference: order.reference,
+        }).catch((err) => {
+          console.error("[order-paid] shipping pending email failed", key, err);
         })
       : Promise.resolve(),
     email && isFirstPaidOrder

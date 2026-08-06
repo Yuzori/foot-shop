@@ -52,7 +52,7 @@ export async function sendOrderConfirmationEmail(input: {
       </tbody>
     </table>
     ${emailButton(trackingUrl, "Suivre ma commande")}
-    ${emailParagraph("Votre colis est en cours de préparation. Le numéro de suivi sera disponible prochainement — vous recevrez un email dès l'expédition.")}
+    ${emailParagraph("Votre colis est en cours de préparation. Vous recevrez sous 24 h un email dédié au suivi, puis un second message avec le numéro de suivi dès l'expédition.")}
     ${emailParagraph("Conservez cette référence pour suivre l'avancement de votre commande.")}
   `;
 
@@ -69,7 +69,7 @@ export async function sendOrderConfirmationEmail(input: {
     "",
     `Suivre la commande : ${trackingUrl}`,
     "",
-    "Votre colis est en cours de préparation. Vous recevrez un email avec le numéro de suivi dès l'expédition.",
+    "Votre colis est en cours de préparation. Un email de suivi vous sera envoyé sous 24 h, puis le numéro de suivi dès l'expédition.",
   ].join("\n");
 
   const result = await sendMail({

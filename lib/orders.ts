@@ -409,6 +409,7 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
     currency: "EUR",
     note: note || undefined,
     source: "checkout",
+    stockReserved: false,
   }).catch((err) => {
     console.error("[placeOrder] archive failed", err);
   });

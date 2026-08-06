@@ -29,7 +29,7 @@ function expandBogoUnits(lines: readonly BogoLine[]): BogoUnit[] {
   return units;
 }
 
-/** 2 achetés, 1 offert : le(s) dernier(s) article(s) ajouté(s) offert(s). */
+/** 2 achetés, 1 offert : le(s) article(s) le(s) moins cher(s) offert(s). */
 export function calculateWelcomeBogo(
   lines: readonly BogoLine[],
 ): WelcomeBogoResult {
@@ -49,7 +49,9 @@ export function calculateWelcomeBogo(
 
   const units = expandBogoUnits(lines);
   const freeUnits = Math.floor(units.length / 3);
-  const freeSet = units.slice(units.length - freeUnits);
+  const freeSet = [...units]
+    .sort((a, b) => a.price - b.price)
+    .slice(0, freeUnits);
   const discountTotal =
     Math.round(freeSet.reduce((sum, unit) => sum + unit.price, 0) * 100) / 100;
 
@@ -86,7 +88,7 @@ export function calculateWelcomeBogo(
   };
 }
 
-/** Nombre d'unités offertes par ligne (derniers articles du panier). */
+/** Nombre d'unités offertes par ligne (articles les moins chers). */
 export function allocateBogoFreeQuantities(
   lines: readonly BogoLine[],
 ): number[] {
@@ -95,7 +97,9 @@ export function allocateBogoFreeQuantities(
   if (units.length < 3) return freePerLine;
 
   const freeUnits = Math.floor(units.length / 3);
-  const freeSet = units.slice(units.length - freeUnits);
+  const freeSet = [...units]
+    .sort((a, b) => a.price - b.price)
+    .slice(0, freeUnits);
   for (const unit of freeSet) {
     const idx = unit.lineIndex;
     freePerLine[idx] = (freePerLine[idx] ?? 0) + 1;

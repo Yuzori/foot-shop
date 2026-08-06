@@ -7,6 +7,7 @@ import { getSession } from "@/lib/auth";
 import { placeOrder, type CheckoutBody } from "@/lib/orders";
 import { isWelcomePromoEligible } from "@/lib/welcome-promo-store";
 import { getStripe } from "@/lib/stripe-server";
+import { getOrCreateStripeCustomer } from "@/lib/stripe-customer";
 import {
   formatStripeError,
   getStripePublishableKey,
@@ -21,6 +22,7 @@ export const runtime = "nodejs";
 interface StripeSessionBody extends CheckoutBody {
   items: { name: string; unitPrice: number; quantity: number }[];
   applyWelcomePromo?: boolean;
+  savePaymentMethod?: boolean;
 }
 
 /**
@@ -183,12 +185,32 @@ export async function POST(request: Request) {
     (productsSubtotal - promoDiscount + shippingFee) * 100,
   );
 
+  const savePayment = body.savePaymentMethod === true;
+  const stripeCustomerId = await getOrCreateStripeCustomer({
+    email: body.contact.email,
+    customerId: order.customerId ?? authSession?.id,
+    firstName: body.contact.firstName,
+    lastName: body.contact.lastName,
+  });
+
   try {
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       ui_mode: "elements",
       payment_method_types: ["card"],
-      customer_email: body.contact.email || undefined,
+      ...(stripeCustomerId
+        ? { customer: stripeCustomerId }
+        : { customer_email: body.contact.email || undefined }),
+      ...(savePayment && stripeCustomerId
+        ? {
+            saved_payment_method_options: {
+              payment_method_save: "enabled",
+            },
+            payment_intent_data: {
+              setup_future_usage: "off_session",
+            },
+          }
+        : {}),
       line_items: stripeLineItems,
       metadata: {
         orderId: String(order.orderId ?? ""),

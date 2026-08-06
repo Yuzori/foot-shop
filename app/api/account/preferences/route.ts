@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getSession } from "@/lib/auth";
 import { readUserPreferences, writeUserPreferences } from "@/lib/user-preferences";
+import type { CheckoutDeliveryProfile } from "@/lib/checkout-profile";
 import type { CartLine } from "@/types/domain";
 
 export async function GET() {
@@ -14,6 +15,7 @@ export async function GET() {
   return NextResponse.json({
     cart: prefs.cart,
     favorites: prefs.favorites,
+    checkoutProfile: prefs.checkoutProfile ?? null,
   });
 }
 
@@ -23,7 +25,11 @@ export async function PUT(request: Request) {
     return NextResponse.json({ message: "Non authentifié." }, { status: 401 });
   }
 
-  let body: { cart?: CartLine[]; favorites?: string[] };
+  let body: {
+    cart?: CartLine[];
+    favorites?: string[];
+    checkoutProfile?: CheckoutDeliveryProfile | null;
+  };
   try {
     body = await request.json();
   } catch {
@@ -34,6 +40,10 @@ export async function PUT(request: Request) {
   await writeUserPreferences(session.id, {
     cart: Array.isArray(body.cart) ? body.cart : current.cart,
     favorites: Array.isArray(body.favorites) ? body.favorites : current.favorites,
+    checkoutProfile:
+      body.checkoutProfile !== undefined
+        ? body.checkoutProfile
+        : current.checkoutProfile ?? null,
   });
 
   return NextResponse.json({ message: "Préférences enregistrées." });

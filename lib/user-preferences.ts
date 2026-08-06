@@ -3,11 +3,14 @@ import "server-only";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
+import type { CheckoutDeliveryProfile } from "@/lib/checkout-profile";
 import type { CartLine } from "@/types/domain";
 
 export interface UserPreferences {
   cart: CartLine[];
   favorites: string[];
+  checkoutProfile?: CheckoutDeliveryProfile | null;
+  stripeCustomerId?: string | null;
   updatedAt: string;
 }
 
@@ -31,21 +34,43 @@ export async function readUserPreferences(
     return {
       cart: Array.isArray(data.cart) ? data.cart : [],
       favorites: Array.isArray(data.favorites) ? data.favorites : [],
+      checkoutProfile: data.checkoutProfile ?? null,
+      stripeCustomerId: data.stripeCustomerId ?? null,
       updatedAt: data.updatedAt ?? new Date().toISOString(),
     };
   } catch {
-    return { cart: [], favorites: [], updatedAt: new Date().toISOString() };
+    return {
+      cart: [],
+      favorites: [],
+      checkoutProfile: null,
+      stripeCustomerId: null,
+      updatedAt: new Date().toISOString(),
+    };
   }
 }
 
 export async function writeUserPreferences(
   customerId: string | number,
-  input: { cart: CartLine[]; favorites: string[] },
+  input: {
+    cart: CartLine[];
+    favorites: string[];
+    checkoutProfile?: CheckoutDeliveryProfile | null;
+    stripeCustomerId?: string | null;
+  },
 ): Promise<void> {
   await fs.mkdir(DATA_DIR, { recursive: true });
+  const current = await readUserPreferences(customerId);
   const payload: UserPreferences = {
     cart: input.cart,
     favorites: input.favorites,
+    checkoutProfile:
+      input.checkoutProfile !== undefined
+        ? input.checkoutProfile
+        : current.checkoutProfile ?? null,
+    stripeCustomerId:
+      input.stripeCustomerId !== undefined
+        ? input.stripeCustomerId
+        : current.stripeCustomerId ?? null,
     updatedAt: new Date().toISOString(),
   };
   await fs.writeFile(fileFor(customerId), JSON.stringify(payload, null, 2), "utf8");

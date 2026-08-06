@@ -39,45 +39,59 @@ export async function validateCartLines(
 
 
 export async function validateCartLinesDetailed(
-
   lines: readonly {
-
     productId: string;
-
     variantId: string | null;
-
     name?: string;
-
     quantity: number;
-
     unitPrice?: number;
-
   }[],
-
 ): Promise<CartLineValidation[]> {
+  if (!lines.length) return [];
 
-  const results: CartLineValidation[] = [];
+  const mapped: CreateOrderLine[] = lines.map((line) => ({
+    productId: line.productId,
+    variantId: line.variantId,
+    quantity: line.quantity,
+    unitPrice: line.unitPrice ?? 0,
+    name: line.name,
+  }));
 
-  for (const line of lines) {
-    const mapped: CreateOrderLine = {
+  const resolved = await resolveCartLines(mapped);
+  if (resolved.ok) {
+    return lines.map((line) => ({
       productId: line.productId,
       variantId: line.variantId,
-      quantity: line.quantity,
-      unitPrice: line.unitPrice ?? 0,
-      name: line.name,
-    };
-
-    const resolved = await resolveCartLines([mapped]);
-    results.push({
-      productId: line.productId,
-      variantId: line.variantId,
-      ok: resolved.ok,
-      message: resolved.ok ? undefined : resolved.message,
-    });
+      ok: true,
+    }));
   }
 
-  return results;
+  const failedKeys = new Set<string>();
+  for (const line of lines) {
+    const single = await resolveCartLines([
+      {
+        productId: line.productId,
+        variantId: line.variantId,
+        quantity: line.quantity,
+        unitPrice: line.unitPrice ?? 0,
+        name: line.name,
+      },
+    ]);
+    if (!single.ok) {
+      failedKeys.add(`${line.productId}:${line.variantId ?? ""}`);
+    }
+  }
 
+  return lines.map((line) => {
+    const key = `${line.productId}:${line.variantId ?? ""}`;
+    const ok = !failedKeys.has(key);
+    return {
+      productId: line.productId,
+      variantId: line.variantId,
+      ok,
+      message: ok ? undefined : resolved.message,
+    };
+  });
 }
 
 

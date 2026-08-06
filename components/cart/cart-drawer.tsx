@@ -14,6 +14,7 @@ import { drawerPanelMotion, overlayMotion } from "@/lib/motion";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { useCartBogo, cartLineUnitPrice } from "@/hooks/use-cart-bogo";
+import { WelcomePromoGuestNudge } from "@/components/marketing/welcome-promo-guest-nudge";
 import { formatPrice } from "@/lib/format";
 import { getFlocageDisplay } from "@/lib/flocage";
 import { cartSelectors, useCartStore } from "@/store/cart-store";
@@ -60,7 +61,7 @@ export function CartDrawer() {
           aria-label="Panier"
         >
           <div
-            className="absolute inset-0 bg-ink/30 backdrop-blur-md"
+            className="absolute inset-0 bg-ink/55 backdrop-blur-sm"
             onClick={close}
           />
 
@@ -196,6 +197,7 @@ export function CartDrawer() {
                 </ul>
 
                 <footer className="border-t border-ink/8 px-6 py-6">
+                  <WelcomePromoGuestNudge totalUnits={count} className="mb-5" />
                   <div className="flex justify-between text-sm">
                     <span className="text-ink/55">Sous-total</span>
                     <span className="font-medium tabular-nums">

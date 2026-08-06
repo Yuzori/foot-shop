@@ -13,6 +13,7 @@ import {
   useWelcomePromo,
 } from "@/components/checkout/welcome-promo-banner";
 import { StripePaymentForm } from "@/components/checkout/stripe-payment-form";
+import { WelcomePromoGuestNudge } from "@/components/marketing/welcome-promo-guest-nudge";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -40,8 +41,13 @@ import { formatPrice } from "@/lib/format";
 import { getErrorMessage } from "@/lib/http";
 import { preloadStripe } from "@/lib/stripe-client";
 import { calculateWelcomeBogo, allocateBogoFreeQuantities } from "@/lib/welcome-bogo";
+import {
+  emptyCheckoutProfile,
+  type CheckoutDeliveryProfile,
+} from "@/lib/checkout-profile";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { useSession } from "@/hooks/use-auth";
+import { useCheckoutProfile } from "@/hooks/use-checkout-profile";
 import { cartLineUnitPrice } from "@/hooks/use-cart-bogo";
 import {
   resolveCartLinesForCheckout,
@@ -94,6 +100,11 @@ export function CheckoutView() {
   const clear = useCartStore((s) => s.clear);
   const welcomePromoQuery = useWelcomePromo();
   const sessionQuery = useSession();
+  const { profile: savedProfile, hasProfile, saveProfile } = useCheckoutProfile();
+
+  const [deliveryForm, setDeliveryForm] = useState(() => emptyCheckoutProfile());
+  const [usingSavedProfile, setUsingSavedProfile] = useState(false);
+  const [savePaymentMethod, setSavePaymentMethod] = useState(false);
 
   const [frozenLines, setFrozenLines] = useState<CartLine[] | null>(null);
   const [step, setStep] = useState<Step>("details");
@@ -193,18 +204,20 @@ export function CheckoutView() {
   );
 
   const freePerLine = useMemo(() => {
-    if (welcomePromoQuery.data?.status !== "eligible") {
+    if (!sessionQuery.data?.id || welcomePromoQuery.data?.status !== "eligible") {
       return lines.map(() => 0);
     }
     return allocateBogoFreeQuantities(bogoCartLines);
-  }, [bogoCartLines, lines, welcomePromoQuery.data?.status]);
+  }, [bogoCartLines, lines, sessionQuery.data?.id, welcomePromoQuery.data?.status]);
 
   const subtotal = useMemo(() => summarySubtotal(lines), [lines]);
 
   const bogoPreview = useMemo(() => {
-    if (welcomePromoQuery.data?.status !== "eligible") return null;
+    if (!sessionQuery.data?.id || welcomePromoQuery.data?.status !== "eligible") {
+      return null;
+    }
     return calculateWelcomeBogo(bogoCartLines);
-  }, [bogoCartLines, welcomePromoQuery.data?.status]);
+  }, [bogoCartLines, sessionQuery.data?.id, welcomePromoQuery.data?.status]);
 
   const bogoDiscount =
     stripeBogoDiscount > 0
@@ -354,6 +367,35 @@ export function CheckoutView() {
     void refreshShippingPreview(email);
   }, [refreshShippingPreview, sessionQuery.data?.email]);
 
+  useEffect(() => {
+    if (!savedProfile) return;
+    setDeliveryForm((current) => {
+      const hasUserInput = Boolean(
+        current.contact.firstName.trim() ||
+          current.contact.lastName.trim() ||
+          current.contact.email.trim() ||
+          current.address.address1.trim(),
+      );
+      if (hasUserInput) return current;
+      return savedProfile;
+    });
+    setUsingSavedProfile(true);
+  }, [savedProfile]);
+
+  useEffect(() => {
+    const user = sessionQuery.data;
+    if (!user) return;
+    setDeliveryForm((current) => ({
+      ...current,
+      contact: {
+        ...current.contact,
+        firstName: current.contact.firstName || user.firstName,
+        lastName: current.contact.lastName || user.lastName,
+        email: current.contact.email || user.email,
+      },
+    }));
+  }, [sessionQuery.data]);
+
   if (!hydrated) {
     return (
       <Container className="flex min-h-[50vh] items-center justify-center py-24">
@@ -400,10 +442,6 @@ export function CheckoutView() {
     setError(null);
     setPaymentCanceled(false);
 
-    const formEl = e.currentTarget;
-    const formData = new FormData(formEl);
-    const value = (k: string) => String(formData.get(k) ?? "").trim();
-
     const activeLines = mergeLiveFlocage(
       frozenLines && frozenLines.length > 0
         ? frozenLines
@@ -425,6 +463,45 @@ export function CheckoutView() {
 
     const snapshot = activeLines.map((line) => ({ ...line }));
     setSessionLines(snapshot);
+
+    const contact = {
+      firstName: deliveryForm.contact.firstName.trim(),
+      lastName: deliveryForm.contact.lastName.trim(),
+      email: deliveryForm.contact.email.trim(),
+      phone: deliveryForm.contact.phone?.trim() || undefined,
+    };
+    const address = {
+      address1: deliveryForm.address.address1.trim(),
+      address2: deliveryForm.address.address2?.trim() || undefined,
+      postcode: deliveryForm.address.postcode.trim(),
+      city: deliveryForm.address.city.trim(),
+      country: deliveryForm.address.country.trim() || "France",
+    };
+
+    if (
+      !contact.firstName ||
+      !contact.lastName ||
+      !contact.email ||
+      !address.address1 ||
+      !address.postcode ||
+      !address.city
+    ) {
+      setError("Veuillez remplir tous les champs obligatoires.");
+      return;
+    }
+
+    const profileToSave: CheckoutDeliveryProfile = {
+      contact,
+      address: {
+        address1: address.address1,
+        address2: address.address2,
+        postcode: address.postcode,
+        city: address.city,
+        country: address.country,
+      },
+      updatedAt: new Date().toISOString(),
+    };
+    void saveProfile(profileToSave);
 
     try {
       const validateRes = await fetch("/api/cart/validate", {
@@ -469,19 +546,8 @@ export function CheckoutView() {
 
     const apiLines = snapshot.map(mapLineForApi);
     const payload = {
-      contact: {
-        firstName: value("firstName"),
-        lastName: value("lastName"),
-        email: value("email"),
-        phone: value("phone"),
-      },
-      address: {
-        address1: value("address1"),
-        address2: value("address2"),
-        postcode: value("postcode"),
-        city: value("city"),
-        country: value("country"),
-      },
+      contact,
+      address,
       lines: apiLines,
       promoCode: promoCode.trim() || undefined,
     };
@@ -504,6 +570,7 @@ export function CheckoutView() {
           items: stripeItems,
           applyWelcomePromo: shouldApplyWelcomePromo(welcomePromoQuery.data),
           promoCode: promoCode.trim() || undefined,
+          savePaymentMethod,
         });
         const bogoDisc = session.bogoDiscount ?? 0;
         const freeUnits = session.freeUnits ?? 0;
@@ -620,37 +687,205 @@ export function CheckoutView() {
       <div className="grid gap-10 lg:grid-cols-[1fr_380px] lg:gap-12">
         {step === "details" ? (
           <form onSubmit={handleDetailsSubmit} className="space-y-8">
+            <WelcomePromoGuestNudge
+              totalUnits={lines.reduce((sum, line) => sum + line.quantity, 0)}
+            />
+            {hasProfile && savedProfile ? (
+              <section className="rounded-2xl border border-ink/10 bg-paper-soft/60 p-5 sm:p-6">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-ink/45">
+                      Profil enregistré
+                    </p>
+                    <p className="mt-1 font-medium text-ink">
+                      {savedProfile.contact.firstName} {savedProfile.contact.lastName}
+                    </p>
+                    <p className="text-sm text-ink/60">
+                      {savedProfile.address.address1}, {savedProfile.address.postcode}{" "}
+                      {savedProfile.address.city}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="shrink-0"
+                    onClick={() => {
+                      setDeliveryForm(savedProfile);
+                      setUsingSavedProfile(true);
+                      void refreshShippingPreview(savedProfile.contact.email);
+                    }}
+                  >
+                    {usingSavedProfile ? "Profil appliqué" : "Utiliser ce profil"}
+                  </Button>
+                </div>
+              </section>
+            ) : null}
+
             <section className="surface-card p-6 sm:p-8">
               <h2 className="section-title mb-5">Coordonnées</h2>
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Prénom" name="firstName" required autoComplete="given-name" />
-                <Field label="Nom" name="lastName" required autoComplete="family-name" />
-                <Field label="Email" name="email" type="email" required autoComplete="email" className="sm:col-span-2" onBlur={async (e) => {
-                  const email = e.currentTarget.value.trim();
-                  if (!email) return;
-                  await refreshShippingPreview(email);
-                  if (promoCode.trim()) {
-                    await refreshPromoPreview(promoCode, email);
+                <Field
+                  label="Prénom"
+                  name="firstName"
+                  required
+                  autoComplete="given-name"
+                  value={deliveryForm.contact.firstName}
+                  onChange={(e) =>
+                    setDeliveryForm((f) => ({
+                      ...f,
+                      contact: { ...f.contact, firstName: e.target.value },
+                    }))
                   }
-                }} />
-                <Field label="Téléphone" name="phone" type="tel" autoComplete="tel" className="sm:col-span-2" />
+                />
+                <Field
+                  label="Nom"
+                  name="lastName"
+                  required
+                  autoComplete="family-name"
+                  value={deliveryForm.contact.lastName}
+                  onChange={(e) =>
+                    setDeliveryForm((f) => ({
+                      ...f,
+                      contact: { ...f.contact, lastName: e.target.value },
+                    }))
+                  }
+                />
+                <Field
+                  label="Email"
+                  name="email"
+                  type="email"
+                  required
+                  autoComplete="email"
+                  className="sm:col-span-2"
+                  value={deliveryForm.contact.email}
+                  onChange={(e) =>
+                    setDeliveryForm((f) => ({
+                      ...f,
+                      contact: { ...f.contact, email: e.target.value },
+                    }))
+                  }
+                  onBlur={async (e) => {
+                    const email = e.currentTarget.value.trim();
+                    if (!email) return;
+                    await refreshShippingPreview(email);
+                    if (promoCode.trim()) {
+                      await refreshPromoPreview(promoCode, email);
+                    }
+                  }}
+                />
+                <Field
+                  label="Téléphone"
+                  name="phone"
+                  type="tel"
+                  autoComplete="tel"
+                  className="sm:col-span-2"
+                  value={deliveryForm.contact.phone ?? ""}
+                  onChange={(e) =>
+                    setDeliveryForm((f) => ({
+                      ...f,
+                      contact: { ...f.contact, phone: e.target.value },
+                    }))
+                  }
+                />
               </div>
             </section>
 
             <section className="surface-card p-6 sm:p-8">
               <h2 className="section-title mb-5">Adresse de livraison</h2>
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Adresse" name="address1" required autoComplete="address-line1" className="sm:col-span-2" />
-                <Field label="Complément" name="address2" autoComplete="address-line2" className="sm:col-span-2" />
-                <Field label="Code postal" name="postcode" required autoComplete="postal-code" />
-                <Field label="Ville" name="city" required autoComplete="address-level2" />
-                <Field label="Pays" name="country" required defaultValue="France" autoComplete="country-name" className="sm:col-span-2" />
+                <Field
+                  label="Adresse"
+                  name="address1"
+                  required
+                  autoComplete="address-line1"
+                  className="sm:col-span-2"
+                  value={deliveryForm.address.address1}
+                  onChange={(e) =>
+                    setDeliveryForm((f) => ({
+                      ...f,
+                      address: { ...f.address, address1: e.target.value },
+                    }))
+                  }
+                />
+                <Field
+                  label="Complément"
+                  name="address2"
+                  autoComplete="address-line2"
+                  className="sm:col-span-2"
+                  value={deliveryForm.address.address2 ?? ""}
+                  onChange={(e) =>
+                    setDeliveryForm((f) => ({
+                      ...f,
+                      address: { ...f.address, address2: e.target.value },
+                    }))
+                  }
+                />
+                <Field
+                  label="Code postal"
+                  name="postcode"
+                  required
+                  autoComplete="postal-code"
+                  value={deliveryForm.address.postcode}
+                  onChange={(e) =>
+                    setDeliveryForm((f) => ({
+                      ...f,
+                      address: { ...f.address, postcode: e.target.value },
+                    }))
+                  }
+                />
+                <Field
+                  label="Ville"
+                  name="city"
+                  required
+                  autoComplete="address-level2"
+                  value={deliveryForm.address.city}
+                  onChange={(e) =>
+                    setDeliveryForm((f) => ({
+                      ...f,
+                      address: { ...f.address, city: e.target.value },
+                    }))
+                  }
+                />
+                <Field
+                  label="Pays"
+                  name="country"
+                  required
+                  autoComplete="country-name"
+                  className="sm:col-span-2"
+                  value={deliveryForm.address.country}
+                  onChange={(e) =>
+                    setDeliveryForm((f) => ({
+                      ...f,
+                      address: { ...f.address, country: e.target.value },
+                    }))
+                  }
+                />
               </div>
             </section>
 
             <div className="surface-card p-6 sm:p-8">
               <CheckoutFlocage />
             </div>
+
+            <section className="surface-card p-6 sm:p-8">
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 rounded border-ink/20"
+                  checked={savePaymentMethod}
+                  onChange={(e) => setSavePaymentMethod(e.target.checked)}
+                />
+                <span>
+                  <span className="block text-sm font-medium text-ink">
+                    Enregistrer mon mode de paiement pour plus tard
+                  </span>
+                  <span className="mt-1 block text-sm text-ink/55">
+                    Vos coordonnées bancaires seront enregistrées de façon sécurisée
+                    par Stripe pour vos prochains achats.
+                  </span>
+                </span>
+              </label>
+            </section>
 
             {error ? (
               <p className="rounded-2xl border border-accent/20 bg-accent/5 px-4 py-3 text-sm text-accent" role="alert">
