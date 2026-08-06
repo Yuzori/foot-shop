@@ -28,8 +28,17 @@ interface CartState {
   clear: () => void;
 }
 
+function normalizeVariantId(variantId: string | number | null | undefined): string | null {
+  if (variantId === null || variantId === undefined) return null;
+  const id = String(variantId).trim();
+  return id || null;
+}
+
 function sameLine(a: CartLine, productId: string, variantId: string | null) {
-  return a.productId === productId && a.variantId === variantId;
+  return (
+    String(a.productId) === String(productId) &&
+    normalizeVariantId(a.variantId) === normalizeVariantId(variantId)
+  );
 }
 
 function lineTotal(line: CartLine): number {
@@ -49,24 +58,29 @@ export const useCartStore = create<CartState>()(
       checkoutLockCount: 0,
       addLine: (line) => {
         if (isMutationsBlocked(get)) return;
+        const normalized: CartLine = {
+          ...line,
+          productId: String(line.productId),
+          variantId: normalizeVariantId(line.variantId),
+        };
         set((state) => {
           const existing = state.lines.find((l) =>
-            sameLine(l, line.productId, line.variantId),
+            sameLine(l, normalized.productId, normalized.variantId),
           );
           if (existing) {
             return {
               lines: state.lines.map((l) =>
-                sameLine(l, line.productId, line.variantId)
+                sameLine(l, normalized.productId, normalized.variantId)
                   ? {
                       ...l,
-                      quantity: l.quantity + line.quantity,
-                      flocage: line.flocage ?? l.flocage,
+                      quantity: l.quantity + normalized.quantity,
+                      flocage: normalized.flocage ?? l.flocage,
                     }
                   : l,
               ),
             };
           }
-          return { lines: [...state.lines, line] };
+          return { lines: [...state.lines, normalized] };
         });
       },
       removeLine: (productId, variantId) => {

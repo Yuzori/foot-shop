@@ -272,7 +272,7 @@ export function mapCombination(
   const priceImpact = toNumber(ps.price);
 
   return {
-    id: ps.id,
+    id: String(ps.id),
     options,
     price: basePrice + priceImpact,
     priceImpact,

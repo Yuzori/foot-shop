@@ -6,6 +6,12 @@ import type { CreateOrderLine } from "@/services/prestashop";
 
 const MAX_QTY_PER_LINE = 10;
 
+function normalizeId(value: string | number | null | undefined): string | null {
+  if (value === null || value === undefined) return null;
+  const id = String(value).trim();
+  return id || null;
+}
+
 function lineKey(productId: string, variantId: string | null): string {
   return `${productId}:${variantId ?? ""}`;
 }
@@ -47,14 +53,19 @@ export async function resolveCartLines(
   for (const line of lines) {
     let quantity = Math.floor(Number(line.quantity));
     if (!Number.isFinite(quantity) || quantity < 1) quantity = 1;
-    const key = lineKey(line.productId, line.variantId);
+    const key = lineKey(normalizeId(line.productId) ?? "", normalizeId(line.variantId));
     qtyByKey.set(key, (qtyByKey.get(key) ?? 0) + quantity);
   }
 
   const resolved: CreateOrderLine[] = [];
 
   for (const line of lines) {
-    const product = await prestashop.getProductById(line.productId);
+    const productId = normalizeId(line.productId);
+    if (!productId) {
+      return { ok: false, message: "Panier invalide." };
+    }
+
+    const product = await prestashop.getProductById(productId);
     if (!product) {
       return {
         ok: false,
@@ -71,10 +82,10 @@ export async function resolveCartLines(
       };
     }
 
-    const aggregateQty = qtyByKey.get(lineKey(line.productId, line.variantId)) ?? quantity;
+    const aggregateQty = qtyByKey.get(lineKey(productId, normalizeId(line.variantId))) ?? quantity;
 
     let unitPrice = product.price ?? 0;
-    let variantId: string | null = line.variantId;
+    let variantId = normalizeId(line.variantId);
 
     if (product.optionGroups.length > 0) {
       if (!variantId) {
@@ -83,7 +94,7 @@ export async function resolveCartLines(
           message: `Choisissez une taille pour « ${product.name} ».`,
         };
       }
-      const variant = product.variants.find((v) => v.id === variantId);
+      const variant = product.variants.find((v) => String(v.id) === variantId);
       if (!variant) {
         return {
           ok: false,
@@ -130,7 +141,7 @@ export async function resolveCartLines(
     }
 
     resolved.push({
-      productId: line.productId,
+      productId,
       variantId,
       quantity,
       unitPrice: Math.round(unitPrice * 100) / 100,
