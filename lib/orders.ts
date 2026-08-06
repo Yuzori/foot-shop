@@ -132,6 +132,16 @@ function mapPrestaShopOrderError(error: string | null): string {
 
   }
 
+  const lower = error.toLowerCase();
+
+  if (
+    lower.includes("link to database") ||
+    lower.includes("cannot be established") ||
+    lower.includes("database") && lower.includes("prestashop")
+  ) {
+    return "Le back-office PrestaShop est indisponible (connexion base de données). Réessayez dans quelques minutes.";
+  }
+
   if (error.includes("no_carrier_configured")) {
 
     return "Aucun transporteur actif dans PrestaShop. Activez au moins un transporteur.";
