@@ -48,11 +48,21 @@ ufw allow 'Nginx Full'
 ufw --force enable
 
 echo "==> Nginx (HTTP temporaire — SSL après DNS)"
-cat > /etc/nginx/sites-available/foot-shop <<NGINX
+if [[ -f /tmp/foot-shop/scripts/vps/nginx-foot-shop.http.conf ]]; then
+  cp /tmp/foot-shop/scripts/vps/nginx-foot-shop.http.conf /etc/nginx/sites-available/foot-shop
+else
+  cat > /etc/nginx/sites-available/foot-shop <<NGINX
 server {
     listen 80;
     listen [::]:80;
     server_name ${DOMAIN} www.${DOMAIN};
+
+    location /_next/static/ {
+        alias ${APP_DIR}/.next/static/;
+        expires 365d;
+        access_log off;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
 
     location / {
         proxy_pass http://127.0.0.1:3000;
@@ -67,10 +77,17 @@ server {
     }
 }
 NGINX
+fi
 
 ln -sf /etc/nginx/sites-available/foot-shop /etc/nginx/sites-enabled/
 rm -f /etc/nginx/sites-enabled/default
 nginx -t && systemctl reload nginx
+
+echo "==> Sudo deploy (nginx reload sans mot de passe)"
+cat > /etc/sudoers.d/foot-shop-deploy <<'SUDO'
+deploy ALL=(ALL) NOPASSWD: /usr/sbin/nginx, /bin/systemctl reload nginx, /usr/bin/cp
+SUDO
+chmod 440 /etc/sudoers.d/foot-shop-deploy
 
 cat <<'EOF'
 

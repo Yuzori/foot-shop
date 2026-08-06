@@ -196,6 +196,36 @@ pm2 restart foot-shop
 
 ---
 
+## Dépannage site cassé (pas de CSS / erreur produit)
+
+Symptômes : navigation privée sans styles, `ChunkLoadError`, `400` sur `/_next/static/...`.
+
+**Cause** : nginx proxy tout vers Next.js au lieu de servir les assets build depuis le disque.
+
+**Fix** (sur le VPS, une fois) :
+
+```bash
+cd /var/www/foot-shop
+git pull origin main
+bash scripts/vps/apply-nginx.sh
+```
+
+Vérification :
+
+```bash
+curl -I "https://foot-shop.fr/_next/static/css/$(curl -s https://foot-shop.fr/ | grep -oE '_next/static/css/[a-f0-9]+\\.css' | head -1 | cut -d/ -f4)"
+# → HTTP/2 200
+```
+
+Si `apply-nginx.sh` échoue sur les droits sudo :
+
+```bash
+sudo visudo -f /etc/sudoers.d/foot-shop-deploy
+# deploy ALL=(ALL) NOPASSWD: /usr/sbin/nginx, /bin/systemctl reload nginx, /usr/bin/cp
+```
+
+---
+
 ## Dépannage SSH
 
 | Problème | Solution |

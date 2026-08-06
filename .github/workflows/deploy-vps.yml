@@ -33,6 +33,8 @@ jobs:
               pm2 start npm --name foot-shop -- start
               pm2 save
             fi
+            echo "==> Nginx static assets"
+            bash scripts/vps/apply-nginx.sh || echo "WARN: nginx apply skipped (run manually once on VPS)"
             echo "==> Waiting for app health..."
             for attempt in 1 2 3 4 5 6 8 10 12; do
               if curl -fsS http://127.0.0.1:3000/api/health; then

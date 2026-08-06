@@ -23,6 +23,9 @@ else
   pm2 save
 fi
 
+echo "→ nginx static assets"
+bash scripts/vps/apply-nginx.sh || echo "WARN: nginx apply skipped"
+
 sleep 5
 echo "→ health check"
 curl -fsS "http://127.0.0.1:3000/api/health" || curl -fsS "http://127.0.0.1:3000/api/health"
