@@ -3,6 +3,7 @@ name: Deploy VPS
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -15,8 +16,13 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          command_timeout: 30m
+          debug: true
           script_stop: true
           script: |
+            set -euo pipefail
+            echo "==> Connected as $(whoami) on $(hostname)"
             cd /var/www/foot-shop
             git pull --ff-only origin main
             npm ci
@@ -27,5 +33,16 @@ jobs:
               pm2 start npm --name foot-shop -- start
               pm2 save
             fi
-            sleep 5
-            curl -fsS http://127.0.0.1:3000/api/health
+            echo "==> Waiting for app health..."
+            for attempt in 1 2 3 4 5 6 8 10 12; do
+              if curl -fsS http://127.0.0.1:3000/api/health; then
+                echo ""
+                echo "==> Deploy OK"
+                git log -1 --oneline
+                exit 0
+              fi
+              echo "Health check attempt ${attempt} failed, retrying..."
+              sleep 5
+            done
+            echo "==> Health check failed after deploy"
+            exit 1

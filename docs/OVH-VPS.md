@@ -101,6 +101,46 @@ pm2 startup
 
 ---
 
+## Déploiement auto GitHub Actions
+
+Workflow : `.github/workflows/deploy-vps.yml` (déclenché à chaque push sur `main`).
+
+### Secrets (Settings → Secrets and variables → Actions)
+
+| Secret | Exemple | Erreurs fréquentes |
+|--------|---------|-------------------|
+| `VPS_HOST` | `137.74.166.133` | Pas de `https://`, pas d’espace |
+| `VPS_USER` | `deploy` | |
+| `VPS_SSH_KEY` | clé privée OpenSSH complète | **Doit** inclure les lignes `BEGIN` / `END` et les retours à la ligne |
+
+### Clé SSH sur le VPS
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/github_deploy -N ""
+cat ~/.ssh/github_deploy.pub >> ~/.ssh/authorized_keys
+chmod 700 ~/.ssh
+chmod 600 ~/.ssh/authorized_keys
+cat ~/.ssh/github_deploy   # → coller dans VPS_SSH_KEY (GitHub)
+```
+
+### Si le workflow échoue en ~5 secondes
+
+C’est presque toujours la **clé SSH** (connexion refusée avant `npm build`) :
+
+1. Recopier la clé privée depuis le VPS (`cat ~/.ssh/github_deploy`)
+2. GitHub → modifier `VPS_SSH_KEY` → coller **tout** le bloc
+3. Actions → **Deploy VPS** → **Re-run all jobs**
+
+Un build réussi dure **plusieurs minutes**, pas 5 secondes.
+
+### Déploiement manuel (secours)
+
+```bash
+ssh deploy@137.74.166.133 "cd /var/www/foot-shop && git pull origin main && npm ci && npm run build && pm2 restart foot-shop"
+```
+
+---
+
 ## Étape 3 — DNS (chez Hostinger / OVH)
 
 | Type | Nom | Valeur |
