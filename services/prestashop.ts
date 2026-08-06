@@ -1093,6 +1093,20 @@ class PrestaShopService {
     const existing = await this.getCustomerSecureKey(id);
     if (existing) return existing;
 
+    const secureKey = crypto.randomBytes(16).toString("hex");
+
+    // Patch du XML brut : préserve tous les champs requis par PrestaShop (comme
+    // pour la newsletter) et évite de dépendre du hash mot de passe.
+    const xmlRaw = await this.getCustomerRawXml(id);
+    if (xmlRaw) {
+      const patched = patchCustomerXmlField(xmlRaw, "secure_key", secureKey);
+      const { status, error } = await this.put(`/customers/${id}`, patched);
+      if (status !== null && status < 400) {
+        return secureKey;
+      }
+      console.error("[prestashop] secure_key raw patch failed", id, error);
+    }
+
     const ps = await this.getCustomerRecord(id);
     if (!ps?.email) return null;
 
@@ -1117,7 +1131,6 @@ class PrestaShopService {
       return null;
     }
 
-    const secureKey = crypto.randomBytes(16).toString("hex");
     const result = await this.updateCustomerSecureKey(id, ps, secureKey, passwdHash);
     if (!result.ok) {
       console.error("[prestashop] secure_key update failed", id, result.error);
@@ -1512,14 +1525,36 @@ class PrestaShopService {
     email: string;
     password: string;
     newsletter?: boolean;
-  }): Promise<{ customer: Customer | null; status: number | null; error: string | null }> {
-    const xml = buildCustomerXml(input);
+    secureKey?: string;
+  }): Promise<{
+    customer: Customer | null;
+    secureKey: string | null;
+    status: number | null;
+    error: string | null;
+  }> {
+    const secureKey = input.secureKey?.trim() || crypto.randomBytes(16).toString("hex");
+    const xml = buildCustomerXml({ ...input, secureKey });
     const { data, status, error } = await this.post<{ customer?: PsCustomer }>(
       "/customers",
       xml,
     );
+
+    let customer = data?.customer ? mapCustomer(data.customer) : null;
+    if (!customer && status !== null && status < 400) {
+      const createdId = extractCreatedId(data, "customer");
+      if (createdId) {
+        const ps = await this.getCustomerRecord(createdId);
+        if (ps) customer = mapCustomer(ps);
+      }
+      if (!customer) {
+        const existing = await this.getCustomerAuthByEmail(input.email);
+        if (existing) customer = existing;
+      }
+    }
+
     return {
-      customer: data?.customer ? mapCustomer(data.customer) : null,
+      customer,
+      secureKey: customer ? secureKey : null,
       status,
       error,
     };
@@ -3103,7 +3138,11 @@ function buildCustomerXml(input: {
   email: string;
   password: string;
   newsletter?: boolean;
+  secureKey?: string;
 }): string {
+  const secureKeyXml = input.secureKey
+    ? `<secure_key>${escapeXml(input.secureKey)}</secure_key>`
+    : "";
   return `<?xml version="1.0" encoding="UTF-8"?>
 <prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
   <customer>
@@ -3111,6 +3150,7 @@ function buildCustomerXml(input: {
     <lastname>${escapeXml(input.lastName)}</lastname>
     <email>${escapeXml(input.email)}</email>
     <passwd>${escapeXml(input.password)}</passwd>
+    ${secureKeyXml}
     <newsletter>${input.newsletter ? "1" : "0"}</newsletter>
     <active>1</active>
   </customer>
