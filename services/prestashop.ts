@@ -1079,6 +1079,17 @@ class PrestaShopService {
     const id = String(customerId).trim();
     const ps = await this.getCustomerRecord(id);
     const key = ps?.secure_key?.trim();
+    if (key) return key;
+    return this.readSecureKeyFromRawXml(id);
+  }
+
+  private async readSecureKeyFromRawXml(customerId: string): Promise<string | null> {
+    const xmlRaw = await this.getCustomerRawXml(customerId);
+    if (!xmlRaw) return null;
+    const match = xmlRaw.match(
+      /<secure_key>(?:<!\[CDATA\[)?([^<\]]+)(?:\]\]>)?<\/secure_key>/i,
+    );
+    const key = match?.[1]?.trim();
     return key || null;
   }
 
@@ -1090,7 +1101,9 @@ class PrestaShopService {
     const id = String(customerId).trim();
     if (!id) return null;
 
-    const existing = await this.getCustomerSecureKey(id);
+    const existing =
+      (await this.getCustomerSecureKey(id)) ??
+      (await this.readSecureKeyFromRawXml(id));
     if (existing) return existing;
 
     const secureKey = crypto.randomBytes(16).toString("hex");
@@ -1102,7 +1115,10 @@ class PrestaShopService {
       const patched = patchCustomerXmlField(xmlRaw, "secure_key", secureKey);
       const { status, error } = await this.put(`/customers/${id}`, patched);
       if (status !== null && status < 400) {
-        return secureKey;
+        const verified =
+          (await this.getCustomerSecureKey(id)) ??
+          (await this.readSecureKeyFromRawXml(id));
+        return verified ?? secureKey;
       }
       console.error("[prestashop] secure_key raw patch failed", id, error);
     }

@@ -172,7 +172,7 @@ function mapPrestaShopOrderError(error: string | null): string {
 
   }
 
-  if (error.includes("secure_key")) {
+  if (error.includes("secure_key") || lower.includes("secure key")) {
 
     return "Clé client PrestaShop invalide. Reconnectez-vous puis réessayez.";
 
@@ -248,20 +248,17 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
   const session = await getSession();
 
   let customerId = session?.id ? String(session.id) : null;
-  let secureKey: string | null = null;
 
   if (!customerId) {
     const existing = await prestashop.getCustomerAuthByEmail(contact.email);
     if (existing) {
       customerId = existing.id;
     } else {
-      const guestSecureKey = crypto.randomBytes(16).toString("hex");
       const created = await prestashop.createCustomer({
         firstName: contact.firstName || "Client",
         lastName: contact.lastName || "Client",
         email: contact.email,
         password: crypto.randomUUID(),
-        secureKey: guestSecureKey,
       });
 
       if (!created.customer) {
@@ -275,13 +272,10 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
       }
 
       customerId = created.customer.id;
-      secureKey = created.secureKey;
     }
   }
 
-  if (!secureKey) {
-    secureKey = await prestashop.ensureCustomerSecureKey(customerId);
-  }
+  const secureKey = await prestashop.ensureCustomerSecureKey(customerId);
 
   if (!secureKey) {
 
