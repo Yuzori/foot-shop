@@ -11,6 +11,7 @@ import { Container } from "@/components/ui/container";
 import { collectionShowcaseImages } from "@/config/collection-showcase";
 import { routes } from "@/config/site";
 import { worldCupConfig } from "@/config/world-cup";
+import { useCatalogNav } from "@/hooks/use-catalog-nav";
 import { cn } from "@/lib/utils";
 
 const ease = [0.16, 1, 0.3, 1] as const;
@@ -248,6 +249,8 @@ function CollectionPanel({
 
 /** Accueil — entrées collections, layout éditorial bento. */
 export function CategoryShowcase() {
+  const catalogNav = useCatalogNav();
+
   return (
     <section className="relative overflow-x-clip bg-ink py-20 text-paper sm:py-28 lg:pb-32">
       <div
@@ -268,8 +271,8 @@ export function CategoryShowcase() {
               <span className="block text-paper/90">collection</span>
             </h2>
             <p className="mt-4 max-w-md text-sm leading-relaxed text-paper/60">
-              Maillots, shorts, tailles adulte ou enfant — choisissez votre
-              division et entrez directement dans le bon catalogue.
+              Maillots par division, shorts en un clic — entrez directement dans
+              le bon catalogue.
             </p>
           </div>
           <Link
@@ -288,7 +291,7 @@ export function CategoryShowcase() {
               href={routes.catalogHub({ kind: "jersey" })}
               label="Collection phare"
               title="Maillots"
-              description="Domicile, extérieur, third — par championnat, taille adulte ou enfant."
+              description="Domicile, extérieur, third — par championnat."
               index="01"
               variant="dark"
               backgroundSrc={collectionShowcaseImages.jersey}
@@ -300,10 +303,10 @@ export function CategoryShowcase() {
               <CollectionPanel
                 contentOnly
                 trophySegment="top"
-                href={routes.catalogHub({ kind: "short" })}
+                href={catalogNav.shorts.href}
                 label="Performance"
                 title="Shorts"
-                description="Shorts de match, même parcours guidé par division."
+                description="Toute la collection shorts, accès direct."
                 index="02"
                 variant="dark"
                 backgroundSrc={collectionShowcaseImages.short}
@@ -327,10 +330,10 @@ export function CategoryShowcase() {
               ) : (
                 <CollectionPanel
                   contentOnly
-                  href={routes.catalogHub({ audience: "kids" })}
-                  label="Jeunesse"
-                  title="Enfant"
-                  description="Tailles enfant, divisions CDM, Ligue 1 et plus."
+                  href={routes.catalogHub({ kind: "jersey" })}
+                  label="Par division"
+                  title="Maillots"
+                  description="Ligue 1, Premier League, Liga et plus."
                   index="03"
                   variant="dark"
                 />

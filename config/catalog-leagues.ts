@@ -33,10 +33,35 @@ export interface CatalogNavCategories {
   kidsShortsCategoryId: string;
 }
 
+export const DEFAULT_CATALOG_AUDIENCE: CatalogAudience = "adult";
+
 export const catalogAudiences: { id: CatalogAudience; label: string }[] = [
   { id: "adult", label: "Adulte" },
-  { id: "kids", label: "Enfant" },
 ];
+
+/** Lien direct vers tous les shorts adultes. */
+export function buildShortsCatalogHref(categories: CatalogNavCategories): string {
+  return buildAudienceCatalogHref("short", DEFAULT_CATALOG_AUDIENCE, categories);
+}
+
+/** Lien division maillot (adulte uniquement). */
+export function buildJerseyLeagueHref(
+  league: CatalogLeague,
+  categories: CatalogNavCategories,
+  allCategories: readonly {
+    id: string;
+    name: string;
+    parentId?: string | null;
+  }[] = [],
+): string {
+  return buildCatalogHref(
+    "jersey",
+    DEFAULT_CATALOG_AUDIENCE,
+    league,
+    categories,
+    allCategories,
+  );
+}
 
 function envFirst(...keys: string[]): string {
   for (const key of keys) {

@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 
 import { catalogConfig } from "@/config/catalog";
+import { buildShortsCatalogHref } from "@/config/catalog-leagues";
 import { routes } from "@/config/site";
 import { useCategories } from "@/hooks/use-categories";
 import { resolveCatalogNavCategories } from "@/lib/resolve-catalog-nav";
@@ -28,17 +29,7 @@ export function useCatalogNav() {
       shorts: {
         label: catalogConfig.shorts.label,
         categoryId: shortsId,
-        href: routes.catalogHub({ kind: "short" }),
-      },
-      kidsMaillots: {
-        label: catalogConfig.kidsMaillots.label,
-        categoryId: navCategories.kidsMaillotsCategoryId,
-        href: routes.catalogHub({ kind: "jersey", audience: "kids" }),
-      },
-      kidsShorts: {
-        label: catalogConfig.kidsShorts.label,
-        categoryId: navCategories.kidsShortsCategoryId,
-        href: routes.catalogHub({ kind: "short", audience: "kids" }),
+        href: buildShortsCatalogHref(navCategories),
       },
     };
   }, [categories]);

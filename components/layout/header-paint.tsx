@@ -82,30 +82,28 @@ export function HeaderPaint() {
           <nav className="ml-6 hidden flex-1 items-center justify-center gap-7 xl:gap-9 lg:flex">
             <CatalogNavDropdown
               theme="dark"
-              kind="jersey"
               label={catalogNav.maillots.label}
               categories={catalogNav.categories}
               allCategories={catalogNav.allCategories}
               active={
-                [catalogNav.maillots.categoryId, catalogNav.kidsMaillots.categoryId]
-                  .filter(Boolean)
-                  .some((id) => pathname.includes(`/categories/${id}`)) ||
+                (Boolean(catalogNav.maillots.categoryId) &&
+                  pathname.includes(`/categories/${catalogNav.maillots.categoryId}`)) ||
                 pathname.includes("kind=jersey")
               }
             />
-            <CatalogNavDropdown
-              theme="dark"
-              kind="short"
-              label={catalogNav.shorts.label}
-              categories={catalogNav.categories}
-              allCategories={catalogNav.allCategories}
-              active={
-                [catalogNav.shorts.categoryId, catalogNav.kidsShorts.categoryId]
-                  .filter(Boolean)
-                  .some((id) => pathname.includes(`/categories/${id}`)) ||
-                pathname.includes("kind=short")
-              }
-            />
+            <Link
+              href={catalogNav.shorts.href}
+              prefetch={false}
+              className={cn(
+                "header-paint-nav-link",
+                ((Boolean(catalogNav.shorts.categoryId) &&
+                  pathname.includes(`/categories/${catalogNav.shorts.categoryId}`)) ||
+                  pathname.includes("kind=short")) &&
+                  "header-paint-nav-link--active",
+              )}
+            >
+              {catalogNav.shorts.label}
+            </Link>
             {primaryNav.map((link) => (
               <Link
                 key={link.href}

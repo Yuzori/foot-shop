@@ -7,9 +7,8 @@ import { useEffect, useState } from "react";
 
 import { LeagueIcon } from "@/components/layout/league-icon";
 import {
-  buildAudienceCatalogHref,
-  buildCatalogHref,
-  catalogAudiences,
+  buildJerseyLeagueHref,
+  buildShortsCatalogHref,
   catalogLeagues,
   type CatalogNavCategories,
 } from "@/config/catalog-leagues";
@@ -173,6 +172,18 @@ function MobileCatalogGroup({
 }) {
   const [open, setOpen] = useState(false);
 
+  if (kind === "short") {
+    return (
+      <Link
+        href={buildShortsCatalogHref(categories)}
+        onClick={onClose}
+        className="border-b border-ink/5 py-4 text-2xl font-medium tracking-tightest"
+      >
+        {label}
+      </Link>
+    );
+  }
+
   return (
     <div className="border-b border-ink/5 py-2">
       <button
@@ -198,60 +209,28 @@ function MobileCatalogGroup({
             transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
             className="overflow-hidden"
           >
-            <div className="space-y-4 pb-4 pl-1">
-              {kind === "short" ? (
-                <ul className="space-y-2">
-                  {catalogAudiences.map((audience) => (
-                    <li key={audience.id}>
-                      <Link
-                        href={buildAudienceCatalogHref(
-                          kind,
-                          audience.id,
-                          categories,
-                        )}
-                        onClick={onClose}
-                        className="flex items-center justify-between rounded-xl border border-ink/10 px-4 py-3 text-sm font-medium text-ink/80 transition-colors hover:border-ink/20 hover:bg-paper-soft"
-                      >
-                        {audience.label}
-                        <span className="text-xs text-ink/40">Tous les shorts</span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                catalogAudiences.map((audience) => (
-                  <div key={audience.id}>
-                    <p className="text-xs font-bold uppercase tracking-widest text-ink/40">
-                      {audience.label}
-                    </p>
-                    <ul className="mt-2 space-y-2">
-                      {catalogLeagues.map((league) => (
-                        <li key={`${audience.id}-${league.id}`}>
-                          <Link
-                            href={buildCatalogHref(
-                              kind,
-                              audience.id,
-                              league,
-                              categories,
-                              allCategories,
-                            )}
-                            onClick={onClose}
-                            className="flex items-center gap-2 text-sm text-ink/75"
-                          >
-                            <LeagueIcon
-                              src={league.icon}
-                              label={league.label}
-                              useInitials={league.useInitials}
-                            />
-                            {league.label}
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))
-              )}
-            </div>
+            <ul className="space-y-2 pb-4 pl-1">
+              {catalogLeagues.map((league) => (
+                <li key={league.id}>
+                  <Link
+                    href={buildJerseyLeagueHref(
+                      league,
+                      categories,
+                      allCategories,
+                    )}
+                    onClick={onClose}
+                    className="flex items-center gap-2 text-sm text-ink/75"
+                  >
+                    <LeagueIcon
+                      src={league.icon}
+                      label={league.label}
+                      useInitials={league.useInitials}
+                    />
+                    {league.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </motion.div>
         ) : null}
       </AnimatePresence>

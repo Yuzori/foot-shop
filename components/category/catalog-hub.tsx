@@ -8,10 +8,9 @@ import { useEffect, useMemo } from "react";
 import { LeagueIcon } from "@/components/layout/league-icon";
 import { Container } from "@/components/ui/container";
 import {
-  buildAudienceCatalogHref,
-  buildCatalogHref,
+  buildJerseyLeagueHref,
+  buildShortsCatalogHref,
   catalogLeagues,
-  type CatalogAudience,
   type CatalogKind,
 } from "@/config/catalog-leagues";
 import { routes } from "@/config/site";
@@ -19,7 +18,6 @@ import { useCatalogNav } from "@/hooks/use-catalog-nav";
 import { cn } from "@/lib/utils";
 
 const VALID_KINDS: CatalogKind[] = ["jersey", "short"];
-const VALID_AUDIENCES: CatalogAudience[] = ["adult", "kids"];
 const ease = [0.16, 1, 0.3, 1] as const;
 
 const kindOptions: {
@@ -27,33 +25,26 @@ const kindOptions: {
   label: string;
   hint: string;
 }[] = [
-  { id: "jersey", label: "Maillots", hint: "Domicile, extérieur, third" },
-  { id: "short", label: "Shorts", hint: "Shorts & performance" },
+  { id: "jersey", label: "Maillots", hint: "Par championnat" },
+  { id: "short", label: "Shorts", hint: "Toute la collection" },
 ];
 
-function StepProgress({
-  current,
-}: {
-  current: "kind" | "audience" | "divisions";
-}) {
+function StepProgress({ current }: { current: "kind" | "divisions" }) {
   const steps = [
     { id: "kind", label: "Produit" },
-    { id: "audience", label: "Taille" },
     { id: "divisions", label: "Division" },
   ] as const;
   const index = steps.findIndex((step) => step.id === current);
 
   return (
-    <div className="mb-10 flex items-center justify-center gap-2 sm:gap-3">
+    <div className="mb-10 flex items-center justify-center gap-3 sm:gap-4">
       {steps.map((step, i) => (
-        <div key={step.id} className="flex items-center gap-2 sm:gap-3">
+        <div key={step.id} className="flex items-center gap-3 sm:gap-4">
           <div className="flex items-center gap-2">
             <span
               className={cn(
                 "flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-colors",
-                i <= index
-                  ? "bg-ink text-paper"
-                  : "bg-paper-soft text-ink/35",
+                i <= index ? "bg-ink text-paper" : "bg-paper-soft text-ink/35",
               )}
             >
               {i + 1}
@@ -70,7 +61,7 @@ function StepProgress({
           {i < steps.length - 1 ? (
             <span
               className={cn(
-                "hidden h-px w-6 sm:block sm:w-10",
+                "h-px w-8 sm:w-12",
                 i < index ? "bg-ink/30" : "bg-ink/10",
               )}
               aria-hidden
@@ -82,56 +73,42 @@ function StepProgress({
   );
 }
 
-/** Page intermédiaire : type → audience → divisions. */
+/** Page intermédiaire : produit → divisions (maillots) ou redirection shorts. */
 export function CatalogHub() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const catalogNav = useCatalogNav();
 
   const kindParam = searchParams.get("kind");
-  const audienceParam = searchParams.get("audience");
-
   const kind = VALID_KINDS.includes(kindParam as CatalogKind)
     ? (kindParam as CatalogKind)
-    : null;
-  const audience = VALID_AUDIENCES.includes(audienceParam as CatalogAudience)
-    ? (audienceParam as CatalogAudience)
     : null;
 
   const step = useMemo(() => {
     if (!kind) return "kind" as const;
-    if (!audience) return "audience" as const;
     if (kind === "short") return "redirecting" as const;
     return "divisions" as const;
-  }, [audience, kind]);
+  }, [kind]);
 
   const kindLabel = kind === "jersey" ? "Maillots" : kind === "short" ? "Shorts" : "";
 
   useEffect(() => {
-    if (kind !== "short" || !audience) return;
-    const href = buildAudienceCatalogHref(kind, audience, catalogNav.categories);
-    if (!href.includes("/categories?")) {
-      router.replace(href);
-    }
-  }, [audience, catalogNav.categories, kind, router]);
+    if (kind !== "short") return;
+    router.replace(buildShortsCatalogHref(catalogNav.categories));
+  }, [catalogNav.categories, kind, router]);
 
   function goKind(next: CatalogKind) {
-    router.push(routes.catalogHub({ kind: next }));
-  }
-
-  function goAudience(next: CatalogAudience) {
-    if (!kind) return;
-    if (kind === "short") {
-      router.push(buildAudienceCatalogHref(kind, next, catalogNav.categories));
+    if (next === "short") {
+      router.push(buildShortsCatalogHref(catalogNav.categories));
       return;
     }
-    router.push(routes.catalogHub({ kind, audience: next }));
+    router.push(routes.catalogHub({ kind: next }));
   }
 
   return (
     <Container className="py-10 lg:py-16">
       <div className="mx-auto max-w-2xl">
-        <StepProgress current={step === "redirecting" ? "audience" : step} />
+        <StepProgress current={step === "divisions" ? "divisions" : "kind"} />
 
         <AnimatePresence mode="wait">
           {step === "kind" ? (
@@ -146,7 +123,7 @@ export function CatalogHub() {
               <p className="eyebrow text-accent">Étape 1</p>
               <h1 className="display-2 mt-3">Que voulez-vous voir ?</h1>
               <p className="mx-auto mt-3 max-w-md text-sm text-ink/55">
-                Cliquez sur une option pour continuer.
+                Maillots par division, ou tous les shorts en un clic.
               </p>
 
               <div className="mt-8 grid grid-cols-2 gap-3">
@@ -173,56 +150,6 @@ export function CatalogHub() {
             </motion.div>
           ) : null}
 
-          {step === "audience" && kind ? (
-            <motion.div
-              key="audience"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.28, ease }}
-              className="text-center"
-            >
-              <Link
-                href={routes.catalogHub()}
-                className="mb-6 inline-flex items-center gap-1 text-xs font-medium text-ink/45 hover:text-ink"
-              >
-                ← Retour
-              </Link>
-              <p className="eyebrow text-accent">Étape 2 · {kindLabel}</p>
-              <h1 className="display-2 mt-3">Adulte ou enfant ?</h1>
-              <p className="mx-auto mt-3 max-w-md text-sm text-ink/55">
-                {kind === "short"
-                  ? "Choisissez une taille pour voir tous les shorts."
-                  : "Choisissez une taille pour afficher les divisions."}
-              </p>
-
-              <div className="mx-auto mt-8 max-w-sm rounded-2xl border border-ink/10 bg-paper-soft p-1.5">
-                <div className="grid grid-cols-2 gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => goAudience("adult")}
-                    className="rounded-xl border border-transparent bg-paper px-4 py-4 text-sm font-semibold text-ink shadow-sm transition-all hover:border-ink/15 hover:shadow-md active:scale-[0.99]"
-                  >
-                    Adulte
-                    <span className="mt-0.5 block text-[11px] font-normal text-ink/45">
-                      Tailles S – XXL
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => goAudience("kids")}
-                    className="rounded-xl border border-transparent bg-paper px-4 py-4 text-sm font-semibold text-ink shadow-sm transition-all hover:border-ink/15 hover:shadow-md active:scale-[0.99]"
-                  >
-                    Enfant
-                    <span className="mt-0.5 block text-[11px] font-normal text-ink/45">
-                      Tailles enfant
-                    </span>
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          ) : null}
-
           {step === "redirecting" ? (
             <motion.div
               key="redirecting"
@@ -234,7 +161,7 @@ export function CatalogHub() {
             </motion.div>
           ) : null}
 
-          {step === "divisions" && kind && audience ? (
+          {step === "divisions" && kind === "jersey" ? (
             <motion.div
               key="divisions"
               initial={{ opacity: 0, y: 12 }}
@@ -243,18 +170,16 @@ export function CatalogHub() {
               transition={{ duration: 0.28, ease }}
             >
               <Link
-                href={routes.catalogHub({ kind })}
+                href={routes.catalogHub()}
                 className="mb-6 inline-flex items-center gap-1 text-xs font-medium text-ink/45 hover:text-ink"
               >
                 ← Retour
               </Link>
               <div className="text-center">
-                <p className="eyebrow text-accent">
-                  Étape 3 · {kindLabel} · {audience === "kids" ? "Enfant" : "Adulte"}
-                </p>
+                <p className="eyebrow text-accent">Étape 2 · {kindLabel}</p>
                 <h1 className="display-2 mt-3">Choisissez une division</h1>
                 <p className="mx-auto mt-3 max-w-md text-sm text-ink/55">
-                  Cliquez sur une compétition pour voir les produits.
+                  Cliquez sur une compétition pour voir les maillots.
                 </p>
               </div>
 
@@ -267,9 +192,7 @@ export function CatalogHub() {
                     transition={{ delay: index * 0.03, duration: 0.22, ease }}
                   >
                     <Link
-                      href={buildCatalogHref(
-                        kind,
-                        audience,
+                      href={buildJerseyLeagueHref(
                         league,
                         catalogNav.categories,
                         catalogNav.allCategories,

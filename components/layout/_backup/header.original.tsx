@@ -85,29 +85,29 @@ export function Header() {
 
           <nav className="ml-8 hidden flex-1 items-center justify-center gap-8 lg:flex">
             <CatalogNavDropdown
-              kind="jersey"
               label={catalogNav.maillots.label}
               categories={catalogNav.categories}
               allCategories={catalogNav.allCategories}
               active={
-                [catalogNav.maillots.categoryId, catalogNav.kidsMaillots.categoryId]
-                  .filter(Boolean)
-                  .some((id) => pathname.includes(`/categories/${id}`)) ||
+                (Boolean(catalogNav.maillots.categoryId) &&
+                  pathname.includes(`/categories/${catalogNav.maillots.categoryId}`)) ||
                 pathname.includes("kind=jersey")
               }
             />
-            <CatalogNavDropdown
-              kind="short"
-              label={catalogNav.shorts.label}
-              categories={catalogNav.categories}
-              allCategories={catalogNav.allCategories}
-              active={
-                [catalogNav.shorts.categoryId, catalogNav.kidsShorts.categoryId]
-                  .filter(Boolean)
-                  .some((id) => pathname.includes(`/categories/${id}`)) ||
-                pathname.includes("kind=short")
-              }
-            />
+            <Link
+              href={catalogNav.shorts.href}
+              prefetch={false}
+              className={cn(
+                "link-underline text-sm font-medium text-ink/65 transition-colors hover:text-ink",
+                (Boolean(catalogNav.shorts.categoryId) &&
+                  pathname.includes(`/categories/${catalogNav.shorts.categoryId}`)) ||
+                  pathname.includes("kind=short")
+                  ? "text-ink after:scale-x-100"
+                  : "",
+              )}
+            >
+              {catalogNav.shorts.label}
+            </Link>
             {primaryNav.map((link) => (
               <Link
                 key={link.href}

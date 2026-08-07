@@ -124,8 +124,20 @@ export function buildOrderNote(lines: CreateOrderLine[]): string {
 
 
 
-function mapPrestaShopOrderError(error: string | null): string {
+function isTransientPrestaShopDbError(error: string | null | undefined): boolean {
+  if (!error) return false;
+  const lower = error.toLowerCase();
+  return (
+    lower.includes("link to database") ||
+    lower.includes("cannot be established") ||
+    (lower.includes("database") && lower.includes("prestashop"))
+  );
+}
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+function mapPrestaShopOrderError(error: string | null): string {
   if (!error) {
 
     return "La commande n'a pas pu être enregistrée. Vérifiez la configuration (transporteur, devise, permissions Webservice).";
@@ -340,23 +352,27 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
   const promoDiscount =
     promoValidation?.valid === true ? promoValidation.discount : 0;
 
-  const result = await prestashop.createOrder({
-
-    customerId,
-
-    secureKey,
-
-    contact,
-
-    address,
-
-    lines: resolvedLines,
-
-    note,
-
-    shippingFee: shipping.fee,
-
-  });
+  const result = await (async () => {
+    let lastError: string | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const orderResult = await prestashop.createOrder({
+        customerId,
+        secureKey,
+        contact,
+        address,
+        lines: resolvedLines,
+        note,
+        shippingFee: shipping.fee,
+      });
+      if (orderResult.reference) return orderResult;
+      lastError = orderResult.error;
+      if (!isTransientPrestaShopDbError(orderResult.error) || attempt === 2) {
+        break;
+      }
+      await sleep(1200 * (attempt + 1));
+    }
+    return { reference: undefined, orderId: null, error: lastError };
+  })();
 
 
 

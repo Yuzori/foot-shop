@@ -6,11 +6,8 @@ import { useEffect, useRef, useState } from "react";
 
 import { LeagueIcon } from "@/components/layout/league-icon";
 import {
-  buildCatalogHref,
-  buildAudienceCatalogHref,
-  catalogAudiences,
+  buildJerseyLeagueHref,
   catalogLeagues,
-  type CatalogKind,
   type CatalogNavCategories,
 } from "@/config/catalog-leagues";
 import { cn } from "@/lib/utils";
@@ -18,7 +15,6 @@ import { cn } from "@/lib/utils";
 import type { Category } from "@/types/domain";
 
 interface CatalogNavDropdownProps {
-  kind: CatalogKind;
   label: string;
   categories: CatalogNavCategories;
   allCategories?: Category[];
@@ -40,8 +36,8 @@ const listMotion = {
   transition: { duration: 0.24, ease: [0.16, 1, 0.3, 1] },
 } as const;
 
+/** Menu déroulant maillots — divisions directement (adulte uniquement). */
 export function CatalogNavDropdown({
-  kind,
   label,
   categories,
   allCategories = [],
@@ -49,9 +45,6 @@ export function CatalogNavDropdown({
   theme = "light",
 }: CatalogNavDropdownProps) {
   const [open, setOpen] = useState(false);
-  const [audience, setAudience] = useState<(typeof catalogAudiences)[number] | null>(
-    null,
-  );
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -59,7 +52,6 @@ export function CatalogNavDropdown({
     function onPointerDown(e: MouseEvent) {
       if (!ref.current?.contains(e.target as Node)) {
         setOpen(false);
-        setAudience(null);
       }
     }
     document.addEventListener("mousedown", onPointerDown);
@@ -68,17 +60,13 @@ export function CatalogNavDropdown({
 
   function close() {
     setOpen(false);
-    setAudience(null);
   }
 
   return (
     <div ref={ref} className="relative">
       <button
         type="button"
-        onClick={() => {
-          setOpen((v) => !v);
-          setAudience(null);
-        }}
+        onClick={() => setOpen((v) => !v)}
         className={cn(
           theme === "dark"
             ? "header-paint-nav-link"
@@ -112,118 +100,41 @@ export function CatalogNavDropdown({
             className="absolute left-1/2 top-full z-50 mt-3 w-[min(92vw,22rem)] -translate-x-1/2 overflow-hidden rounded-2xl border border-ink/[0.06] bg-paper/95 shadow-panel backdrop-blur-xl"
           >
             <div className="p-3">
-              <AnimatePresence mode="wait" initial={false}>
-                {!audience ? (
-                  <motion.div
-                    key="audience"
-                    {...listMotion}
-                    className="grid grid-cols-2 gap-2"
-                  >
-                    {catalogAudiences.map((item, index) => (
-                      kind === "short" ? (
-                        <motion.div
-                          key={item.id}
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{
-                            delay: index * 0.05,
-                            duration: 0.22,
-                            ease: [0.16, 1, 0.3, 1],
-                          }}
-                        >
-                          <Link
-                            href={buildAudienceCatalogHref(kind, item.id, categories)}
-                            onClick={close}
-                            className="group relative block overflow-hidden rounded-xl border border-ink/[0.08] px-4 py-3.5 text-left transition-all hover:border-accent/40 hover:bg-accent-muted"
-                          >
-                            <span className="relative z-10 text-sm font-semibold">
-                              {item.label}
-                            </span>
-                            <span
-                              className="pointer-events-none absolute inset-0 bg-gradient-to-br from-accent/0 to-accent/10 opacity-0 transition-opacity group-hover:opacity-100"
-                              aria-hidden
-                            />
-                          </Link>
-                        </motion.div>
-                      ) : (
-                      <motion.button
-                        key={item.id}
-                        type="button"
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{
-                          delay: index * 0.05,
-                          duration: 0.22,
-                          ease: [0.16, 1, 0.3, 1],
-                        }}
-                        onClick={() => setAudience(item)}
-                        className="group relative overflow-hidden rounded-xl border border-ink/[0.08] px-4 py-3.5 text-left transition-all hover:border-accent/40 hover:bg-accent-muted"
-                      >
-                        <span className="relative z-10 text-sm font-semibold">
-                          {item.label}
-                        </span>
-                        <span
-                          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-accent/0 to-accent/10 opacity-0 transition-opacity group-hover:opacity-100"
-                          aria-hidden
-                        />
-                      </motion.button>
-                      )
-                    ))}
-                  </motion.div>
-                ) : (
-                  <motion.div key="leagues" {...listMotion}>
-                    <button
-                      type="button"
-                      onClick={() => setAudience(null)}
-                      className="mb-2 inline-flex items-center gap-1 text-xs font-medium text-ink/45 transition-colors hover:text-ink"
+              <motion.div key="leagues" {...listMotion}>
+                <ul className="max-h-72 space-y-1 overflow-y-auto">
+                  {catalogLeagues.map((league, index) => (
+                    <motion.li
+                      key={league.id}
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{
+                        delay: index * 0.035,
+                        duration: 0.2,
+                        ease: [0.16, 1, 0.3, 1],
+                      }}
                     >
-                      <motion.span
-                        initial={{ x: 4 }}
-                        animate={{ x: 0 }}
-                        transition={{ duration: 0.2 }}
+                      <Link
+                        href={buildJerseyLeagueHref(
+                          league,
+                          categories,
+                          allCategories,
+                        )}
+                        onClick={close}
+                        className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors hover:bg-paper-soft"
                       >
-                        ←
-                      </motion.span>
-                      {label} · {audience.label}
-                    </button>
-                    <ul className="max-h-72 space-y-1 overflow-y-auto">
-                      {catalogLeagues.map((league, index) => (
-                        <motion.li
-                          key={league.id}
-                          initial={{ opacity: 0, x: 10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{
-                            delay: index * 0.035,
-                            duration: 0.2,
-                            ease: [0.16, 1, 0.3, 1],
-                          }}
-                        >
-                          <Link
-                            href={buildCatalogHref(
-                              kind,
-                              audience.id,
-                              league,
-                              categories,
-                              allCategories,
-                            )}
-                            onClick={close}
-                            className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors hover:bg-paper-soft"
-                          >
-                            <LeagueIcon
-                              src={league.icon}
-                              label={league.label}
-                              useInitials={league.useInitials}
-                            />
-                            <span className="font-medium transition-transform group-hover:translate-x-0.5">
-                              {league.label}
-                            </span>
-                          </Link>
-                        </motion.li>
-                      ))}
-                    </ul>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                        <LeagueIcon
+                          src={league.icon}
+                          label={league.label}
+                          useInitials={league.useInitials}
+                        />
+                        <span className="font-medium transition-transform group-hover:translate-x-0.5">
+                          {league.label}
+                        </span>
+                      </Link>
+                    </motion.li>
+                  ))}
+                </ul>
+              </motion.div>
             </div>
           </motion.div>
         ) : null}

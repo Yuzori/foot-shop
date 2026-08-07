@@ -84,10 +84,10 @@ export function CategoryDetailView({ id }: { id: string }) {
     forcedKind ??
     (category
       ? category.id === catalogNav.shorts.categoryId ||
-          category.id === catalogNav.kidsShorts.categoryId
+          category.id === catalogNav.categories.kidsShortsCategoryId
         ? "short"
         : category.id === catalogNav.maillots.categoryId ||
-            category.id === catalogNav.kidsMaillots.categoryId
+            category.id === catalogNav.categories.kidsMaillotsCategoryId
           ? "jersey"
           : collectionKindFromCategory(
               category.name,
@@ -101,13 +101,9 @@ export function CategoryDetailView({ id }: { id: string }) {
 
   const baseProducts = useMemo(() => {
     let list = applyKindFilter(rawProducts, collectionKind);
-    if (audience === "kids") {
-      list = filterProductsByAudience(list, "kids");
-    } else if (audience === "adult") {
-      list = filterProductsByAudience(list, "adult");
-    }
+    list = filterProductsByAudience(list, "adult");
     return list;
-  }, [audience, collectionKind, rawProducts]);
+  }, [collectionKind, rawProducts]);
 
   const products = useMemo(
     () => filterProductsByCountry(baseProducts, countryFilter),
@@ -123,10 +119,10 @@ export function CategoryDetailView({ id }: { id: string }) {
     if (divisionLabel) return divisionLabel;
 
     if (collectionKind === "short") {
-      return audience === "kids" ? "Shorts · Enfant" : "Shorts";
+      return "Shorts";
     }
     if (collectionKind === "jersey") {
-      return audience === "kids" ? "Maillots · Enfant" : "Maillots";
+      return "Maillots";
     }
     return category?.name ?? "";
   }, [
@@ -177,13 +173,14 @@ export function CategoryDetailView({ id }: { id: string }) {
       <Reveal>
         <header className="mb-6 max-w-2xl sm:mb-10 lg:mb-12">
         <Link
-          href={routes.catalogHub({
-            kind: collectionKind ?? undefined,
-            audience: audience ?? undefined,
-          })}
+          href={
+            collectionKind === "short"
+              ? catalogNav.shorts.href
+              : routes.catalogHub({ kind: "jersey" })
+          }
           className="mb-4 inline-flex items-center gap-1 text-xs font-medium text-ink/45 transition-colors hover:text-ink sm:mb-6"
         >
-          ← Changer de division
+          ← {collectionKind === "short" ? "Retour aux shorts" : "Changer de division"}
         </Link>
         <p className="eyebrow mb-2 sm:mb-3">Collection</p>
         <h1 className="display-2 text-[clamp(1.65rem,5.5vw,4rem)] leading-[1]">
@@ -200,11 +197,12 @@ export function CategoryDetailView({ id }: { id: string }) {
           title={emptyTitle}
           description="Les produits correspondants apparaîtront ici dès publication."
           action={{
-            label: "Changer de division",
-            href: routes.catalogHub({
-              kind: collectionKind ?? undefined,
-              audience: audience ?? undefined,
-            }),
+            label:
+              collectionKind === "short" ? "Voir les shorts" : "Changer de division",
+            href:
+              collectionKind === "short"
+                ? catalogNav.shorts.href
+                : routes.catalogHub({ kind: "jersey" }),
           }}
         />
       ) : (
