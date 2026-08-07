@@ -1,20 +1,17 @@
 import "server-only";
 
 import { paymentConfig } from "@/config/payment";
+import { firstOrderThankYouPromo } from "@/config/promotions";
 import { countPaidOrdersByCustomer } from "@/lib/customer-order-history";
 import {
   getOrderArchiveByReference,
   markOrderArchivePaid,
   markOrderArchiveStockReserved,
 } from "@/lib/order-archive-store";
-import { sendFirstOrderThankYouEmail } from "@/lib/first-order-thank-you-email";
 import { sendOrderConfirmationEmail } from "@/lib/order-confirmation-email";
 import { sendShippingPendingEmail } from "@/lib/shipping-pending-email";
 import { notifySupplierOfOrder } from "@/lib/supplier-order";
-import {
-  hasOrderBeenFulfilled,
-  markOrderFulfilled,
-} from "@/lib/order-fulfillment-store";
+import { claimOrderFulfillment } from "@/lib/order-fulfillment-store";
 import { prestashop } from "@/services/prestashop";
 
 /** Marque une commande payée, envoie l'email client et notifie le fournisseur. */
@@ -25,7 +22,7 @@ export async function fulfillPaidOrder(
   const key = orderId.trim();
   if (!key) return;
 
-  if (await hasOrderBeenFulfilled(key)) return;
+  if (!(await claimOrderFulfillment(key))) return;
 
   const order = await prestashop.getOrderById(key);
   if (!order) {
@@ -55,7 +52,8 @@ export async function fulfillPaidOrder(
   }
 
   const email =
-    customerEmail?.trim() || (await prestashop.getCustomerEmailByOrderId(key));
+    customerEmail?.trim() || archive?.contact.email?.trim() ||
+    (await prestashop.getCustomerEmailByOrderId(key));
 
   const paidAt = new Date().toISOString();
   await markOrderArchivePaid(order.reference, paidAt).catch((err) => {
@@ -73,9 +71,21 @@ export async function fulfillPaidOrder(
     isFirstPaidOrder = true;
   }
 
+  const firstName = archive?.contact.firstName;
+
   await Promise.all([
     email
-      ? sendOrderConfirmationEmail({ to: email, order }).catch((err) => {
+      ? sendOrderConfirmationEmail({
+          to: email,
+          order,
+          firstName,
+          firstOrderPromo: isFirstPaidOrder
+            ? {
+                code: firstOrderThankYouPromo.code,
+                percent: firstOrderThankYouPromo.percent,
+              }
+            : undefined,
+        }).catch((err) => {
           console.error("[order-paid] confirmation email failed", key, err);
         })
       : Promise.resolve(),
@@ -87,18 +97,8 @@ export async function fulfillPaidOrder(
           console.error("[order-paid] shipping pending email failed", key, err);
         })
       : Promise.resolve(),
-    email && isFirstPaidOrder
-      ? sendFirstOrderThankYouEmail({
-          to: email,
-          reference: order.reference,
-        }).catch((err) => {
-          console.error("[order-paid] thank-you email failed", key, err);
-        })
-      : Promise.resolve(),
     notifySupplierOfOrder(order, key).catch((err) => {
       console.error("[order-paid] supplier notify failed", key, err);
     }),
   ]);
-
-  await markOrderFulfilled(key);
 }

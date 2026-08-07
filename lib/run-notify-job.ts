@@ -15,7 +15,7 @@ import {
 import { readGuestNewsletterEmails } from "@/lib/newsletter-subscribers";
 import { sendMail } from "@/lib/mailer";
 import { getSiteUrl, productPageUrl } from "@/lib/site-url";
-import { readSnapshot, writeSnapshot, isSnapshotBootstrapped, withNotifyJobLock, type ProductSnapshot } from "@/lib/notify-state";
+import { readSnapshot, writeSnapshot, isSnapshotBootstrapped, withNotifyJobLock, enqueuePopupProducts, type ProductSnapshot } from "@/lib/notify-state";
 import { processStockAlertEmails } from "@/lib/stock-alerts";
 import { filterProductsByKind } from "@/lib/product-collection";
 import { prestashop } from "@/services/prestashop";
@@ -72,7 +72,16 @@ async function runNotifyJobInner() {
     updatedAt: new Date().toISOString(),
     lastEmailRunAt: previous.lastEmailRunAt ?? null,
     lastStockCheckAt: previous.lastStockCheckAt ?? null,
+    popupQueue: previous.popupQueue ?? [],
   };
+
+  if (!isBootstrap && newArrivals.length > 0) {
+    await enqueuePopupProducts(newArrivals.map((p) => p.id));
+    snapshot.popupQueue = [
+      ...new Set([...(snapshot.popupQueue ?? []), ...newArrivals.map((p) => p.id)]),
+    ];
+  }
+
   await writeSnapshot(snapshot);
 
   const stockSent = await processStockAlertEmails();

@@ -314,6 +314,14 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
 
 
 
+  const normalizedAddress = {
+    address1: address.address1.trim(),
+    address2: address.address2?.trim() || undefined,
+    postcode: address.postcode.trim(),
+    city: address.city.trim(),
+    country: address.country?.trim() || "France",
+  };
+
   const note = buildOrderNote(resolvedLines);
 
   const itemCount = resolvedLines.reduce((sum, line) => sum + line.quantity, 0);
@@ -359,7 +367,7 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
         customerId,
         secureKey,
         contact,
-        address,
+        address: normalizedAddress,
         lines: resolvedLines,
         note,
         shippingFee: shipping.fee,
@@ -408,7 +416,7 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
     paidAt: null,
     status: "created",
     contact,
-    address,
+    address: normalizedAddress,
     lines: resolvedLines,
     subtotal,
     shippingFee: shipping.fee,

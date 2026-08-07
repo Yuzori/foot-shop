@@ -17,10 +17,13 @@ import type { Order } from "@/types/domain";
 export async function sendOrderConfirmationEmail(input: {
   to: string;
   order: Order;
+  firstName?: string;
+  firstOrderPromo?: { code: string; percent: number };
 }): Promise<void> {
-  const { to, order } = input;
+  const { to, order, firstName, firstOrderPromo } = input;
   const base = getSiteUrl();
   const trackingUrl = `${base}${routes.tracking}?ref=${encodeURIComponent(order.reference)}`;
+  const greeting = firstName?.trim() ? `Bonjour ${escapeHtml(firstName)},` : "Bonjour,";
 
   const linesHtml = order.lines
     .map(
@@ -32,8 +35,17 @@ export async function sendOrderConfirmationEmail(input: {
     )
     .join("");
 
+  const promoBlock = firstOrderPromo
+    ? `
+    ${emailParagraph(`Pour vous remercier, profitez de <strong>${firstOrderPromo.percent} %</strong> sur votre prochaine commande avec le code ci-dessous :`)}
+    <p style="margin:16px 0;padding:14px 18px;border-radius:12px;background:#f0f9ff;border:1px dashed #66BAFF;font-size:17px;font-weight:700;letter-spacing:0.12em;text-align:center;color:#0a0a0a">${escapeHtml(firstOrderPromo.code)}</p>
+    ${emailParagraph("Saisissez ce code au paiement lors de votre prochain achat.")}
+  `
+    : "";
+
   const body = `
-    ${emailHeading("Commande confirmée")}
+    ${emailHeading(firstOrderPromo ? "Merci pour votre commande" : "Commande confirmée")}
+    ${emailParagraph(`${greeting}`)}
     ${emailParagraph(`Merci pour votre achat sur ${publicConfig.siteName}. Votre paiement a bien été reçu.`)}
     ${emailParagraph(`<strong>Référence :</strong> ${escapeHtml(order.reference)}`)}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0">
@@ -51,13 +63,18 @@ export async function sendOrderConfirmationEmail(input: {
         </tr>
       </tbody>
     </table>
+    ${promoBlock}
     ${emailButton(trackingUrl, "Suivre ma commande")}
-    ${emailParagraph("Votre colis est en cours de préparation. Vous recevrez sous 24 h un email dédié au suivi, puis un second message avec le numéro de suivi dès l'expédition.")}
+    ${emailParagraph("Vous recevrez sous 24 h un email dédié au suivi de préparation, puis le numéro de suivi dès l'expédition.")}
     ${emailParagraph("Conservez cette référence pour suivre l'avancement de votre commande.")}
   `;
 
+  const subject = firstOrderPromo
+    ? `Merci pour votre commande — ${order.reference}`
+    : `Commande confirmée — ${order.reference}`;
+
   const text = [
-    `Commande confirmée — ${order.reference}`,
+    subject,
     "",
     "Articles :",
     ...order.lines.map(
@@ -66,15 +83,18 @@ export async function sendOrderConfirmationEmail(input: {
     ),
     "",
     `Total : ${formatPrice(order.total, order.currency)}`,
+    firstOrderPromo
+      ? `Code promo prochaine commande : ${firstOrderPromo.code} (${firstOrderPromo.percent} %)`
+      : "",
     "",
     `Suivre la commande : ${trackingUrl}`,
-    "",
-    "Votre colis est en cours de préparation. Un email de suivi vous sera envoyé sous 24 h, puis le numéro de suivi dès l'expédition.",
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   const result = await sendMail({
     to,
-    subject: `Commande confirmée — ${order.reference}`,
+    subject,
     html: emailLayout(body),
     text,
   });

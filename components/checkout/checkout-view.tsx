@@ -623,26 +623,10 @@ export function CheckoutView() {
   }
 
   async function handlePaymentSuccess(checkoutSessionId: string) {
-    setConfirmingPayment(true);
-    setError(null);
-    try {
-      await api.confirmStripePayment(checkoutSessionId);
-    } catch (err) {
-      setError(
-        getErrorMessage(err) ||
-          "Paiement reçu mais la commande n'a pas pu être finalisée. Contactez le support avec votre référence.",
-      );
-      setConfirmingPayment(false);
-      return;
-    }
-
     useCartStore.getState().unlockCheckout();
     clear();
     clearCheckoutSession();
     clearCheckoutCartSnapshot();
-    void qc.invalidateQueries({ queryKey: ["session"] });
-    void qc.invalidateQueries({ queryKey: ["my-orders"] });
-    void welcomePromoQuery.refetch();
     const ref = orderReference ?? "";
     const params = new URLSearchParams();
     if (ref) params.set("ref", ref);

@@ -58,13 +58,5 @@ export async function POST(request: Request) {
     }
   }
 
-  if (event.type === "payment_intent.succeeded") {
-    const intent = event.data.object as Stripe.PaymentIntent;
-    const orderId = intent.metadata?.orderId;
-    if (orderId) {
-      await fulfillPaidOrder(orderId, intent.metadata?.customerEmail);
-    }
-  }
-
   return NextResponse.json({ received: true });
 }

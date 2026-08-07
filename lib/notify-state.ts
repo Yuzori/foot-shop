@@ -15,6 +15,8 @@ export interface ProductSnapshot {
   lastEmailRunAt: string | null;
   /** Dernière vérification des alertes stock (cloche). */
   lastStockCheckAt: string | null;
+  /** Produits en attente d'affichage dans la modale site (survit au snapshot). */
+  popupQueue?: string[];
 }
 
 const DATA_DIR = path.join(process.cwd(), ".data");
@@ -27,6 +29,7 @@ const EMPTY_SNAPSHOT: ProductSnapshot = {
   updatedAt: null,
   lastEmailRunAt: null,
   lastStockCheckAt: null,
+  popupQueue: [],
 };
 
 export function isSnapshotBootstrapped(snapshot: ProductSnapshot): boolean {
@@ -54,6 +57,7 @@ export async function readSnapshot(): Promise<ProductSnapshot> {
       updatedAt: data.updatedAt ?? null,
       lastEmailRunAt: data.lastEmailRunAt ?? null,
       lastStockCheckAt: data.lastStockCheckAt ?? null,
+      popupQueue: Array.isArray(data.popupQueue) ? data.popupQueue : [],
     };
   } catch {
     return { ...EMPTY_SNAPSHOT };
@@ -63,6 +67,22 @@ export async function readSnapshot(): Promise<ProductSnapshot> {
 export async function writeSnapshot(snapshot: ProductSnapshot): Promise<void> {
   await fs.mkdir(DATA_DIR, { recursive: true });
   await fs.writeFile(FILE, JSON.stringify(snapshot, null, 2), "utf8");
+}
+
+export async function enqueuePopupProducts(productIds: string[]): Promise<void> {
+  const ids = [...new Set(productIds.map((id) => id.trim()).filter(Boolean))];
+  if (ids.length === 0) return;
+  const snapshot = await readSnapshot();
+  const queue = new Set([...(snapshot.popupQueue ?? []), ...ids]);
+  await writeSnapshot({ ...snapshot, popupQueue: [...queue] });
+}
+
+export async function dequeuePopupProducts(productIds: string[]): Promise<void> {
+  const remove = new Set(productIds.map((id) => id.trim()).filter(Boolean));
+  if (remove.size === 0) return;
+  const snapshot = await readSnapshot();
+  const queue = (snapshot.popupQueue ?? []).filter((id) => !remove.has(id));
+  await writeSnapshot({ ...snapshot, popupQueue: queue });
 }
 
 /** Verrou simple anti double exécution (PM2 cluster / requêtes parallèles). */
