@@ -52,6 +52,8 @@ function normalizeCartLine(line: CartLine): CartLine {
 function normalizeCartLines(lines: CartLine[]): CartLine[] {
   return lines.map(normalizeCartLine);
 }
+
+function lineTotal(line: CartLine): number {
   const flocageUnit = line.flocage?.enabled ? line.flocage.price : 0;
   return (line.unitPrice + flocageUnit) * line.quantity;
 }
