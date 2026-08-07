@@ -132,14 +132,15 @@ export function HeaderPaint() {
             <IconButton label="Recherche" onClick={openSearch}>
               <SearchIcon />
             </IconButton>
-            <IconButton label="Favoris" onClick={openFavorites} badge={hydrated ? favCount : 0}>
-              <HeartIcon />
-            </IconButton>
             <IconButton
-              label="Compte"
-              onClick={openAccount}
+              label="Favoris"
+              onClick={openFavorites}
+              badge={hydrated ? favCount : 0}
               className="hidden sm:flex"
             >
+              <HeartIcon />
+            </IconButton>
+            <IconButton label="Compte" onClick={openAccount}>
               <UserIcon />
             </IconButton>
             <IconButton

@@ -3,11 +3,12 @@
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 import { LeagueIcon } from "@/components/layout/league-icon";
 import { Container } from "@/components/ui/container";
 import {
+  buildAudienceCatalogHref,
   buildCatalogHref,
   catalogLeagues,
   type CatalogAudience,
@@ -100,10 +101,19 @@ export function CatalogHub() {
   const step = useMemo(() => {
     if (!kind) return "kind" as const;
     if (!audience) return "audience" as const;
+    if (kind === "short") return "redirecting" as const;
     return "divisions" as const;
   }, [audience, kind]);
 
   const kindLabel = kind === "jersey" ? "Maillots" : kind === "short" ? "Shorts" : "";
+
+  useEffect(() => {
+    if (kind !== "short" || !audience) return;
+    const href = buildAudienceCatalogHref(kind, audience, catalogNav.categories);
+    if (!href.includes("/categories?")) {
+      router.replace(href);
+    }
+  }, [audience, catalogNav.categories, kind, router]);
 
   function goKind(next: CatalogKind) {
     router.push(routes.catalogHub({ kind: next }));
@@ -111,13 +121,17 @@ export function CatalogHub() {
 
   function goAudience(next: CatalogAudience) {
     if (!kind) return;
+    if (kind === "short") {
+      router.push(buildAudienceCatalogHref(kind, next, catalogNav.categories));
+      return;
+    }
     router.push(routes.catalogHub({ kind, audience: next }));
   }
 
   return (
     <Container className="py-10 lg:py-16">
       <div className="mx-auto max-w-2xl">
-        <StepProgress current={step} />
+        <StepProgress current={step === "redirecting" ? "audience" : step} />
 
         <AnimatePresence mode="wait">
           {step === "kind" ? (
@@ -177,7 +191,9 @@ export function CatalogHub() {
               <p className="eyebrow text-accent">Étape 2 · {kindLabel}</p>
               <h1 className="display-2 mt-3">Adulte ou enfant ?</h1>
               <p className="mx-auto mt-3 max-w-md text-sm text-ink/55">
-                Choisissez une taille pour afficher les divisions.
+                {kind === "short"
+                  ? "Choisissez une taille pour voir tous les shorts."
+                  : "Choisissez une taille pour afficher les divisions."}
               </p>
 
               <div className="mx-auto mt-8 max-w-sm rounded-2xl border border-ink/10 bg-paper-soft p-1.5">
@@ -204,6 +220,17 @@ export function CatalogHub() {
                   </button>
                 </div>
               </div>
+            </motion.div>
+          ) : null}
+
+          {step === "redirecting" ? (
+            <motion.div
+              key="redirecting"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="py-16 text-center text-sm text-ink/50"
+            >
+              Chargement des shorts…
             </motion.div>
           ) : null}
 

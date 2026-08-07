@@ -16,8 +16,8 @@ export const drawerPanelMotion = {
 };
 
 export const searchPanelMotion = {
-  initial: { y: -16, opacity: 0 },
-  animate: { y: 0, opacity: 1 },
-  exit: { y: -12, opacity: 0 },
-  transition: { type: "tween" as const, duration: 0.34, ease: SMOOTH_EASE },
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0 },
+  transition: { type: "tween" as const, duration: 0.22, ease: SMOOTH_EASE },
 };

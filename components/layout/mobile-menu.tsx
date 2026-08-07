@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 
 import { LeagueIcon } from "@/components/layout/league-icon";
 import {
+  buildAudienceCatalogHref,
   buildCatalogHref,
   catalogAudiences,
   catalogLeagues,
@@ -198,37 +199,58 @@ function MobileCatalogGroup({
             className="overflow-hidden"
           >
             <div className="space-y-4 pb-4 pl-1">
-              {catalogAudiences.map((audience) => (
-                <div key={audience.id}>
-                  <p className="text-xs font-bold uppercase tracking-widest text-ink/40">
-                    {audience.label}
-                  </p>
-                  <ul className="mt-2 space-y-2">
-                    {catalogLeagues.map((league) => (
-                      <li key={`${audience.id}-${league.id}`}>
-                        <Link
-                          href={buildCatalogHref(
-                            kind,
-                            audience.id,
-                            league,
-                            categories,
-                            allCategories,
-                          )}
-                          onClick={onClose}
-                          className="flex items-center gap-2 text-sm text-ink/75"
-                        >
-                          <LeagueIcon
-                            src={league.icon}
-                            label={league.label}
-                            useInitials={league.useInitials}
-                          />
-                          {league.label}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
+              {kind === "short" ? (
+                <ul className="space-y-2">
+                  {catalogAudiences.map((audience) => (
+                    <li key={audience.id}>
+                      <Link
+                        href={buildAudienceCatalogHref(
+                          kind,
+                          audience.id,
+                          categories,
+                        )}
+                        onClick={onClose}
+                        className="flex items-center justify-between rounded-xl border border-ink/10 px-4 py-3 text-sm font-medium text-ink/80 transition-colors hover:border-ink/20 hover:bg-paper-soft"
+                      >
+                        {audience.label}
+                        <span className="text-xs text-ink/40">Tous les shorts</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                catalogAudiences.map((audience) => (
+                  <div key={audience.id}>
+                    <p className="text-xs font-bold uppercase tracking-widest text-ink/40">
+                      {audience.label}
+                    </p>
+                    <ul className="mt-2 space-y-2">
+                      {catalogLeagues.map((league) => (
+                        <li key={`${audience.id}-${league.id}`}>
+                          <Link
+                            href={buildCatalogHref(
+                              kind,
+                              audience.id,
+                              league,
+                              categories,
+                              allCategories,
+                            )}
+                            onClick={onClose}
+                            className="flex items-center gap-2 text-sm text-ink/75"
+                          >
+                            <LeagueIcon
+                              src={league.icon}
+                              label={league.label}
+                              useInitials={league.useInitials}
+                            />
+                            {league.label}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))
+              )}
             </div>
           </motion.div>
         ) : null}
