@@ -21,9 +21,9 @@ const HEART_CY = 12.2;
 const CX = 25;
 const CY = 6.5;
 /** Trou du compteur — bas-droite du cœur (coords locales 24×24). */
-const BADGE_X = 17.8;
-const BADGE_Y = 18.4;
-const BADGE_R = 6.2;
+const BADGE_X = 17.6;
+const BADGE_Y = 18.6;
+const BADGE_R = 7.8;
 
 /** Les barres se raccourcissent en escalier pour loger le cœur. */
 const BAR_FULL = [20, 20, 20];
@@ -40,9 +40,9 @@ function withAlpha(color: string, alpha: number): string {
 }
 
 function fontSizeFor(label: string): number {
-  if (label.length >= 3) return 6.2;
-  if (label.length === 2) return 7.8;
-  return 9.5;
+  if (label.length >= 3) return 7.8;
+  if (label.length === 2) return 10;
+  return 12.5;
 }
 
 interface MobileMenuIconProps {
@@ -99,7 +99,7 @@ export function MobileMenuIcon({
             style={{ transformOrigin: `${CX}px ${CY}px` }}
           >
             <g
-              transform={`translate(${CX} ${CY}) rotate(45) scale(0.83) translate(${-HEART_CX} ${-HEART_CY})`}
+              transform={`translate(${CX} ${CY}) rotate(45) scale(0.9) translate(${-HEART_CX} ${-HEART_CY})`}
             >
               <defs>
                 <mask id={maskId}>
