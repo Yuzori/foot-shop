@@ -62,7 +62,7 @@ export function HeaderPaint() {
             aria-label="Ouvrir le menu"
           >
             <MenuIcon />
-            <MenuFavoriteBadge ringClassName="ring-[#050505]" />
+            <MenuFavoriteBadge ringColor="#050505" />
           </button>
 
           <Link
