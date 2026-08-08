@@ -21,7 +21,6 @@ interface MobileMenuIconProps {
 
 /**
  * Icône menu unique : barres à gauche + cœur favoris intégré en haut à droite.
- * Évite les calques mal alignés.
  */
 export function MobileMenuIcon({
   ringColor = "#ffffff",
@@ -39,22 +38,22 @@ export function MobileMenuIcon({
 
   return (
     <motion.svg
-      width="22"
-      height="22"
-      viewBox="0 0 26 24"
+      width="28"
+      height="28"
+      viewBox="0 0 36 28"
       className={cn("block shrink-0", className)}
       aria-hidden
     >
       <path
-        d="M2 6h14M2 12h14M2 18h14"
+        d="M2 6h15M2 14h15M2 22h15"
         fill="none"
         stroke="currentColor"
-        strokeWidth="1.6"
+        strokeWidth="1.7"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
 
-      <g transform="translate(20 5.5) rotate(45) scale(0.36) translate(-12 -12)">
+      <g transform="translate(26 7.5) rotate(45) scale(0.58) translate(-12 -12)">
         <motion.path
           d={HEART}
           animate={{ fill: accent }}
@@ -63,19 +62,19 @@ export function MobileMenuIcon({
         <circle
           cx="12"
           cy="12"
-          r="4.8"
+          r="5.2"
           fill="#0a0a0a"
           stroke={ringColor}
-          strokeWidth="1.5"
+          strokeWidth="1.6"
         />
         <motion.text
           key={label}
           x="12"
-          y="12.4"
+          y="12.5"
           textAnchor="middle"
           dominantBaseline="middle"
           fill="#ffffff"
-          fontSize={label.length > 1 ? "5.2" : "6.2"}
+          fontSize={label.length > 1 ? "6.5" : "7.8"}
           fontWeight="700"
           fontFamily="system-ui, sans-serif"
           transform="rotate(-45 12 12)"
