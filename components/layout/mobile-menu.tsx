@@ -12,13 +12,16 @@ import {
   catalogLeagues,
   type CatalogNavCategories,
 } from "@/config/catalog-leagues";
-import { CloseIcon, TrophyIcon } from "@/components/layout/icons";
+import { CloseIcon, HeartIcon, TrophyIcon } from "@/components/layout/icons";
 import { primaryNav, routes } from "@/config/site";
 import { worldCupConfig } from "@/config/world-cup";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import { useCatalogNav } from "@/hooks/use-catalog-nav";
+import { useHydrated } from "@/hooks/use-hydrated";
 import { drawerPanelMotion, overlayMotion } from "@/lib/motion";
 import { cn } from "@/lib/utils";
+import { useFavoritesStore } from "@/store/favorites-store";
+import { useUIStore } from "@/store/ui-store";
 import { useWorldCupNavStore } from "@/store/world-cup-nav-store";
 
 interface MobileMenuProps {
@@ -29,13 +32,15 @@ interface MobileMenuProps {
 const accountLinks = [
   { label: "Connexion", href: routes.login },
   { label: "Mon compte", href: routes.account },
-  { label: "Mes favoris", href: routes.favorites },
   { label: "Suivi de commande", href: routes.tracking },
 ];
 
 export function MobileMenu({ open, onClose }: MobileMenuProps) {
   const catalogNav = useCatalogNav();
+  const hydrated = useHydrated();
   const pathname = usePathname();
+  const favCount = useFavoritesStore((s) => s.ids.length);
+  const openFavorites = useUIStore((s) => s.openFavorites);
   const worldCupProductActive = useWorldCupNavStore((s) => s.productActive);
   const worldCupActive =
     pathname.includes(`/categories/${worldCupConfig.categoryId}`) ||
@@ -106,6 +111,44 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
                   <span className="relative">{worldCupConfig.label}</span>
                 </Link>
                 ) : null}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    openFavorites();
+                    onClose();
+                  }}
+                  className={cn(
+                    "mb-4 flex w-full items-center gap-3 rounded-2xl border px-4 py-4 text-left transition-all",
+                    favCount > 0
+                      ? "border-accent/35 bg-accent-muted/80 shadow-sm hover:border-accent/50"
+                      : "border-ink/10 bg-paper-soft hover:border-ink/20",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
+                      favCount > 0 ? "bg-accent text-ink" : "bg-paper text-ink/45",
+                    )}
+                  >
+                    <HeartIcon className="h-5 w-5" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-base font-semibold tracking-tight">
+                      Mes favoris
+                    </span>
+                    <span className="mt-0.5 block text-xs text-ink/55">
+                      {hydrated && favCount > 0
+                        ? `${favCount} article${favCount > 1 ? "s" : ""} enregistré${favCount > 1 ? "s" : ""}`
+                        : "Retrouvez les maillots que vous aimez"}
+                    </span>
+                  </span>
+                  {hydrated && favCount > 0 ? (
+                    <span className="flex h-8 min-w-8 items-center justify-center rounded-full bg-ink px-2 text-xs font-bold text-paper">
+                      {favCount > 99 ? "99+" : favCount}
+                    </span>
+                  ) : null}
+                </button>
 
                 <MobileCatalogGroup
                   label={catalogNav.maillots.label}

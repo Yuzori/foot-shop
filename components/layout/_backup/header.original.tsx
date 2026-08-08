@@ -34,6 +34,7 @@ export function Header() {
   const setMenuOpen = useUIStore((s) => s.setMenuOpen);
   const cartCount = useCartStore(cartSelectors.count);
   const favCount = useFavoritesStore((s) => s.ids.length);
+  const hasNewFavorite = useFavoritesStore((s) => s.hasNewFavorite);
   const openCart = useUIStore((s) => s.openCart);
   const openFavorites = useUIStore((s) => s.openFavorites);
   const openAccount = useUIStore((s) => s.openAccount);
@@ -64,11 +65,18 @@ export function Header() {
       >
         <Container className="relative flex h-16 items-center lg:h-[4.5rem]">
           <button
-            className="lg:hidden"
+            type="button"
+            className="relative lg:hidden"
             onClick={() => setMenuOpen(true)}
             aria-label="Ouvrir le menu"
           >
             <MenuIcon />
+            {hydrated && hasNewFavorite ? (
+              <span
+                className="absolute right-0 top-0 h-2.5 w-2.5 rounded-full bg-accent shadow-[0_0_0_2px_var(--color-paper)]"
+                aria-hidden
+              />
+            ) : null}
           </button>
 
           <Link
@@ -140,7 +148,6 @@ export function Header() {
               label="Favoris"
               onClick={openFavorites}
               badge={hydrated ? favCount : 0}
-              className="hidden sm:flex"
             >
               <HeartIcon />
             </IconButton>
