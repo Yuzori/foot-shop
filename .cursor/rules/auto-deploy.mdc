@@ -7,9 +7,10 @@ alwaysApply: true
 
 Après **chaque modification de code** demandée par l'utilisateur :
 
-1. **Commit** sur `main` avec un message clair (pourquoi, pas seulement quoi).
-2. **Push** : `git push origin main`
-3. **OVH** : le workflow `.github/workflows/deploy-vps.yml` déploie au push sur `main` si les secrets GitHub sont configurés.
+1. Terminer la modification.
+2. **Commit** sur `main` avec un message clair (pourquoi, pas seulement quoi).
+3. **Push immédiatement** : `git push origin main` — **sans demander** à l'utilisateur s'il veut pousser.
+4. **OVH** : le workflow `.github/workflows/deploy-vps.yml` déploie au push sur `main` si les secrets GitHub sont configurés.
 
 Si le workflow GitHub échoue ou les secrets manquent, déployer manuellement :
 
