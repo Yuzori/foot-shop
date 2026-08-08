@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 
 import { CheckoutFlocage } from "@/components/checkout/checkout-flocage";
 import { CheckoutSteps } from "@/components/checkout/checkout-steps";
-import { OrderSummary, summarySubtotal } from "@/components/checkout/order-summary";
+import { OrderSummary, CheckoutMobileStickyBar, summarySubtotal } from "@/components/checkout/order-summary";
 import {
   shouldApplyWelcomePromo,
   useWelcomePromo,
@@ -128,6 +128,7 @@ export function CheckoutView() {
     label: string;
   } | null>(null);
   const paymentRestoredRef = useRef(false);
+  const detailsFormRef = useRef<HTMLFormElement>(null);
 
   useLayoutEffect(() => {
     const snapshot = resolveCartLinesForCheckout();
@@ -643,7 +644,7 @@ export function CheckoutView() {
   }
 
   return (
-    <Container className="py-12 lg:py-16">
+    <Container className="pb-36 pt-12 lg:pb-16 lg:pt-16">
       <PageHeader
         eyebrow="Commande"
         title="Paiement"
@@ -668,9 +669,34 @@ export function CheckoutView() {
         </div>
       ) : null}
 
-      <div className="grid gap-10 lg:grid-cols-[1fr_380px] lg:gap-12">
+      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[1fr_380px] lg:gap-12">
+        <div className="lg:hidden">
+        <OrderSummary
+          variant="mobile"
+          lines={lines}
+          freePerLine={freePerLine}
+          bogoCartLines={bogoCartLines}
+          subtotal={subtotal}
+          orderTotal={orderTotal}
+          welcomeBogoDiscount={bogoDiscount}
+          stripeBogoDiscount={stripeBogoDiscount}
+          stripeFreeUnits={stripeFreeUnits}
+          shippingFee={shippingPreview?.fee}
+          shippingLabel={shippingPreview?.label}
+          promoDiscount={promoDiscount}
+          promoCode={promoCode}
+          onPromoCodeChange={handlePromoCodeChange}
+          promoError={promoError}
+          promoPending={promoPending}
+        />
+        </div>
+
         {step === "details" ? (
-          <form onSubmit={handleDetailsSubmit} className="space-y-8">
+          <form
+            ref={detailsFormRef}
+            onSubmit={handleDetailsSubmit}
+            className="space-y-8"
+          >
             <WelcomePromoGuestNudge
               totalUnits={lines.reduce((sum, line) => sum + line.quantity, 0)}
             />
@@ -881,7 +907,7 @@ export function CheckoutView() {
               type="submit"
               size="lg"
               disabled={pending}
-              className="w-full bg-accent text-ink hover:bg-accent-dark hover:shadow-glow-sm sm:w-auto"
+              className="hidden w-full bg-accent text-ink hover:bg-accent-dark hover:shadow-glow-sm sm:inline-flex lg:w-auto"
             >
               {pending ? (
                 <span className="flex items-center gap-2">
@@ -898,8 +924,7 @@ export function CheckoutView() {
             <div>
               <h2 className="section-title">Paiement sécurisé</h2>
               <p className="mt-2 text-sm text-ink/55">
-                Saisissez vos coordonnées bancaires ci-dessous. Paiement traité
-                par Stripe.
+                Carte bancaire, Apple Pay, Google Pay ou PayPal — traité par Stripe.
               </p>
             </div>
 
@@ -941,11 +966,13 @@ export function CheckoutView() {
         )}
 
         <OrderSummary
+          variant="sidebar"
           lines={lines}
           freePerLine={freePerLine}
           bogoCartLines={bogoCartLines}
           subtotal={subtotal}
           orderTotal={orderTotal}
+          welcomeBogoDiscount={bogoDiscount}
           stripeBogoDiscount={stripeBogoDiscount}
           stripeFreeUnits={stripeFreeUnits}
           shippingFee={shippingPreview?.fee}
@@ -957,6 +984,13 @@ export function CheckoutView() {
           promoPending={promoPending}
         />
       </div>
+
+      <CheckoutMobileStickyBar
+        orderTotal={orderTotal}
+        step={step}
+        pending={pending}
+        onContinue={() => detailsFormRef.current?.requestSubmit()}
+      />
     </Container>
   );
 }
