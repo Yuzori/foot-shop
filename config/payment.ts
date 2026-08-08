@@ -25,4 +25,16 @@ export const paymentConfig = {
   get stripeEnabled(): boolean {
     return Boolean(this.stripeSecretKey);
   },
+  /**
+   * PayPal doit être activé dans le dashboard Stripe avant d'être proposé.
+   * https://dashboard.stripe.com/settings/payment_methods
+   * Définir STRIPE_PAYPAL_ENABLED=true une fois PayPal activé.
+   */
+  get stripePaypalEnabled(): boolean {
+    return process.env.STRIPE_PAYPAL_ENABLED === "true";
+  },
+  /** Types de paiement passés à Checkout Session (card inclut Apple/Google Pay). */
+  get stripePaymentMethodTypes(): ("card" | "paypal")[] {
+    return this.stripePaypalEnabled ? ["card", "paypal"] : ["card"];
+  },
 } as const;
