@@ -74,3 +74,12 @@ export function saveCheckoutProfileToStorage(
     /* quota / private mode */
   }
 }
+
+export function clearCheckoutProfileFromStorage(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(CHECKOUT_PROFILE_STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+}

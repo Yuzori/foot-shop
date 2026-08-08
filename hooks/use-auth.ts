@@ -5,6 +5,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 
 import { api, type LoginInput, type RegisterInput, type RegisterVerifyInput } from "@/lib/api";
+import { clearAccountLocalState } from "@/lib/clear-account-local-state";
+import {
+  isCheckoutProfileComplete,
+  loadCheckoutProfileFromStorage,
+} from "@/lib/checkout-profile";
 import { welcomePromo } from "@/config/promotions";
 import { usePreferencesSyncStore } from "@/store/preferences-sync-store";
 
@@ -15,9 +20,13 @@ async function saveAccountPreferences(): Promise<void> {
   try {
     const { useCartStore } = await import("@/store/cart-store");
     const { useFavoritesStore } = await import("@/store/favorites-store");
+    const checkoutProfile = loadCheckoutProfileFromStorage();
     await api.savePreferences({
       cart: useCartStore.getState().lines,
       favorites: useFavoritesStore.getState().ids,
+      ...(checkoutProfile && isCheckoutProfileComplete(checkoutProfile)
+        ? { checkoutProfile }
+        : {}),
     });
   } catch {
     /* non bloquant */
@@ -98,6 +107,7 @@ export function useLogout() {
     },
     onSettled: () => {
       qc.setQueryData(SESSION_KEY, null);
+      clearAccountLocalState();
       clearWelcomePromoCache(qc);
       qc.invalidateQueries({ queryKey: ["my-orders"] });
       qc.invalidateQueries({ queryKey: ["stock-alert-status"] });

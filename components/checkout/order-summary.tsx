@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 
 import { CartLinePricing } from "@/components/cart/cart-line-pricing";
 import { WelcomePromoCheckoutBanner } from "@/components/checkout/welcome-promo-banner";
@@ -148,7 +147,6 @@ export function OrderSummary({
   showEditCart = true,
   variant = "sidebar",
 }: OrderSummaryProps) {
-  const [expanded, setExpanded] = useState(false);
   const units = itemCount(lines);
   const bogoDiscount =
     stripeBogoDiscount > 0 ? stripeBogoDiscount : welcomeBogoDiscount;
@@ -176,65 +174,51 @@ export function OrderSummary({
   if (variant === "mobile") {
     return (
       <aside className="rounded-2xl border border-ink/10 bg-paper p-4 shadow-soft">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-ink/45">
-              Total à payer
-            </p>
-            <p className="mt-0.5 text-2xl font-bold tabular-nums text-accent">
-              {formatPrice(orderTotal)}
-            </p>
-            <p className="mt-1 text-xs text-ink/50">
-              {units} article{units > 1 ? "s" : ""}
-              {shippingFee != null
-                ? shippingFee <= 0
-                  ? " · Livraison offerte"
-                  : ` · Livraison ${formatPrice(shippingFee)}`
-                : null}
-            </p>
-          </div>
-          <span className="shrink-0 rounded-full bg-sky-50 px-2.5 py-1 text-[10px] font-semibold text-sky-900">
-            {shippingBadge}
+        <div className="mb-4">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-ink/45">
+            Votre commande
+          </p>
+          <p className="mt-1 text-xs text-ink/50">
+            {units} article{units > 1 ? "s" : ""}
+          </p>
+        </div>
+
+        <LineItems lines={lines} freePerLine={freePerLine} />
+
+        <div className="mt-4 space-y-4 border-t border-ink/8 pt-4">
+          {promoField}
+          <TotalsBreakdown
+            subtotal={subtotal}
+            bogoDiscount={bogoDiscount}
+            promoDiscount={promoDiscount}
+            shippingFee={shippingFee}
+          />
+          <WelcomePromoCheckoutBanner
+            subtotal={subtotal}
+            lines={bogoCartLines}
+            appliedBogoDiscount={stripeBogoDiscount}
+            appliedFreeUnits={stripeFreeUnits}
+          />
+        </div>
+
+        <div className="mt-4 rounded-xl bg-sky-50 px-3 py-2 text-center text-[11px] font-semibold leading-snug text-sky-900">
+          {shippingBadge}
+        </div>
+
+        <div className="mt-4 flex items-center justify-between border-t border-ink/10 pt-4">
+          <span className="text-sm font-medium text-ink/60">Total à payer</span>
+          <span className="text-xl font-bold tabular-nums text-accent">
+            {formatPrice(orderTotal)}
           </span>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          className="mt-3 flex w-full items-center justify-between rounded-xl bg-paper-soft px-3 py-2.5 text-left text-sm font-medium text-ink/70"
-          aria-expanded={expanded}
-        >
-          <span>{expanded ? "Masquer le détail" : `Voir le détail (${units} art.)`}</span>
-          <span className="text-ink/40" aria-hidden>
-            {expanded ? "▴" : "▾"}
-          </span>
-        </button>
-
-        {expanded ? (
-          <div className="mt-4 space-y-4 border-t border-ink/8 pt-4">
-            <LineItems lines={lines} freePerLine={freePerLine} />
-            {promoField}
-            <TotalsBreakdown
-              subtotal={subtotal}
-              bogoDiscount={bogoDiscount}
-              promoDiscount={promoDiscount}
-              shippingFee={shippingFee}
-            />
-            <WelcomePromoCheckoutBanner
-              subtotal={subtotal}
-              lines={bogoCartLines}
-              appliedBogoDiscount={stripeBogoDiscount}
-              appliedFreeUnits={stripeFreeUnits}
-            />
-            {showEditCart ? (
-              <Link
-                href={routes.cart}
-                className="block text-center text-sm text-ink/55 transition-colors hover:text-ink"
-              >
-                Modifier le panier
-              </Link>
-            ) : null}
-          </div>
+        {showEditCart ? (
+          <Link
+            href={routes.cart}
+            className="mt-3 block text-center text-sm text-ink/55 transition-colors hover:text-ink"
+          >
+            Modifier le panier
+          </Link>
         ) : null}
       </aside>
     );

@@ -207,9 +207,6 @@ export async function POST(request: Request) {
             saved_payment_method_options: {
               payment_method_save: "enabled",
             },
-            payment_intent_data: {
-              setup_future_usage: "off_session",
-            },
           }
         : {}),
       line_items: stripeLineItems,
