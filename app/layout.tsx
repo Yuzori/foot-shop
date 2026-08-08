@@ -87,7 +87,7 @@ export default function RootLayout({
         />
         <link rel="apple-touch-icon" href="/icon/ft-black.png" />
       </head>
-      <body className="min-h-screen bg-paper text-ink">
+      <body className="min-h-screen bg-paper text-ink" suppressHydrationWarning>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
