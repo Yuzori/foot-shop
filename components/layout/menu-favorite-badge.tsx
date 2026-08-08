@@ -16,7 +16,7 @@ interface MenuFavoriteBadgeProps {
   className?: string;
 }
 
-/** Petit cœur en coin + compteur découpé dedans (menu mobile). */
+/** Cœur incliné à 45° en coin droit + compteur centré dedans (menu mobile). */
 export function MenuFavoriteBadge({
   ringClassName = "ring-paper",
   className,
@@ -31,23 +31,21 @@ export function MenuFavoriteBadge({
     <AnimatePresence mode="wait">
       <motion.span
         key="menu-fav-badge"
-        initial={{ scale: 0.35, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.35, opacity: 0 }}
+        initial={{ scale: 0.35, rotate: 30, opacity: 0 }}
+        animate={{ scale: 1, rotate: 45, opacity: 1 }}
+        exit={{ scale: 0.35, rotate: 30, opacity: 0 }}
         transition={{ type: "spring", stiffness: 440, damping: 24 }}
         className={cn(
-          "pointer-events-none absolute left-0 top-0 z-10 h-[17px] w-[17px]",
+          "pointer-events-none absolute right-0 top-1/2 z-10 h-[18px] w-[18px] -translate-y-1/2",
           className,
         )}
-        style={{ rotate: "-11deg" }}
         aria-hidden
       >
         <motion.svg
-          width="17"
-          height="17"
+          width="18"
+          height="18"
           viewBox="0 0 24 24"
-          className="absolute inset-0 drop-shadow-[0_1px_1px_rgba(0,0,0,0.2)]"
-          style={{ transform: "skewX(-5deg)" }}
+          className="absolute inset-0 drop-shadow-[0_1px_1px_rgba(0,0,0,0.18)]"
           animate={{ color: accent }}
           transition={{ duration: 0.55, ease: [0.4, 0, 0.2, 1] }}
         >
@@ -63,9 +61,10 @@ export function MenuFavoriteBadge({
           animate={{ scale: 1 }}
           transition={{ type: "spring", stiffness: 520, damping: 20 }}
           className={cn(
-            "absolute left-1/2 top-[54%] flex h-[13px] min-w-[13px] -translate-x-1/2 items-center justify-center rounded-full bg-ink px-px text-[7px] font-bold leading-none text-paper ring-[1.5px]",
+            "absolute left-1/2 top-1/2 flex h-[11px] min-w-[11px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-ink px-px text-[6.5px] font-bold leading-none text-paper ring-[1.5px]",
             ringClassName,
           )}
+          style={{ rotate: "-45deg" }}
         >
           {count > 99 ? "99+" : count}
         </motion.span>
