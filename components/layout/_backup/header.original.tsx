@@ -8,13 +8,12 @@ import { CatalogNavDropdown } from "@/components/layout/catalog-nav-dropdown";
 import {
   BagIcon,
   HeartIcon,
-  MenuIcon,
   SearchIcon,
   TrophyIcon,
   UserIcon,
 } from "@/components/layout/icons";
 import { Logo } from "@/components/layout/logo";
-import { MenuFavoriteBadge } from "@/components/layout/menu-favorite-badge";
+import { MobileMenuIcon } from "@/components/layout/mobile-menu-icon";
 import { MobileMenu } from "@/components/layout/mobile-menu";
 import { Container } from "@/components/ui/container";
 import { primaryNav, routes } from "@/config/site";
@@ -70,8 +69,7 @@ export function Header() {
             onClick={() => setMenuOpen(true)}
             aria-label="Ouvrir le menu"
           >
-            <MenuIcon />
-            <MenuFavoriteBadge />
+            <MobileMenuIcon />
           </button>
 
           <Link
