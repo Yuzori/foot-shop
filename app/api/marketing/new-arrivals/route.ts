@@ -6,7 +6,7 @@ import { isSnapshotBootstrapped, readSnapshot } from "@/lib/notify-state";
 import { prestashop } from "@/services/prestashop";
 
 /**
- * Produits en file popup + nouveautés non encore notifiées.
+ * Produits en file d'attente popup uniquement (pas tout le catalogue non notifié).
  */
 export async function GET() {
   if (!prestashop.isConfigured) {
@@ -18,6 +18,11 @@ export async function GET() {
     return NextResponse.json({ items: [], bootstrapping: true });
   }
 
+  const queueIds = new Set(snapshot.popupQueue ?? []);
+  if (queueIds.size === 0) {
+    return NextResponse.json({ items: [], total: 0 });
+  }
+
   const [result, categories] = await Promise.all([
     prestashop.getProducts({ limit: 500, page: 1, sort: "newest" }),
     prestashop.getCategories(),
@@ -26,20 +31,11 @@ export async function GET() {
   const shortsCategoryIds = new Set(
     [nav.shortsCategoryId, nav.kidsShortsCategoryId].filter(Boolean),
   );
-  const notified = new Set(snapshot.notifiedProductIds ?? []);
-  const queueIds = new Set(snapshot.popupQueue ?? []);
 
-  const fromQueue = result.items.filter((product) => queueIds.has(product.id));
-  const fromSnapshot = result.items.filter(
-    (product) => !notified.has(product.id) && !queueIds.has(product.id),
+  const fresh = filterNotifiableProducts(
+    result.items.filter((product) => queueIds.has(product.id)),
+    shortsCategoryIds,
   );
-
-  const merged = new Map<string, (typeof result.items)[number]>();
-  for (const product of [...fromQueue, ...fromSnapshot]) {
-    merged.set(product.id, product);
-  }
-
-  const fresh = filterNotifiableProducts([...merged.values()], shortsCategoryIds);
 
   return NextResponse.json({
     items: fresh.slice(0, 12),

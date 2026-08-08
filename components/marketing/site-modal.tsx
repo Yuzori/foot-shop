@@ -12,7 +12,9 @@ import { ProductImage } from "@/components/product/product-image";
 import { buttonClasses } from "@/components/ui/button";
 import { Price } from "@/components/ui/price";
 import { routes } from "@/config/site";
+import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import { effectiveProductPrice } from "@/lib/product-price";
+import { overlayMotion } from "@/lib/motion";
 import type { Product } from "@/types/domain";
 
 const SHOWN_KEY = "footshop_shown_new_ids_session";
@@ -87,9 +89,7 @@ function useCarouselSwipe(
   return { onTouchStart, onTouchEnd };
 }
 
-/**
- * Toast nouveautés — coin bas-droit, non bloquant.
- */
+/** Modale nouveautés — centrée, fond flouté. */
 export function SiteModal() {
   const pathname = usePathname();
   const onProductPage = pathname.startsWith("/produit/");
@@ -136,6 +136,15 @@ export function SiteModal() {
     setOpen(false);
   }, [newProducts]);
 
+  useBodyScrollLock(open);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && dismiss();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, dismiss]);
+
   if (!open || onProductPage) return null;
 
   const currentNew = newProducts[slide];
@@ -144,93 +153,102 @@ export function SiteModal() {
   return (
     <AnimatePresence>
       {open && currentNew ? (
-        <motion.aside
-          key="site-modal"
-          initial={{ opacity: 0, y: 24, scale: 0.96 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 16, scale: 0.98 }}
-          transition={{ type: "spring", stiffness: 420, damping: 32 }}
-          className="fixed bottom-4 right-4 z-[70] w-[min(calc(100vw-2rem),20rem)] overflow-hidden rounded-2xl border border-ink/10 bg-paper shadow-lift sm:bottom-6 sm:right-6"
-          style={{ paddingBottom: "max(0px, env(safe-area-inset-bottom))" }}
+        <motion.div
+          key="site-modal-overlay"
+          {...overlayMotion}
+          className="fixed inset-0 z-[70] flex items-center justify-center p-4 sm:p-6"
           role="dialog"
-          aria-modal="false"
+          aria-modal="true"
           aria-label="Nouveautés"
         >
-          <div className="h-1 w-full bg-accent" />
-
           <button
             type="button"
+            className="absolute inset-0 bg-ink/40 backdrop-blur-md"
             onClick={dismiss}
             aria-label="Fermer"
-            className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-paper-soft text-ink/50 transition-colors hover:bg-ink hover:text-paper"
-          >
-            <CloseIcon className="h-4 w-4" />
-          </button>
+          />
 
-          <div
-            className="p-4 pt-5"
+          <motion.aside
+            initial={{ opacity: 0, y: 20, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 12, scale: 0.98 }}
+            transition={{ type: "spring", stiffness: 420, damping: 32 }}
+            className="relative z-10 flex w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-ink/10 bg-paper shadow-lift"
             onTouchStart={swipe.onTouchStart}
             onTouchEnd={swipe.onTouchEnd}
           >
-            <p className="pr-8 text-[10px] font-bold uppercase tracking-widest text-accent">
-              Nouveauté
-            </p>
-            <p className="mt-1 text-sm font-semibold leading-snug">
-              {hasMultiple ? "Nouveaux maillots" : "Nouveau maillot"}
-            </p>
+            <div className="h-1 w-full bg-accent" />
 
-            <div className="relative mt-3 aspect-square overflow-hidden rounded-xl bg-[#161616]">
-              <ProductImage
-                src={currentNew.cover?.url ?? null}
-                alt={currentNew.name}
-                sizes="320px"
-                className="object-contain p-1.5"
-              />
-            </div>
-
-            <h3 className="mt-3 line-clamp-2 text-sm font-medium leading-snug">
-              {currentNew.name}
-            </h3>
-            <Price
-              amount={effectiveProductPrice(currentNew)}
-              compareAt={currentNew.compareAtPrice}
-              currency={currentNew.currency}
-              className="mt-2 text-base"
-            />
-
-            <Link
-              href={routes.product(currentNew.id)}
+            <button
+              type="button"
               onClick={dismiss}
-              className={buttonClasses("accent", "sm", "mt-3 w-full")}
+              aria-label="Fermer"
+              className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-paper-soft text-ink/50 transition-colors hover:bg-ink hover:text-paper"
             >
-              Voir le produit
-            </Link>
+              <CloseIcon className="h-4 w-4" />
+            </button>
 
-            {hasMultiple ? (
-              <div className="mt-3 flex items-center justify-center gap-3">
-                <button
-                  type="button"
-                  onClick={goPrev}
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-paper-soft text-sm hover:bg-ink hover:text-paper"
-                  aria-label="Précédent"
-                >
-                  ‹
-                </button>
-                <span className="text-xs tabular-nums text-ink/50">
-                  {slide + 1} / {newProducts.length}
-                </span>
-                <button
-                  type="button"
-                  onClick={goNext}
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-paper-soft text-sm hover:bg-ink hover:text-paper"
-                  aria-label="Suivant"
-                >
-                  ›
-                </button>
+            <div className="p-5 pt-6">
+              <p className="pr-8 text-[10px] font-bold uppercase tracking-widest text-accent">
+                Nouveauté
+              </p>
+              <p className="mt-1 text-sm font-semibold leading-snug">
+                {hasMultiple ? "Nouveaux maillots" : "Nouveau maillot"}
+              </p>
+
+              <div className="relative mt-4 aspect-square overflow-hidden rounded-xl bg-[#161616]">
+                <ProductImage
+                  src={currentNew.cover?.url ?? null}
+                  alt={currentNew.name}
+                  sizes="360px"
+                  className="object-contain p-2"
+                />
               </div>
-            ) : null}
-          </div>
-        </motion.aside>
+
+              <h3 className="mt-4 line-clamp-2 text-base font-medium leading-snug">
+                {currentNew.name}
+              </h3>
+              <Price
+                amount={effectiveProductPrice(currentNew)}
+                compareAt={currentNew.compareAtPrice}
+                currency={currentNew.currency}
+                className="mt-2 text-lg"
+              />
+
+              <Link
+                href={routes.product(currentNew.id)}
+                onClick={dismiss}
+                className={buttonClasses("accent", "md", "mt-4 w-full")}
+              >
+                Voir le produit
+              </Link>
+
+              {hasMultiple ? (
+                <div className="mt-4 flex items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={goPrev}
+                    className="flex h-9 w-9 items-center justify-center rounded-full bg-paper-soft text-sm hover:bg-ink hover:text-paper"
+                    aria-label="Précédent"
+                  >
+                    ‹
+                  </button>
+                  <span className="text-xs tabular-nums text-ink/50">
+                    {slide + 1} / {newProducts.length}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={goNext}
+                    className="flex h-9 w-9 items-center justify-center rounded-full bg-paper-soft text-sm hover:bg-ink hover:text-paper"
+                    aria-label="Suivant"
+                  >
+                    ›
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </motion.aside>
+        </motion.div>
       ) : null}
     </AnimatePresence>
   );
