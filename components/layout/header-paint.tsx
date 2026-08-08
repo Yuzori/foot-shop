@@ -60,7 +60,7 @@ export function HeaderPaint() {
             onClick={() => setMenuOpen(true)}
             aria-label="Ouvrir le menu"
           >
-            <MobileMenuIcon ringColor="#050505" />
+            <MobileMenuIcon theme="dark" />
           </button>
 
           <Link
