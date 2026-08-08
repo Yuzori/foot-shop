@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import { useHydrated } from "@/hooks/use-hydrated";
 import { cn } from "@/lib/utils";
@@ -20,7 +20,10 @@ const HEART_CY = 12.2;
 /** Centre du cœur dans le viewBox de l'icône (36×30). */
 const CX = 25;
 const CY = 6.5;
-const HOLE_R = 4.9;
+/** Trou du compteur — bas-droite du cœur (coords locales 24×24). */
+const BADGE_X = 17.8;
+const BADGE_Y = 18.4;
+const BADGE_R = 5.1;
 
 /** Les barres se raccourcissent en escalier pour loger le cœur. */
 const BAR_FULL = [20, 20, 20];
@@ -37,18 +40,17 @@ function withAlpha(color: string, alpha: number): string {
 }
 
 function fontSizeFor(label: string): number {
-  if (label.length >= 3) return 5.2;
-  if (label.length === 2) return 6.4;
-  return 7.8;
+  if (label.length >= 3) return 4.8;
+  if (label.length === 2) return 5.8;
+  return 7;
 }
 
 interface MobileMenuIconProps {
-  /** Fond du header — sert au trou "découpé" dans le cœur. */
   theme?: "light" | "dark";
   className?: string;
 }
 
-/** Icône menu : barres en escalier + cœur favoris incliné, compteur au centre. */
+/** Icône menu : barres en escalier + cœur favoris incliné, compteur découpé en bas à droite. */
 export function MobileMenuIcon({
   theme = "light",
   className,
@@ -56,6 +58,7 @@ export function MobileMenuIcon({
   const hydrated = useHydrated();
   const count = useFavoritesStore((s) => s.ids.length);
   const accent = useFavoritesStore(selectMenuAccent) || FAVORITES_DEFAULT_ACCENT;
+  const maskId = useId().replace(/:/g, "");
 
   const beat = useAnimationControls();
   const previousCount = useRef(count);
@@ -63,8 +66,8 @@ export function MobileMenuIcon({
 
   const active = hydrated && count > 0;
   const bars = active ? BAR_NOTCHED : BAR_FULL;
-  const holeColor = theme === "dark" ? "#050505" : "#ffffff";
   const numberColor = theme === "dark" ? "#ffffff" : "#0a0a0a";
+  const ringColor = theme === "dark" ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.18)";
   const label = count > 99 ? "99+" : String(count);
 
   useEffect(() => {
@@ -132,45 +135,62 @@ export function MobileMenuIcon({
             </AnimatePresence>
 
             <motion.g animate={beat} style={{ transformOrigin: `${CX}px ${CY}px` }}>
-              <motion.g
-                animate={{
-                  filter: `drop-shadow(0 1px 2.5px ${withAlpha(accent, 0.6)})`,
-                }}
-                transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
+              <g
+                transform={`translate(${CX} ${CY}) rotate(45) scale(0.83) translate(${-HEART_CX} ${-HEART_CY})`}
               >
-                <g
-                  transform={`translate(${CX} ${CY}) rotate(45) scale(0.83) translate(${-HEART_CX} ${-HEART_CY})`}
+                <defs>
+                  <mask id={maskId}>
+                    <rect x="-2" y="-2" width="28" height="28" fill="white" />
+                    <circle cx={BADGE_X} cy={BADGE_Y} r={BADGE_R} fill="black" />
+                  </mask>
+                </defs>
+
+                <motion.g
+                  animate={{
+                    filter: `drop-shadow(0 1px 2.5px ${withAlpha(accent, 0.6)})`,
+                  }}
+                  transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
                 >
                   <motion.path
                     d={HEART}
+                    mask={`url(#${maskId})`}
                     animate={{ fill: accent }}
                     transition={{ duration: 0.55, ease: [0.4, 0, 0.2, 1] }}
                   />
-                </g>
-              </motion.g>
+                </motion.g>
 
-              <circle cx={CX} cy={CY} r={HOLE_R} fill={holeColor} />
+                <circle
+                  cx={BADGE_X}
+                  cy={BADGE_Y}
+                  r={BADGE_R}
+                  fill="none"
+                  stroke={ringColor}
+                  strokeWidth="1.1"
+                />
 
-              <AnimatePresence mode="popLayout" initial={false}>
-                <motion.text
-                  key={label}
-                  x={CX}
-                  y={CY}
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                  fill={numberColor}
-                  fontSize={fontSizeFor(label)}
-                  fontWeight="800"
-                  fontFamily="system-ui, -apple-system, sans-serif"
-                  initial={{ opacity: 0, scale: 0.3 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.3 }}
-                  transition={{ type: "spring", stiffness: 600, damping: 28 }}
-                  style={{ transformOrigin: `${CX}px ${CY}px` }}
-                >
-                  {label}
-                </motion.text>
-              </AnimatePresence>
+                <AnimatePresence mode="popLayout" initial={false}>
+                  <motion.text
+                    key={label}
+                    x={BADGE_X}
+                    y={BADGE_Y + 0.3}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fill={numberColor}
+                    fontSize={fontSizeFor(label)}
+                    fontWeight="800"
+                    fontFamily="system-ui, -apple-system, sans-serif"
+                    initial={{ opacity: 0, scale: 0.3 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.3 }}
+                    transition={{ type: "spring", stiffness: 600, damping: 28 }}
+                    style={{
+                      transformOrigin: `${BADGE_X}px ${BADGE_Y}px`,
+                    }}
+                  >
+                    {label}
+                  </motion.text>
+                </AnimatePresence>
+              </g>
             </motion.g>
           </motion.g>
         ) : null}
