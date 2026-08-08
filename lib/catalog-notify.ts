@@ -1,6 +1,6 @@
 import "server-only";
 
-import { readSnapshot, writeSnapshot, isSnapshotBootstrapped } from "@/lib/notify-state";
+import { readSnapshot, writeSnapshot, isSnapshotBootstrapped, repairNotifySnapshot } from "@/lib/notify-state";
 const THROTTLE_MS = 3 * 60 * 1000;
 
 /**
@@ -8,7 +8,15 @@ const THROTTLE_MS = 3 * 60 * 1000;
  * Appelé en arrière-plan depuis /api/products (max 1× / 3 min).
  */
 export async function maybeRunCatalogNotifications(): Promise<void> {
-  const snapshot = await readSnapshot();
+  const raw = await readSnapshot();
+  const snapshot = repairNotifySnapshot(raw);
+  if (
+    (snapshot.notifiedProductIds?.length ?? 0) !==
+    (raw.notifiedProductIds?.length ?? 0)
+  ) {
+    await writeSnapshot(snapshot);
+  }
+
   const last = snapshot.lastEmailRunAt
     ? Date.parse(snapshot.lastEmailRunAt)
     : 0;

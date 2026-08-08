@@ -24,6 +24,7 @@ import {
   readSnapshot,
   writeSnapshot,
   isSnapshotBootstrapped,
+  repairNotifySnapshot,
   withNotifyJobLock,
   enqueuePopupProducts,
   type ProductSnapshot,
@@ -31,8 +32,6 @@ import {
 import { processStockAlertEmails } from "@/lib/stock-alerts";
 import { prestashop } from "@/services/prestashop";
 import type { Product } from "@/types/domain";
-
-const RECENT_BACKFILL_MS = 7 * 24 * 60 * 60 * 1000;
 
 function escapeHtml(value: string): string {
   return value
@@ -54,14 +53,19 @@ function wasNotified(productId: string, previous: ProductSnapshot): boolean {
   return (previous.notifiedProductIds ?? []).includes(productId);
 }
 
-function isRecentlyCreated(product: Product): boolean {
-  if (!product.createdAt) return false;
-  const created = Date.parse(product.createdAt);
-  if (Number.isNaN(created)) return false;
-  return Date.now() - created < RECENT_BACKFILL_MS;
+/** Produit ajouté au catalogue après la dernière synchro (rattrapage sans spam au deploy). */
+function isCreatedAfterSnapshot(
+  product: Product,
+  previous: ProductSnapshot,
+): boolean {
+  if (!product.createdAt || !previous.updatedAt) return false;
+  const created = Date.parse(product.createdAt.replace(" ", "T"));
+  const updated = Date.parse(previous.updatedAt);
+  if (Number.isNaN(created) || Number.isNaN(updated)) return false;
+  return created >= updated;
 }
 
-/** Nouveau produit ou publication récente jamais notifiée (ex. import « DGH »). */
+/** Nouveau produit jamais notifié (une seule fois max). */
 function shouldNotifyProduct(
   product: Product,
   previous: ProductSnapshot,
@@ -70,7 +74,7 @@ function shouldNotifyProduct(
   if (!isNotifiableProduct(product, shortsCategoryIds)) return false;
   if (wasNotified(product.id, previous)) return false;
   if (!previous.items[product.id]) return true;
-  return isRecentlyCreated(product);
+  return isCreatedAfterSnapshot(product, previous);
 }
 
 function markNotified(
@@ -104,7 +108,14 @@ async function runNotifyJobInner() {
   const products = result.items;
   const shortsCategoryIds = shortsCategoryIdsFromNav(categories);
 
-  const previous = await readSnapshot();
+  const raw = await readSnapshot();
+  const previous = repairNotifySnapshot(raw);
+  if (
+    (previous.notifiedProductIds?.length ?? 0) !==
+    (raw.notifiedProductIds?.length ?? 0)
+  ) {
+    await writeSnapshot(previous);
+  }
   const isBootstrap = !isSnapshotBootstrapped(previous);
 
   const newArrivals = filterNotifiableProducts(
@@ -139,7 +150,12 @@ async function runNotifyJobInner() {
     notifiedProductIds: previous.notifiedProductIds ?? [],
   };
 
-  if (!isBootstrap && newArrivals.length > 0) {
+  if (isBootstrap) {
+    snapshot.notifiedProductIds = markNotified(
+      previous,
+      products.map((product) => product.id),
+    );
+  } else if (newArrivals.length > 0) {
     const ids = newArrivals.map((product) => product.id);
     await enqueuePopupProducts(ids);
     snapshot.popupQueue = [...new Set([...(snapshot.popupQueue ?? []), ...ids])];

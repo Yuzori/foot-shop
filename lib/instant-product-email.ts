@@ -13,7 +13,7 @@ import {
 import { readGuestNewsletterEmails } from "@/lib/newsletter-subscribers";
 import { sendMail } from "@/lib/mailer";
 import { productPageUrl } from "@/lib/site-url";
-import { enqueuePopupProducts, markProductsNotified } from "@/lib/notify-state";
+import { enqueuePopupProducts, markProductsNotified, readSnapshot } from "@/lib/notify-state";
 import { prestashop } from "@/services/prestashop";
 
 /** Envoie immédiatement une alerte « nouveau maillot » aux abonnés newsletter. */
@@ -22,6 +22,9 @@ export async function sendInstantNewProductEmail(input: {
   name: string;
   imageUrl?: string | null;
 }): Promise<number> {
+  const snapshot = await readSnapshot();
+  if ((snapshot.notifiedProductIds ?? []).includes(input.productId)) return 0;
+
   const psSubs = await prestashop.getNewsletterSubscribers();
   const guestSubs = await readGuestNewsletterEmails();
   const subscribers = [...new Set([...psSubs, ...guestSubs])];

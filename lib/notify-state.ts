@@ -39,6 +39,19 @@ export function isSnapshotBootstrapped(snapshot: ProductSnapshot): boolean {
   return Object.keys(snapshot.items).length > 0;
 }
 
+/**
+ * Après un déploiement si `notifiedProductIds` a été perdu alors que le
+ * catalogue est déjà suivi : marquer tout comme notifié sans renvoyer d'alertes.
+ */
+export function repairNotifySnapshot(snapshot: ProductSnapshot): ProductSnapshot {
+  const itemIds = Object.keys(snapshot.items);
+  const notified = snapshot.notifiedProductIds ?? [];
+  if (itemIds.length > 0 && notified.length === 0) {
+    return { ...snapshot, notifiedProductIds: [...itemIds] };
+  }
+  return snapshot;
+}
+
 async function migrateLegacySnapshot(): Promise<void> {
   try {
     const raw = await fs.readFile(LEGACY_FILE, "utf8");

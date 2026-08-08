@@ -30,10 +30,10 @@ export const shopConfig = {
     "Paiement 100 % sécurisé",
   ],
   tickerIntervalMs: 3000,
-  /** Afficher le badge « Nouveau » sur les produits récents — mettre false pour le masquer. */
-  showNewBadge: false,
-  /** Jours pendant lesquels un produit est considéré comme nouveau (si showNewBadge). */
-  newProductDays: 30,
+  /** Afficher le badge « Nouveau » sur les produits récents. */
+  showNewBadge: true,
+  /** Jours pendant lesquels un produit est considéré comme nouveau (14 j ≈ 2 semaines). */
+  newProductDays: 14,
   /** En dessous de ce seuil : badge et texte « Bientôt épuisé ». */
   lowStockThreshold: 5,
   /** Référence max pour le dégradé de couleur du stock (ex. 20 = vert à 20+, rouge à 0). */
