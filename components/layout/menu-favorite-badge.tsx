@@ -36,7 +36,7 @@ export function MenuFavoriteBadge({
         exit={{ scale: 0.35, rotate: 30, opacity: 0 }}
         transition={{ type: "spring", stiffness: 440, damping: 24 }}
         className={cn(
-          "pointer-events-none absolute right-0 top-1/2 z-10 h-[18px] w-[18px] -translate-y-1/2",
+          "pointer-events-none absolute right-0 top-0 z-10 h-[18px] w-[18px]",
           className,
         )}
         aria-hidden
