@@ -57,7 +57,7 @@ export function HeaderPaint() {
         <Container className="relative flex h-[4.25rem] items-center lg:h-[5rem]">
           <button
             type="button"
-            className="header-paint-icon-btn relative lg:hidden"
+            className="header-paint-icon-btn relative !mr-0.5 lg:hidden"
             onClick={() => setMenuOpen(true)}
             aria-label="Ouvrir le menu"
           >

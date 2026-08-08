@@ -66,7 +66,7 @@ export function Header() {
         <Container className="relative flex h-16 items-center lg:h-[4.5rem]">
           <button
             type="button"
-            className="relative lg:hidden"
+            className="relative flex h-10 w-10 shrink-0 items-center justify-center lg:hidden"
             onClick={() => setMenuOpen(true)}
             aria-label="Ouvrir le menu"
           >

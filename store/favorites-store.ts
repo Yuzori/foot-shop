@@ -5,14 +5,22 @@ import { persist } from "zustand/middleware";
 
 export const FAVORITES_DEFAULT_ACCENT = "rgb(102, 186, 255)";
 
+type AccentMap = Record<string, string>;
+
+interface FavoritesPersisted {
+  ids: string[];
+  accentById?: AccentMap;
+  /** @deprecated migré vers accentById */
+  lastAccentColor?: string;
+}
+
 /**
  * Favorites store. Persists only product IDs — the actual product data is always
  * (re)fetched from the back office, never stored or invented locally.
  */
 interface FavoritesState {
   ids: string[];
-  /** Couleur du dernier maillot ajouté aux favoris (badge menu mobile). */
-  lastAccentColor: string;
+  accentById: AccentMap;
   toggle: (id: string, accentColor?: string) => void;
   add: (id: string, accentColor?: string) => void;
   remove: (id: string) => void;
@@ -28,11 +36,29 @@ function withAccent(
   return accentColor?.trim() || fallback;
 }
 
+/** Couleur affichée : dernier favori encore présent (ordre d’ajout). */
+export function selectMenuAccent(state: FavoritesState): string {
+  for (let i = state.ids.length - 1; i >= 0; i--) {
+    const id = state.ids[i];
+    if (!id) continue;
+    const color = state.accentById[id];
+    if (color) return color;
+  }
+  return FAVORITES_DEFAULT_ACCENT;
+}
+
+function pruneAccents(ids: string[], accentById: AccentMap): AccentMap {
+  const kept = new Set(ids);
+  return Object.fromEntries(
+    Object.entries(accentById).filter(([id]) => kept.has(id)),
+  );
+}
+
 export const useFavoritesStore = create<FavoritesState>()(
   persist(
     (set, get) => ({
       ids: [],
-      lastAccentColor: FAVORITES_DEFAULT_ACCENT,
+      accentById: {},
       toggle: (id, accentColor) =>
         set((state) => {
           const removing = state.ids.includes(id);
@@ -40,18 +66,18 @@ export const useFavoritesStore = create<FavoritesState>()(
             const ids = state.ids.filter((x) => x !== id);
             return {
               ids,
-              lastAccentColor:
-                ids.length === 0
-                  ? FAVORITES_DEFAULT_ACCENT
-                  : state.lastAccentColor,
+              accentById: pruneAccents(ids, state.accentById),
             };
           }
           return {
             ids: [...state.ids, id],
-            lastAccentColor: withAccent(
-              accentColor,
-              state.lastAccentColor || FAVORITES_DEFAULT_ACCENT,
-            ),
+            accentById: {
+              ...state.accentById,
+              [id]: withAccent(
+                accentColor,
+                state.accentById[id] ?? FAVORITES_DEFAULT_ACCENT,
+              ),
+            },
           };
         }),
       add: (id, accentColor) =>
@@ -59,10 +85,13 @@ export const useFavoritesStore = create<FavoritesState>()(
           if (state.ids.includes(id)) return state;
           return {
             ids: [...state.ids, id],
-            lastAccentColor: withAccent(
-              accentColor,
-              state.lastAccentColor || FAVORITES_DEFAULT_ACCENT,
-            ),
+            accentById: {
+              ...state.accentById,
+              [id]: withAccent(
+                accentColor,
+                state.accentById[id] ?? FAVORITES_DEFAULT_ACCENT,
+              ),
+            },
           };
         }),
       remove: (id) =>
@@ -70,27 +99,39 @@ export const useFavoritesStore = create<FavoritesState>()(
           const ids = state.ids.filter((x) => x !== id);
           return {
             ids,
-            lastAccentColor:
-              ids.length === 0
-                ? FAVORITES_DEFAULT_ACCENT
-                : state.lastAccentColor,
+            accentById: pruneAccents(ids, state.accentById),
           };
         }),
       has: (id) => get().ids.includes(id),
       setIds: (ids) =>
-        set({
+        set((state) => ({
           ids,
-          lastAccentColor:
-            ids.length === 0 ? FAVORITES_DEFAULT_ACCENT : get().lastAccentColor,
-        }),
-      clear: () =>
-        set({ ids: [], lastAccentColor: FAVORITES_DEFAULT_ACCENT }),
+          accentById: pruneAccents(ids, state.accentById),
+        })),
+      clear: () => set({ ids: [], accentById: {} }),
     }),
     {
       name: "maillot-favorites",
+      version: 2,
+      migrate: (persisted) => {
+        const state = persisted as FavoritesPersisted;
+        if (state.accentById) {
+          return { ids: state.ids ?? [], accentById: state.accentById };
+        }
+
+        const accentById: AccentMap = {};
+        const legacy = state.lastAccentColor;
+        const ids = state.ids ?? [];
+        if (legacy && ids.length) {
+          const lastId = ids[ids.length - 1];
+          if (lastId) accentById[lastId] = legacy;
+        }
+
+        return { ids, accentById };
+      },
       partialize: (state) => ({
         ids: state.ids,
-        lastAccentColor: state.lastAccentColor,
+        accentById: state.accentById,
       }),
     },
   ),
