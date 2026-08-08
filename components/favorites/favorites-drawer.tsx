@@ -13,6 +13,7 @@ import { routes } from "@/config/site";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { useFavoriteProducts } from "@/hooks/use-favorite-products";
 import { formatPrice } from "@/lib/format";
+import { accentFromProductCover } from "@/lib/image-accent-client";
 import { drawerPanelMotion, overlayMotion } from "@/lib/motion";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import { useFavoritesStore } from "@/store/favorites-store";
@@ -115,6 +116,9 @@ export function FavoritesDrawer() {
                         </Link>
                         <FavoriteButton
                           productId={product.id}
+                          accentColor={
+                            accentFromProductCover(product.coverAccent).rgb
+                          }
                           className="!h-8 !w-8 shrink-0"
                         />
                       </div>

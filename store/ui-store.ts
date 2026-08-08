@@ -2,8 +2,6 @@
 
 import { create } from "zustand";
 
-import { useFavoritesStore } from "@/store/favorites-store";
-
 interface UIState {
   cartOpen: boolean;
   favoritesOpen: boolean;
@@ -37,18 +35,13 @@ export const useUIStore = create<UIState>((set) => ({
   menuOpen: false,
   openCart: () => set({ ...closedPanels, cartOpen: true, menuOpen: false }),
   closeCart: () => set({ cartOpen: false }),
-  openFavorites: () => {
-    useFavoritesStore.getState().clearFavoriteNotice();
-    set({ ...closedPanels, favoritesOpen: true, menuOpen: false });
-  },
+  openFavorites: () =>
+    set({ ...closedPanels, favoritesOpen: true, menuOpen: false }),
   closeFavorites: () => set({ favoritesOpen: false }),
   openAccount: () => set({ ...closedPanels, accountOpen: true, menuOpen: false }),
   closeAccount: () => set({ accountOpen: false }),
   openSearch: () => set({ ...closedPanels, searchOpen: true, menuOpen: false }),
   closeSearch: () => set({ searchOpen: false }),
-  setMenuOpen: (open) => {
-    if (open) useFavoritesStore.getState().clearFavoriteNotice();
-    set({ menuOpen: open });
-  },
+  setMenuOpen: (open) => set({ menuOpen: open }),
   closeAllPanels: () => set(closedPanels),
 }));

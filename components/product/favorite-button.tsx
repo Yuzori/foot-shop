@@ -33,7 +33,7 @@ export function FavoriteButton({
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        toggle(productId);
+        toggle(productId, accentColor);
       }}
       aria-pressed={active}
       aria-label={active ? "Retirer des favoris" : "Ajouter aux favoris"}

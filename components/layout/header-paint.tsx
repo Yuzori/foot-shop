@@ -13,6 +13,7 @@ import {
   UserIcon,
 } from "@/components/layout/icons";
 import { Logo } from "@/components/layout/logo";
+import { MenuFavoriteBadge } from "@/components/layout/menu-favorite-badge";
 import { MobileMenu } from "@/components/layout/mobile-menu";
 import { Container } from "@/components/ui/container";
 import { primaryNav, routes } from "@/config/site";
@@ -33,7 +34,6 @@ export function HeaderPaint() {
   const setMenuOpen = useUIStore((s) => s.setMenuOpen);
   const cartCount = useCartStore(cartSelectors.count);
   const favCount = useFavoritesStore((s) => s.ids.length);
-  const hasNewFavorite = useFavoritesStore((s) => s.hasNewFavorite);
   const openCart = useUIStore((s) => s.openCart);
   const openFavorites = useUIStore((s) => s.openFavorites);
   const openAccount = useUIStore((s) => s.openAccount);
@@ -62,12 +62,7 @@ export function HeaderPaint() {
             aria-label="Ouvrir le menu"
           >
             <MenuIcon />
-            {hydrated && hasNewFavorite ? (
-              <span
-                className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-accent shadow-[0_0_0_2px_#050505]"
-                aria-hidden
-              />
-            ) : null}
+            <MenuFavoriteBadge ringClassName="ring-[#050505]" />
           </button>
 
           <Link
@@ -141,6 +136,7 @@ export function HeaderPaint() {
               label="Favoris"
               onClick={openFavorites}
               badge={hydrated ? favCount : 0}
+              className="hidden sm:flex"
             >
               <HeartIcon />
             </IconButton>

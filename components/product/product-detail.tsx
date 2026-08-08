@@ -16,6 +16,7 @@ import { StockAlertBell } from "@/components/product/stock-alert-bell";
 import { Container } from "@/components/ui/container";
 import { routes } from "@/config/site";
 import { useProducts } from "@/hooks/use-products";
+import { accentFromProductCover } from "@/lib/image-accent-client";
 import { productHasStock } from "@/lib/product-stock";
 import { isWorldCupProduct } from "@/lib/world-cup-product";
 import { useRecentProductStore } from "@/store/recent-product-store";
@@ -39,6 +40,7 @@ export function ProductDetail({ product, kitOptions = [] }: ProductDetailProps) 
   const relatedProducts = (related.data?.items ?? []).filter(
     (p) => p.id !== product.id,
   );
+  const accent = accentFromProductCover(product.coverAccent);
 
   useEffect(() => {
     setRecent({
@@ -98,7 +100,10 @@ export function ProductDetail({ product, kitOptions = [] }: ProductDetailProps) 
                     productName={product.name}
                   />
                 ) : null}
-                <FavoriteButton productId={product.id} />
+                <FavoriteButton
+                  productId={product.id}
+                  accentColor={accent.rgb}
+                />
               </div>
             </div>
 

@@ -8,6 +8,7 @@ import { buttonClasses } from "@/components/ui/button";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { useProductEngagementStore } from "@/store/product-engagement-store";
 import { useFavoritesStore } from "@/store/favorites-store";
+import { useRecentProductStore } from "@/store/recent-product-store";
 import { cn } from "@/lib/utils";
 
 /**
@@ -21,6 +22,7 @@ export function FavoriteNudge() {
   const dismissNudge = useProductEngagementStore((s) => s.dismissNudge);
   const ids = useFavoritesStore((s) => s.ids);
   const toggle = useFavoritesStore((s) => s.toggle);
+  const recent = useRecentProductStore((s) => s.recent);
 
   const onProductPage = /\/produit\/([^/]+)/.test(pathname);
   const pageProductId = pathname.match(/\/produit\/([^/]+)/)?.[1];
@@ -34,7 +36,13 @@ export function FavoriteNudge() {
 
   function handleFavorite() {
     if (!viewedId) return;
-    if (!isFavorite) toggle(viewedId);
+    if (!isFavorite) {
+      const accent =
+        recent?.id === viewedId && recent.accent
+          ? `rgb(${recent.accent.r}, ${recent.accent.g}, ${recent.accent.b})`
+          : undefined;
+      toggle(viewedId, accent);
+    }
     dismissNudge(viewedId);
   }
 
