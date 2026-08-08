@@ -14,17 +14,70 @@ import {
 } from "@/lib/email-template";
 import { readGuestNewsletterEmails } from "@/lib/newsletter-subscribers";
 import { sendMail } from "@/lib/mailer";
+import {
+  filterNotifiableProducts,
+  isNotifiableProduct,
+} from "@/lib/product-collection";
+import { resolveCatalogNavCategories } from "@/lib/resolve-catalog-nav";
 import { getSiteUrl, productPageUrl } from "@/lib/site-url";
-import { readSnapshot, writeSnapshot, isSnapshotBootstrapped, withNotifyJobLock, enqueuePopupProducts, type ProductSnapshot } from "@/lib/notify-state";
+import {
+  readSnapshot,
+  writeSnapshot,
+  isSnapshotBootstrapped,
+  withNotifyJobLock,
+  enqueuePopupProducts,
+  type ProductSnapshot,
+} from "@/lib/notify-state";
 import { processStockAlertEmails } from "@/lib/stock-alerts";
-import { filterProductsByKind } from "@/lib/product-collection";
 import { prestashop } from "@/services/prestashop";
+import type { Product } from "@/types/domain";
+
+const RECENT_BACKFILL_MS = 7 * 24 * 60 * 60 * 1000;
 
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+}
+
+function shortsCategoryIdsFromNav(
+  categories: Awaited<ReturnType<typeof prestashop.getCategories>>,
+): Set<string> {
+  const nav = resolveCatalogNavCategories(categories);
+  return new Set(
+    [nav.shortsCategoryId, nav.kidsShortsCategoryId].filter(Boolean),
+  );
+}
+
+function wasNotified(productId: string, previous: ProductSnapshot): boolean {
+  return (previous.notifiedProductIds ?? []).includes(productId);
+}
+
+function isRecentlyCreated(product: Product): boolean {
+  if (!product.createdAt) return false;
+  const created = Date.parse(product.createdAt);
+  if (Number.isNaN(created)) return false;
+  return Date.now() - created < RECENT_BACKFILL_MS;
+}
+
+/** Nouveau produit ou publication récente jamais notifiée (ex. import « DGH »). */
+function shouldNotifyProduct(
+  product: Product,
+  previous: ProductSnapshot,
+  shortsCategoryIds: ReadonlySet<string>,
+): boolean {
+  if (!isNotifiableProduct(product, shortsCategoryIds)) return false;
+  if (wasNotified(product.id, previous)) return false;
+  if (!previous.items[product.id]) return true;
+  return isRecentlyCreated(product);
+}
+
+function markNotified(
+  previous: ProductSnapshot,
+  productIds: string[],
+): string[] {
+  return [...new Set([...(previous.notifiedProductIds ?? []), ...productIds])];
 }
 
 /** Envoie alertes nouveautés + traite les cloches stock. */
@@ -44,27 +97,37 @@ async function runNotifyJobInner() {
     return NextResponse.json({ message: "Back office non configuré." }, { status: 503 });
   }
 
-  const result = await prestashop.getProducts({ limit: 500, page: 1 });
+  const [result, categories] = await Promise.all([
+    prestashop.getProducts({ limit: 500, page: 1 }),
+    prestashop.getCategories(),
+  ]);
   const products = result.items;
+  const shortsCategoryIds = shortsCategoryIdsFromNav(categories);
 
   const previous = await readSnapshot();
   const isBootstrap = !isSnapshotBootstrapped(previous);
 
-  const newArrivals = filterProductsByKind(
-    products.filter((p) => !previous.items[p.id]),
-    "jersey",
+  const newArrivals = filterNotifiableProducts(
+    products.filter((product) => shouldNotifyProduct(product, previous, shortsCategoryIds)),
+    shortsCategoryIds,
   );
-  const backInStock = filterProductsByKind(
+  const backInStock = filterNotifiableProducts(
     products.filter(
-      (p) => previous.items[p.id] && !previous.items[p.id]!.inStock && p.inStock,
+      (product) =>
+        previous.items[product.id] &&
+        !previous.items[product.id]!.inStock &&
+        product.inStock,
     ),
-    "jersey",
+    shortsCategoryIds,
   );
-  const wentOutOfStock = filterProductsByKind(
+  const wentOutOfStock = filterNotifiableProducts(
     products.filter(
-      (p) => previous.items[p.id] && previous.items[p.id]!.inStock && !p.inStock,
+      (product) =>
+        previous.items[product.id] &&
+        previous.items[product.id]!.inStock &&
+        !product.inStock,
     ),
-    "jersey",
+    shortsCategoryIds,
   );
 
   const snapshot: ProductSnapshot = {
@@ -73,13 +136,14 @@ async function runNotifyJobInner() {
     lastEmailRunAt: previous.lastEmailRunAt ?? null,
     lastStockCheckAt: previous.lastStockCheckAt ?? null,
     popupQueue: previous.popupQueue ?? [],
+    notifiedProductIds: previous.notifiedProductIds ?? [],
   };
 
   if (!isBootstrap && newArrivals.length > 0) {
-    await enqueuePopupProducts(newArrivals.map((p) => p.id));
-    snapshot.popupQueue = [
-      ...new Set([...(snapshot.popupQueue ?? []), ...newArrivals.map((p) => p.id)]),
-    ];
+    const ids = newArrivals.map((product) => product.id);
+    await enqueuePopupProducts(ids);
+    snapshot.popupQueue = [...new Set([...(snapshot.popupQueue ?? []), ...ids])];
+    snapshot.notifiedProductIds = markNotified(previous, ids);
   }
 
   await writeSnapshot(snapshot);
@@ -116,6 +180,7 @@ async function runNotifyJobInner() {
       backInStock: backInStock.length,
       sent: 0,
       stockAlertsSent: stockSent,
+      popupQueued: newArrivals.map((product) => product.id),
     });
   }
 
@@ -132,8 +197,8 @@ async function runNotifyJobInner() {
 
   const body = `
     ${emailHeading("Du nouveau en boutique !")}
-    ${listHtml("Nouveaux maillots", newArrivals)}
-    ${listHtml("Maillots de retour en stock", backInStock)}
+    ${listHtml("Nouveaux produits", newArrivals)}
+    ${listHtml("Retour en stock", backInStock)}
     ${listHtml("Dernières pièces — rupture imminente", wentOutOfStock)}
     ${emailButton(`${base}/catalogue`, "Voir la boutique")}
     ${emailParagraph(`<span style="color:#999;font-size:12px">Vous recevez cet email car vous êtes inscrit à la newsletter ${publicConfig.siteName}.</span>`)}
@@ -142,7 +207,7 @@ async function runNotifyJobInner() {
   const html = emailLayout(body);
   const text = [
     `Du nouveau chez ${publicConfig.siteName} !`,
-    ...newArrivals.map((p) => `Nouveau maillot: ${p.name} - ${productPageUrl(p.id)}`),
+    ...newArrivals.map((p) => `Nouveau produit: ${p.name} - ${productPageUrl(p.id)}`),
     ...backInStock.map(
       (p) => `Retour en stock: ${p.name} - ${productPageUrl(p.id)}`,
     ),
@@ -156,7 +221,7 @@ async function runNotifyJobInner() {
   for (const to of subscribers) {
     const mailResult = await sendMail({
       to,
-      subject: `${publicConfig.siteName} — Nouveaux maillots & retours en stock`,
+      subject: `${publicConfig.siteName} — Nouveaux produits & retours en stock`,
       html,
       text,
     });
@@ -179,5 +244,6 @@ async function runNotifyJobInner() {
     subscribers: subscribers.length,
     stockAlertsSent: stockSent,
     smtp: mailConfig.enabled,
+    popupQueued: newArrivals.map((product) => product.id),
   });
 }

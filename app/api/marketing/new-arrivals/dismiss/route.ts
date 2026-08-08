@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { dequeuePopupProducts } from "@/lib/notify-state";
+import { dequeuePopupProducts, markProductsNotified } from "@/lib/notify-state";
 
 export async function POST(request: Request) {
   let body: { productIds?: string[] };
@@ -12,5 +12,6 @@ export async function POST(request: Request) {
 
   const productIds = Array.isArray(body.productIds) ? body.productIds : [];
   await dequeuePopupProducts(productIds);
+  await markProductsNotified(productIds);
   return NextResponse.json({ ok: true });
 }

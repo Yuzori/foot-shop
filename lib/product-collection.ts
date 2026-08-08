@@ -12,6 +12,42 @@ export function isJerseyProduct(name: string): boolean {
 
 export type ProductCollectionKind = "jersey" | "short";
 
+type NotifiableProduct = Pick<Product, "name" | "categoryIds" | "defaultCategoryId">;
+
+/** Shorts par catégorie PrestaShop (IDs résolus côté serveur). */
+export function isShortCategoryProduct(
+  product: NotifiableProduct,
+  shortsCategoryIds: ReadonlySet<string>,
+): boolean {
+  if (shortsCategoryIds.size === 0) return false;
+  if (product.defaultCategoryId && shortsCategoryIds.has(product.defaultCategoryId)) {
+    return true;
+  }
+  return product.categoryIds.some((id) => shortsCategoryIds.has(id));
+}
+
+/**
+ * Produit éligible aux alertes nouveautés (popup + email).
+ * Inclut les imports sans « maillot » dans le nom, exclut les shorts.
+ */
+export function isNotifiableProduct(
+  product: NotifiableProduct,
+  shortsCategoryIds: ReadonlySet<string> = new Set(),
+): boolean {
+  if (isShortProduct(product.name)) return false;
+  if (isShortCategoryProduct(product, shortsCategoryIds)) return false;
+  return true;
+}
+
+export function filterNotifiableProducts(
+  products: Product[],
+  shortsCategoryIds: ReadonlySet<string> = new Set(),
+): Product[] {
+  return products.filter((product) =>
+    isNotifiableProduct(product, shortsCategoryIds),
+  );
+}
+
 export function filterProductsByKind(
   products: Product[],
   kind: ProductCollectionKind,

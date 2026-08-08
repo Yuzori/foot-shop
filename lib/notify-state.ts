@@ -17,6 +17,8 @@ export interface ProductSnapshot {
   lastStockCheckAt: string | null;
   /** Produits en attente d'affichage dans la modale site (survit au snapshot). */
   popupQueue?: string[];
+  /** Produits déjà notifiés (popup + email). */
+  notifiedProductIds?: string[];
 }
 
 const DATA_DIR = path.join(process.cwd(), ".data");
@@ -30,6 +32,7 @@ const EMPTY_SNAPSHOT: ProductSnapshot = {
   lastEmailRunAt: null,
   lastStockCheckAt: null,
   popupQueue: [],
+  notifiedProductIds: [],
 };
 
 export function isSnapshotBootstrapped(snapshot: ProductSnapshot): boolean {
@@ -58,6 +61,9 @@ export async function readSnapshot(): Promise<ProductSnapshot> {
       lastEmailRunAt: data.lastEmailRunAt ?? null,
       lastStockCheckAt: data.lastStockCheckAt ?? null,
       popupQueue: Array.isArray(data.popupQueue) ? data.popupQueue : [],
+      notifiedProductIds: Array.isArray(data.notifiedProductIds)
+        ? data.notifiedProductIds
+        : [],
     };
   } catch {
     return { ...EMPTY_SNAPSHOT };
@@ -83,6 +89,17 @@ export async function dequeuePopupProducts(productIds: string[]): Promise<void> 
   const snapshot = await readSnapshot();
   const queue = (snapshot.popupQueue ?? []).filter((id) => !remove.has(id));
   await writeSnapshot({ ...snapshot, popupQueue: queue });
+}
+
+export async function markProductsNotified(productIds: string[]): Promise<void> {
+  const ids = [...new Set(productIds.map((id) => id.trim()).filter(Boolean))];
+  if (ids.length === 0) return;
+  const snapshot = await readSnapshot();
+  const notified = new Set([...(snapshot.notifiedProductIds ?? []), ...ids]);
+  await writeSnapshot({
+    ...snapshot,
+    notifiedProductIds: [...notified],
+  });
 }
 
 /** Verrou simple anti double exécution (PM2 cluster / requêtes parallèles). */
