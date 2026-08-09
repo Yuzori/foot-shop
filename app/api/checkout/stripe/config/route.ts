@@ -25,6 +25,7 @@ export async function GET() {
   return NextResponse.json({
     publishableKey,
     enabled: paymentConfig.stripeEnabled && Boolean(publishableKey),
+    checkoutStripeVersion: paymentConfig.checkoutStripeVersion,
     error: null,
   });
 }

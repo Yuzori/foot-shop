@@ -197,8 +197,7 @@ export async function POST(request: Request) {
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       ui_mode: "elements",
-      // card → Apple Pay / Google Pay via Express Checkout ; paypal si activé côté Stripe
-      payment_method_types: paymentConfig.stripePaymentMethodTypes,
+      payment_method_types: ["card"],
       ...(stripeCustomerId
         ? { customer: stripeCustomerId }
         : { customer_email: body.contact.email || undefined }),
