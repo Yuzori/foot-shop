@@ -21,20 +21,20 @@ interface StripePaymentFormProps {
   disabled?: boolean;
 }
 
-/** Boutons logo en haut — une ligne par moyen pour tout afficher (Link inclus). */
+/** Grille multi-colonnes (comme avant) — ne pas limiter la hauteur de l’iframe Stripe. */
 const EXPRESS_OPTIONS = {
-  buttonHeight: 48,
+  buttonHeight: 44,
   buttonTheme: {
     applePay: "black" as const,
     googlePay: "black" as const,
     paypal: "gold" as const,
   },
   layout: {
-    maxColumns: 1,
-    maxRows: 6,
+    maxColumns: 3,
+    maxRows: 4,
     overflow: "never" as const,
   },
-  paymentMethodOrder: ["link", "paypal", "applePay", "googlePay"],
+  paymentMethodOrder: ["paypal", "link", "applePay", "googlePay"],
   paymentMethods: {
     applePay: "auto" as const,
     googlePay: "auto" as const,
@@ -226,7 +226,7 @@ function PaymentForm({
         {expressAvailable ? (
           <div className="relative flex items-center gap-3 py-1">
             <div className="h-px flex-1 bg-ink/10" />
-            <span className="text-xs text-ink/40">ou payer par carte</span>
+            <span className="text-xs text-ink/40">ou autre moyen</span>
             <div className="h-px flex-1 bg-ink/10" />
           </div>
         ) : null}
@@ -247,7 +247,7 @@ function PaymentForm({
                 defaultCollapsed: false,
                 spacedAccordionItems: true,
               },
-              paymentMethodOrder: ["card", "link"],
+              paymentMethodOrder: ["card", "paypal", "link"],
               wallets: {
                 applePay: "never",
                 googlePay: "never",

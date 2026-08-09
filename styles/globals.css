@@ -580,22 +580,17 @@
   }
 }
 
-/* Checkout Stripe — boutons express empilés (Link, PayPal, Apple Pay, Google Pay) */
+/* Checkout Stripe — laisser Stripe dimensionner l’iframe (ne pas couper les boutons). */
 .checkout-express-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  width: 100%;
 }
 
 .checkout-express-grid > * {
   width: 100%;
-  min-height: 48px;
 }
 
 .checkout-express-grid iframe {
   width: 100% !important;
-  min-height: 48px !important;
-  max-height: 52px !important;
 }
 
 .checkout-payment-tabs .p-AccordionItem {
