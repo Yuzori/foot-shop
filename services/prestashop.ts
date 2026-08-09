@@ -2542,7 +2542,64 @@ ${ids
     }
   }
 
-  /** Parcourt le catalogue et crée les déclinaisons XXL manquantes. */
+  /** Parcourt une page du catalogue et crée les déclinaisons XXL manquantes. */
+  async ensureXxlForCatalogPage(options: {
+    page: number;
+    pageSize?: number;
+  }): Promise<{
+    page: number;
+    processed: number;
+    scanned: number;
+    created: number;
+    skipped: number;
+    errors: number;
+    hasMore: boolean;
+    errorDetails: Array<{ productId: string; name: string; error: string }>;
+  }> {
+    const pageSize = options.pageSize ?? 25;
+    const page = Math.max(1, options.page);
+    const batch = await this.getProducts({ page, limit: pageSize });
+
+    let scanned = 0;
+    let created = 0;
+    let skipped = 0;
+    let errors = 0;
+    const errorDetails: Array<{ productId: string; name: string; error: string }> =
+      [];
+
+    for (const product of batch.items) {
+      const result = await this.ensureXxlForProduct(product.id);
+      if (result.skipped) {
+        skipped++;
+        continue;
+      }
+      scanned++;
+      if (result.created) created++;
+      if (result.error) {
+        errors++;
+        errorDetails.push({
+          productId: product.id,
+          name: product.name,
+          error: result.error,
+        });
+      }
+    }
+
+    const hasMore = batch.items.length >= pageSize;
+
+    return {
+      page,
+      processed: batch.items.length,
+      scanned,
+      created,
+      skipped,
+      errors,
+      hasMore,
+      errorDetails,
+    };
+  }
+
+  /** Parcourt tout le catalogue (usage CLI / curl). Préférer ensureXxlForCatalogPage côté UI. */
   async ensureXxlForCatalog(options?: {
     pageSize?: number;
     maxPages?: number;
@@ -2551,33 +2608,34 @@ ${ids
     created: number;
     skipped: number;
     errors: number;
+    pages: number;
+    errorDetails: Array<{ productId: string; name: string; error: string }>;
   }> {
-    const pageSize = options?.pageSize ?? 50;
-    const maxPages = options?.maxPages ?? 50;
+    const pageSize = options?.pageSize ?? 25;
+    const maxPages = options?.maxPages ?? 100;
     let scanned = 0;
     let created = 0;
     let skipped = 0;
     let errors = 0;
+    let pages = 0;
+    const errorDetails: Array<{ productId: string; name: string; error: string }> =
+      [];
 
     for (let page = 1; page <= maxPages; page++) {
-      const batch = await this.getProducts({ page, limit: pageSize });
-      if (!batch.items.length) break;
+      const batch = await this.ensureXxlForCatalogPage({ page, pageSize });
+      if (!batch.processed) break;
 
-      for (const product of batch.items) {
-        const result = await this.ensureXxlForProduct(product.id);
-        if (result.skipped) {
-          skipped++;
-          continue;
-        }
-        scanned++;
-        if (result.created) created++;
-        if (result.error) errors++;
-      }
+      pages++;
+      scanned += batch.scanned;
+      created += batch.created;
+      skipped += batch.skipped;
+      errors += batch.errors;
+      errorDetails.push(...batch.errorDetails);
 
-      if (page * pageSize >= batch.total) break;
+      if (!batch.hasMore) break;
     }
 
-    return { scanned, created, skipped, errors };
+    return { scanned, created, skipped, errors, pages, errorDetails };
   }
 
   /** Fixe le stock absolu pour un produit ou une déclinaison. */
