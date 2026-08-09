@@ -187,7 +187,6 @@ export async function POST(request: Request) {
     (productsSubtotal - promoDiscount + shippingFee) * 100,
   );
 
-  const savePayment = body.savePaymentMethod === true;
   await ensureStripePaymentMethodDomains();
   const stripeCustomerId = await getOrCreateStripeCustomer({
     email: body.contact.email,
@@ -195,6 +194,7 @@ export async function POST(request: Request) {
     firstName: body.contact.firstName,
     lastName: body.contact.lastName,
   });
+  const savePayment = Boolean(stripeCustomerId);
 
   try {
     const { session, paymentMethodTypes, paymentMethodConfiguration } =

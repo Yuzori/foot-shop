@@ -66,7 +66,7 @@ export async function validateCartLinesDetailed(
     }));
   }
 
-  const failedKeys = new Set<string>();
+  const results: CartLineValidation[] = [];
   for (const line of lines) {
     const single = await resolveCartLines([
       {
@@ -77,21 +77,15 @@ export async function validateCartLinesDetailed(
         name: line.name,
       },
     ]);
-    if (!single.ok) {
-      failedKeys.add(`${line.productId}:${line.variantId ?? ""}`);
-    }
-  }
-
-  return lines.map((line) => {
-    const key = `${line.productId}:${line.variantId ?? ""}`;
-    const ok = !failedKeys.has(key);
-    return {
+    results.push({
       productId: line.productId,
       variantId: line.variantId,
-      ok,
-      message: ok ? undefined : resolved.message,
-    };
-  });
+      ok: single.ok,
+      message: single.ok ? undefined : single.message,
+    });
+  }
+
+  return results;
 }
 
 

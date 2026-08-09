@@ -26,9 +26,11 @@ export async function POST(request: Request) {
 
   const results = await validateCartLinesDetailed(lines);
   const invalid = results.filter((r) => !r.ok);
+  const firstMessage = invalid.find((r) => r.message)?.message;
 
   return NextResponse.json({
     ok: invalid.length === 0,
+    message: firstMessage ?? null,
     lines: results,
     invalid,
   });

@@ -22,8 +22,17 @@ interface StripePaymentFormProps {
 }
 
 const EXPRESS_OPTIONS = {
-  buttonHeight: 48,
-  layout: { maxColumns: 1, maxRows: 4, overflow: "never" as const },
+  buttonHeight: 44,
+  buttonTheme: {
+    applePay: "black" as const,
+    googlePay: "black" as const,
+    paypal: "gold" as const,
+  },
+  layout: {
+    maxColumns: 2,
+    maxRows: 2,
+    overflow: "auto" as const,
+  },
   paymentMethodOrder: ["applePay", "googlePay", "paypal", "link"],
   paymentMethods: {
     applePay: "always" as const,
@@ -149,28 +158,30 @@ function PaymentForm({
   }
 
   return (
-    <form onSubmit={handlePay} className="space-y-6">
+    <form onSubmit={handlePay} className="checkout-payment-form space-y-6">
       {loadError ? (
         <p className="rounded-xl bg-accent/10 px-4 py-3 text-sm text-accent">
           {loadError}
         </p>
       ) : null}
 
-      <div className="space-y-4">
+      <div className="checkout-express-shell space-y-3">
         {expressAvailable ? (
-          <p className="text-center text-xs font-semibold uppercase tracking-widest text-ink/40">
+          <p className="text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-ink/40">
             Paiement express
           </p>
         ) : null}
-        <ExpressCheckoutElement
-          onConfirm={handleConfirmExpressCheckout}
-          onAvailablePaymentMethodsChange={({ paymentMethods }) => {
-            setExpressAvailable(Boolean(paymentMethods));
-          }}
-          options={
-            EXPRESS_OPTIONS as ComponentProps<typeof ExpressCheckoutElement>["options"]
-          }
-        />
+        <div className="checkout-express-grid min-h-[44px]">
+          <ExpressCheckoutElement
+            onConfirm={handleConfirmExpressCheckout}
+            onAvailablePaymentMethodsChange={({ paymentMethods }) => {
+              setExpressAvailable(Boolean(paymentMethods));
+            }}
+            options={
+              EXPRESS_OPTIONS as ComponentProps<typeof ExpressCheckoutElement>["options"]
+            }
+          />
+        </div>
         {expressAvailable ? (
           <div className="relative flex items-center gap-3 py-1">
             <div className="h-px flex-1 bg-ink/10" />
@@ -186,13 +197,16 @@ function PaymentForm({
         </div>
       ) : null}
 
-      <div className={ready ? "block" : "sr-only"}>
+      <div className={ready ? "checkout-payment-tabs block" : "sr-only"}>
         <PaymentElement
           options={{
-            layout: "tabs",
+            layout: {
+              type: "tabs",
+              defaultCollapsed: false,
+            },
             wallets: {
-              applePay: "auto",
-              googlePay: "auto",
+              applePay: "never",
+              googlePay: "never",
             },
           }}
           onReady={() => setReady(true)}
@@ -263,6 +277,23 @@ export function StripePaymentForm({
               colorPrimary: "#66BAFF",
               borderRadius: "12px",
               fontFamily: "Poppins, sans-serif",
+              spacingUnit: "4px",
+            },
+            rules: {
+              ".Tab": {
+                border: "1px solid rgba(15, 23, 42, 0.1)",
+                padding: "12px 14px",
+              },
+              ".Tab--selected": {
+                borderColor: "#66BAFF",
+                boxShadow: "0 0 0 1px rgba(102, 186, 255, 0.35)",
+              },
+              ".TabIcon": {
+                height: "1.25rem",
+              },
+              ".TabLabel": {
+                fontWeight: "600",
+              },
             },
           },
         },

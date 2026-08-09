@@ -21,6 +21,7 @@ import { Field } from "@/components/ui/field";
 import { PageHeader } from "@/components/ui/page-header";
 import { Spinner } from "@/components/ui/spinner";
 import { routes } from "@/config/site";
+import { publicConfig } from "@/config";
 import { api } from "@/lib/api";
 import {
   clearCheckoutCartSnapshot,
@@ -45,6 +46,7 @@ import {
   emptyCheckoutProfile,
   type CheckoutDeliveryProfile,
 } from "@/lib/checkout-profile";
+import { useCartStockGuard } from "@/hooks/use-cart-stock-guard";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { useSession } from "@/hooks/use-auth";
 import { useCheckoutProfile } from "@/hooks/use-checkout-profile";
@@ -104,7 +106,6 @@ export function CheckoutView() {
 
   const [deliveryForm, setDeliveryForm] = useState(() => emptyCheckoutProfile());
   const [usingSavedProfile, setUsingSavedProfile] = useState(false);
-  const [savePaymentMethod, setSavePaymentMethod] = useState(false);
 
   const [frozenLines, setFrozenLines] = useState<CartLine[] | null>(null);
   const [step, setStep] = useState<Step>("details");
@@ -148,6 +149,10 @@ export function CheckoutView() {
   }, []);
 
   const checkoutLines = frozenLines ?? [];
+
+  const stockGuard = useCartStockGuard({
+    enabled: hydrated && checkoutLines.length > 0 && step === "details",
+  });
 
   const lines = useMemo(() => {
     if (step === "payment" && sessionLines.length > 0) {
@@ -440,6 +445,39 @@ export function CheckoutView() {
     );
   }
 
+  if (
+    step === "details" &&
+    checkoutLines.length > 0 &&
+    stockGuard.status === "checking"
+  ) {
+    return (
+      <Container className="flex min-h-[50vh] flex-col items-center justify-center gap-4 py-24">
+        <Spinner className="h-8 w-8" />
+        <p className="text-sm text-ink/55">Vérification de la disponibilité…</p>
+      </Container>
+    );
+  }
+
+  if (
+    step === "details" &&
+    checkoutLines.length > 0 &&
+    stockGuard.status === "invalid"
+  ) {
+    return (
+      <Container className="py-12">
+        <PageHeader title="Paiement" />
+        <EmptyState
+          title="Articles indisponibles"
+          description={
+            stockGuard.message ??
+            "Certains articles ne sont plus en stock et ont été retirés de votre panier."
+          }
+          action={{ label: "Retour au panier", href: routes.cart }}
+        />
+      </Container>
+    );
+  }
+
   async function handleDetailsSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
@@ -527,6 +565,7 @@ export function CheckoutView() {
       });
       const validateData = (await validateRes.json()) as {
         ok?: boolean;
+        message?: string | null;
         invalid?: { productId: string; variantId: string | null; message?: string }[];
       };
       if (!validateData.ok) {
@@ -536,7 +575,8 @@ export function CheckoutView() {
           }
         }
         setError(
-          validateData.invalid?.[0]?.message ??
+          validateData.message ??
+            validateData.invalid?.[0]?.message ??
             "Certains articles ne sont plus disponibles et ont été retirés du panier.",
         );
         return;
@@ -579,7 +619,6 @@ export function CheckoutView() {
           items: stripeItems,
           applyWelcomePromo: shouldApplyWelcomePromo(welcomePromoQuery.data),
           promoCode: promoCode.trim() || undefined,
-          savePaymentMethod,
         });
         const bogoDisc = session.bogoDiscount ?? 0;
         const freeUnits = session.freeUnits ?? 0;
@@ -887,26 +926,6 @@ export function CheckoutView() {
               <CheckoutFlocage />
             </div>
 
-            <section className="surface-card p-6 sm:p-8">
-              <label className="flex cursor-pointer items-start gap-3">
-                <input
-                  type="checkbox"
-                  className="mt-1 h-4 w-4 rounded border-ink/20"
-                  checked={savePaymentMethod}
-                  onChange={(e) => setSavePaymentMethod(e.target.checked)}
-                />
-                <span>
-                  <span className="block text-sm font-medium text-ink">
-                    Enregistrer mon mode de paiement pour plus tard
-                  </span>
-                  <span className="mt-1 block text-sm text-ink/55">
-                    Vos coordonnées bancaires seront enregistrées de façon sécurisée
-                    par Stripe pour vos prochains achats.
-                  </span>
-                </span>
-              </label>
-            </section>
-
             {error ? (
               <p className="rounded-2xl border border-accent/20 bg-accent/5 px-4 py-3 text-sm text-accent" role="alert">
                 {error}
@@ -934,7 +953,8 @@ export function CheckoutView() {
             <div>
               <h2 className="section-title">Paiement sécurisé</h2>
               <p className="mt-2 text-sm text-ink/55">
-                Apple Pay, PayPal, Link ou carte — traité par Stripe.
+                Apple Pay, Google Pay, PayPal, Link ou carte — traité par Stripe
+                pour {publicConfig.siteName}.
               </p>
             </div>
 

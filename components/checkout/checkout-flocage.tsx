@@ -122,7 +122,11 @@ export function CheckoutFlocage() {
                 <button
                   type="button"
                   onClick={() => openDraft(line)}
-                  className="mt-3 text-sm font-medium text-ink underline-offset-2 hover:text-accent hover:underline"
+                  className={buttonClasses(
+                    "primary",
+                    "sm",
+                    "mt-3 w-full sm:w-auto shadow-glow-sm ring-2 ring-accent/30",
+                  )}
                 >
                   Ajouter flocage (+{formatPrice(shopConfig.flocagePrice)})
                 </button>
