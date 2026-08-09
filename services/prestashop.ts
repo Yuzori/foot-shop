@@ -1390,25 +1390,35 @@ class PrestaShopService {
     const ps = await this.getCustomerRecord(id);
     if (!ps?.email) return { ok: false, error: "customer_not_found" };
 
-    const xml = buildCustomerUpdateXml({
-      id,
-      firstName: ps.firstname ?? "Client",
-      lastName: ps.lastname ?? "Client",
-      email: ps.email,
-      password: plainPassword,
-      idDefaultGroup: ps.id_default_group,
-      idLang: ps.id_lang,
-      idShop: ps.id_shop,
-      idGender: ps.id_gender,
-      newsletter: ps.newsletter === "1",
-      optin: ps.optin === "1",
-      clearResetToken: true,
-    });
+    const xmlRaw = await this.getCustomerRawXml(id);
+    if (xmlRaw) {
+      let patched = patchCustomerXmlField(xmlRaw, "passwd", plainPassword);
+      patched = patchCustomerXmlField(patched, "reset_password_token", "");
+      patched = patchCustomerXmlField(patched, "reset_password_validity", "");
+      const { status, error } = await this.put(`/customers/${id}`, patched);
+      if (status === null || status >= 400) {
+        console.error("[prestashop] password update failed", error);
+        return { ok: false, error };
+      }
+    } else {
+      const xml = buildCustomerUpdateXml({
+        id,
+        firstName: ps.firstname ?? "Client",
+        lastName: ps.lastname ?? "Client",
+        email: ps.email,
+        password: plainPassword,
+        idDefaultGroup: ps.id_default_group,
+        idLang: ps.id_lang,
+        idShop: ps.id_shop,
+        idGender: ps.id_gender,
+        clearResetToken: true,
+      });
 
-    const { status, error } = await this.put(`/customers/${id}`, xml);
-    if (status === null || status >= 400) {
-      console.error("[prestashop] password update failed", error);
-      return { ok: false, error };
+      const { status, error } = await this.put(`/customers/${id}`, xml);
+      if (status === null || status >= 400) {
+        console.error("[prestashop] password update failed", error);
+        return { ok: false, error };
+      }
     }
 
     const { verifyPassword } = await import("@/lib/auth");
@@ -1426,6 +1436,23 @@ class PrestaShopService {
     }
 
     return { ok: true, error: null };
+  }
+
+  /** Force l'état newsletter d'un client (sans toucher aux autres champs). */
+  async setCustomerNewsletterById(
+    id: string,
+    enabled: boolean,
+  ): Promise<{ ok: boolean }> {
+    const xmlRaw = await this.getCustomerRawXml(id);
+    if (!xmlRaw) return { ok: false };
+
+    const patched = patchCustomerXmlField(
+      xmlRaw,
+      "newsletter",
+      enabled ? "1" : "0",
+    );
+    const { status } = await this.put(`/customers/${id}`, patched);
+    return { ok: status !== null && status < 400 };
   }
 
   private async getCustomerRawXml(id: string): Promise<string | null> {

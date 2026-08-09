@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { setSession } from "@/lib/auth";
+import { removeGuestNewsletterEmail } from "@/lib/newsletter-subscribers";
 import { verifyRegistrationCode } from "@/lib/register-pending-store";
 import { sendWelcomePromoEmail } from "@/lib/welcome-promo-email";
 import { grantWelcomePromo } from "@/lib/welcome-promo-store";
@@ -64,6 +65,13 @@ export async function POST(request: Request) {
     firstName: customer.firstName,
     lastName: customer.lastName,
   });
+
+  if (pending.newsletter) {
+    await removeGuestNewsletterEmail(customer.email);
+  } else {
+    await prestashop.setCustomerNewsletterById(customer.id, false);
+    await removeGuestNewsletterEmail(customer.email);
+  }
 
   if (welcomePromo.enabled && pending.newsletter) {
     await grantWelcomePromo(customer.id);
