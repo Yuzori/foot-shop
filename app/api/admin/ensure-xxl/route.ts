@@ -6,6 +6,21 @@ import { prestashop } from "@/services/prestashop";
 export const maxDuration = 120;
 export const runtime = "nodejs";
 
+function buildXxlMessage(result: {
+  processed: number;
+  withVariants: number;
+  alreadyHasXxl: number;
+  created: number;
+}): string {
+  if (result.created > 0) {
+    return `${result.created} taille(s) XXL ajoutée(s) sur ${result.withVariants} maillots (${result.processed} produits actifs parcourus).`;
+  }
+  if (result.withVariants > 0) {
+    return `${result.withVariants} maillots vérifiés sur ${result.processed} produits actifs — tous ont déjà le XXL côté API PrestaShop.`;
+  }
+  return `${result.processed} produits parcourus — aucun maillot avec déclinaisons taille trouvé.`;
+}
+
 /** Crée les déclinaisons XXL manquantes sur le catalogue PrestaShop. */
 export async function POST(request: Request) {
   if (!isAdminAuthorized(request)) {
@@ -45,17 +60,19 @@ export async function POST(request: Request) {
   if (page !== undefined) {
     const result = await prestashop.ensureXxlForCatalogPage({ page, pageSize });
     return NextResponse.json({
-      message: result.created > 0 ? `${result.created} XXL créé(s) sur cette page.` : null,
+      message: buildXxlMessage({
+        processed: result.processed,
+        withVariants: result.withVariants,
+        alreadyHasXxl: result.alreadyHasXxl,
+        created: result.created,
+      }),
       ...result,
     });
   }
 
   const result = await prestashop.ensureXxlForCatalog({ maxPages, pageSize });
   return NextResponse.json({
-    message:
-      result.created > 0
-        ? `${result.created} déclinaison(s) XXL créée(s) sur ${result.pages} page(s).`
-        : "Aucune déclinaison XXL à créer — le catalogue est déjà à jour.",
+    message: buildXxlMessage(result),
     ...result,
   });
 }

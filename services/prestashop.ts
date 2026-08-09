@@ -2548,7 +2548,12 @@ ${ids
   /** Ajoute une déclinaison XXL si le produit a des tailles mais pas encore XXL. */
   async ensureXxlForProduct(
     productId: string,
-  ): Promise<{ created: boolean; skipped?: boolean; error?: string }> {
+  ): Promise<{
+    created: boolean;
+    skipped?: boolean;
+    alreadyHasXxl?: boolean;
+    error?: string;
+  }> {
     try {
       const product = await this.getProductById(productId);
       if (!product?.variants.length) return { created: false, skipped: true };
@@ -2556,7 +2561,7 @@ ${ids
       const hasXxl = product.variants.some((variant) =>
         variant.options.some((o) => o.label.trim().toUpperCase() === "XXL"),
       );
-      if (hasXxl) return { created: false };
+      if (hasXxl) return { created: false, alreadyHasXxl: true };
 
       const xxlValues = await this.resolveSizeOptionValues(
         ["XXL"],
@@ -2587,7 +2592,8 @@ ${ids
   }): Promise<{
     page: number;
     processed: number;
-    scanned: number;
+    withVariants: number;
+    alreadyHasXxl: number;
     created: number;
     skipped: number;
     errors: number;
@@ -2598,7 +2604,8 @@ ${ids
     const page = Math.max(1, options.page);
     const batch = await this.listProductNamesPage({ page, pageSize });
 
-    let scanned = 0;
+    let withVariants = 0;
+    let alreadyHasXxl = 0;
     let created = 0;
     let skipped = 0;
     let errors = 0;
@@ -2611,7 +2618,11 @@ ${ids
         skipped++;
         continue;
       }
-      scanned++;
+      withVariants++;
+      if (result.alreadyHasXxl) {
+        alreadyHasXxl++;
+        continue;
+      }
       if (result.created) created++;
       if (result.error) {
         errors++;
@@ -2626,7 +2637,8 @@ ${ids
     return {
       page,
       processed: batch.items.length,
-      scanned,
+      withVariants,
+      alreadyHasXxl,
       created,
       skipped,
       errors,
@@ -2640,7 +2652,9 @@ ${ids
     pageSize?: number;
     maxPages?: number;
   }): Promise<{
-    scanned: number;
+    processed: number;
+    withVariants: number;
+    alreadyHasXxl: number;
     created: number;
     skipped: number;
     errors: number;
@@ -2649,7 +2663,9 @@ ${ids
   }> {
     const pageSize = options?.pageSize ?? 25;
     const maxPages = options?.maxPages ?? 100;
-    let scanned = 0;
+    let processed = 0;
+    let withVariants = 0;
+    let alreadyHasXxl = 0;
     let created = 0;
     let skipped = 0;
     let errors = 0;
@@ -2662,7 +2678,9 @@ ${ids
       if (!batch.processed) break;
 
       pages++;
-      scanned += batch.scanned;
+      processed += batch.processed;
+      withVariants += batch.withVariants;
+      alreadyHasXxl += batch.alreadyHasXxl;
       created += batch.created;
       skipped += batch.skipped;
       errors += batch.errors;
@@ -2671,7 +2689,16 @@ ${ids
       if (!batch.hasMore) break;
     }
 
-    return { scanned, created, skipped, errors, pages, errorDetails };
+    return {
+      processed,
+      withVariants,
+      alreadyHasXxl,
+      created,
+      skipped,
+      errors,
+      pages,
+      errorDetails,
+    };
   }
 
   /** Fixe le stock absolu pour un produit ou une déclinaison. */
