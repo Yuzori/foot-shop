@@ -370,6 +370,8 @@ class PrestaShopService {
 
     if (!ps) return null;
 
+    if (ps.active === "0" || ps.visibility === "none") return null;
+
     const product = mapProduct(ps);
 
     // Variants and real stock are independent → fetch them in parallel to cut
