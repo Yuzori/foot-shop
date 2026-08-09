@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, type ComponentProps, type FormEvent } from "react";
+import { Component, useCallback, useState, type ComponentProps, type FormEvent, type ReactNode } from "react";
 import {
   CheckoutElementsProvider,
   ExpressCheckoutElement,
@@ -21,47 +21,35 @@ interface StripePaymentFormProps {
   disabled?: boolean;
 }
 
-/** Boutons logo (Link, PayPal, portefeuilles, Samsung Pay) — layout valide Stripe. */
+/** Boutons pleine largeur : Google/Apple noir, PayPal jaune, Link vert. */
 const EXPRESS_OPTIONS = {
-  buttonHeight: 44,
+  buttonHeight: 48,
   buttonTheme: {
     applePay: "black" as const,
     googlePay: "black" as const,
     paypal: "gold" as const,
   },
   layout: {
-    maxColumns: 2,
+    maxColumns: 1,
     overflow: "auto" as const,
   },
-  paymentMethodOrder: [
-    "link",
-    "paypal",
-    "googlePay",
-    "applePay",
-    "samsungPay",
-  ],
+  paymentMethodOrder: ["googlePay", "applePay", "paypal", "link"],
   paymentMethods: {
-    applePay: "always" as const,
-    googlePay: "always" as const,
+    applePay: "auto" as const,
+    googlePay: "auto" as const,
     paypal: "auto" as const,
     link: "auto" as const,
-    samsungPay: "auto" as const,
   },
 };
 
-/** Carte sélectionnée par défaut ; portefeuilles gérés par Express Checkout au-dessus. */
+/** Carte bancaire sélectionnée par défaut. */
 const PAYMENT_ELEMENT_OPTIONS = {
   layout: {
-    type: "tabs" as const,
+    type: "accordion" as const,
+    defaultCollapsed: false,
+    spacedAccordionItems: true,
   },
-  paymentMethodOrder: [
-    "card",
-    "link",
-    "paypal",
-    "google_pay",
-    "apple_pay",
-    "samsung_pay",
-  ],
+  paymentMethodOrder: ["card", "link", "paypal"],
   wallets: {
     applePay: "never" as const,
     googlePay: "never" as const,
@@ -76,33 +64,51 @@ const STRIPE_APPEARANCE = {
     fontFamily:
       "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     fontSizeBase: "15px",
-    spacingUnit: "4px",
+    spacingUnit: "3px",
   },
   rules: {
-    ".Tab": {
-      border: "1px solid rgba(15, 23, 42, 0.1)",
-      borderRadius: "10px",
-      padding: "10px 12px",
+    ".AccordionItem": {
+      border: "1px solid rgba(15, 23, 42, 0.08)",
+      borderRadius: "12px",
+      boxShadow: "none",
     },
-    ".Tab--selected": {
-      borderColor: "#66BAFF",
-      boxShadow: "0 0 0 1px rgba(102, 186, 255, 0.35)",
-    },
-    ".TabIcon": {
-      height: "1.35rem",
-    },
-    ".TabLabel": {
-      fontWeight: "600",
-      fontSize: "13px",
+    ".AccordionItem--selected": {
+      borderColor: "rgba(15, 23, 42, 0.14)",
     },
     ".Label": {
       fontWeight: "500",
     },
-    ".Input": {
-      fontSize: "15px",
-    },
   },
 };
+
+class StripeMountErrorBoundary extends Component<
+  { children: ReactNode; onError: (message: string) => void },
+  { crashed: boolean }
+> {
+  state = { crashed: false };
+
+  static getDerivedStateFromError() {
+    return { crashed: true };
+  }
+
+  componentDidCatch(error: Error) {
+    this.props.onError(
+      error.message || "Le formulaire de paiement n'a pas pu s'afficher.",
+    );
+  }
+
+  render() {
+    if (this.state.crashed) {
+      return (
+        <p className="rounded-xl bg-accent/10 px-4 py-3 text-sm text-accent">
+          Impossible d&apos;afficher le paiement. Rechargez la page ou essayez
+          un autre navigateur.
+        </p>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 async function finalizeCheckout(
   checkout: { confirm: (opts: Record<string, unknown>) => Promise<unknown> },
@@ -221,29 +227,27 @@ function PaymentForm({
   }
 
   return (
-    <form onSubmit={handlePay} className="checkout-payment-form space-y-6">
+    <form onSubmit={handlePay} className="checkout-payment-form space-y-5">
       {loadError ? (
         <p className="rounded-xl bg-accent/10 px-4 py-3 text-sm text-accent">
           {loadError}
         </p>
       ) : null}
 
-      <div
-        className={
-          expressAvailable
-            ? "checkout-express-shell space-y-3"
-            : "sr-only"
-        }
-        aria-hidden={!expressAvailable}
-      >
-        <p className="text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-ink/40">
-          Paiement express
-        </p>
+      <div className="checkout-express-block">
+        {expressAvailable ? (
+          <p className="mb-3 text-center text-[11px] font-medium uppercase tracking-[0.18em] text-ink/40">
+            Paiement en 1 clic
+          </p>
+        ) : null}
         <div className="checkout-express-grid">
           <ExpressCheckoutElement
             onConfirm={handleConfirmExpressCheckout}
             onAvailablePaymentMethodsChange={({ paymentMethods }) => {
               setExpressAvailable(Boolean(paymentMethods));
+            }}
+            onLoadError={(event) => {
+              console.warn("[stripe] express checkout", event.error?.message);
             }}
             options={
               EXPRESS_OPTIONS as unknown as ComponentProps<
@@ -255,20 +259,27 @@ function PaymentForm({
       </div>
 
       {expressAvailable ? (
-        <div className="relative flex items-center gap-3 py-1">
+        <div className="flex items-center gap-3">
           <div className="h-px flex-1 bg-ink/10" />
-          <span className="text-xs text-ink/40">ou autre moyen</span>
+          <span className="shrink-0 text-xs text-ink/40">ou carte bancaire</span>
           <div className="h-px flex-1 bg-ink/10" />
         </div>
       ) : null}
 
       {!ready && !loadError ? (
-        <div className="flex items-center justify-center py-6">
+        <div className="flex items-center justify-center py-8">
           <Spinner className="h-6 w-6" />
         </div>
       ) : null}
 
-      <div className={ready ? "checkout-payment-tabs block" : "sr-only"}>
+      <div
+        className={
+          ready
+            ? "checkout-payment-accordion block"
+            : "checkout-payment-accordion pointer-events-none min-h-[1px] opacity-0"
+        }
+        aria-hidden={!ready}
+      >
         <PaymentElement
           options={
             PAYMENT_ELEMENT_OPTIONS as ComponentProps<
@@ -317,7 +328,7 @@ export function StripePaymentForm({
     return (
       <p className="text-sm text-accent">
         Clé publique Stripe manquante ou incompatible avec la clé secrète.
-        Vérifiez .env.local (sk_test_ + pk_test_, ou pk_live_ + pk_live_).
+        Vérifiez .env.local (sk_test_ + pk_test_, ou sk_live_ + pk_live_).
       </p>
     );
   }
@@ -331,17 +342,19 @@ export function StripePaymentForm({
   }
 
   return (
-    <CheckoutElementsProvider
-      key={clientSecret}
-      stripe={stripePromise}
-      options={{
-        clientSecret,
-        elementsOptions: {
-          appearance: STRIPE_APPEARANCE,
-        },
-      }}
-    >
-      <PaymentForm onSuccess={onSuccess} onError={onError} disabled={disabled} />
-    </CheckoutElementsProvider>
+    <StripeMountErrorBoundary onError={onError}>
+      <CheckoutElementsProvider
+        key={clientSecret}
+        stripe={stripePromise}
+        options={{
+          clientSecret,
+          elementsOptions: {
+            appearance: STRIPE_APPEARANCE,
+          },
+        }}
+      >
+        <PaymentForm onSuccess={onSuccess} onError={onError} disabled={disabled} />
+      </CheckoutElementsProvider>
+    </StripeMountErrorBoundary>
   );
 }

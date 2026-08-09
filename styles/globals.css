@@ -580,8 +580,15 @@
   }
 }
 
-/* Checkout Stripe — laisser Stripe dimensionner l’iframe (ne pas couper les boutons). */
+/* Checkout Stripe — boutons express empilés, pleine largeur */
+.checkout-express-block {
+  width: 100%;
+}
+
 .checkout-express-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
   width: 100%;
 }
 
@@ -591,6 +598,21 @@
 
 .checkout-express-grid iframe {
   width: 100% !important;
+  border-radius: 12px !important;
+}
+
+.checkout-payment-accordion .p-AccordionItem {
+  border-radius: 0.75rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.checkout-payment-accordion .p-AccordionButton {
+  padding: 0.875rem 1rem;
+}
+
+.checkout-payment-accordion .p-AccordionPanel {
+  padding: 0 1rem 1rem;
 }
 
 .checkout-payment-tabs .Tab {
