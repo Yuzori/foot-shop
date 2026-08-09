@@ -11,6 +11,7 @@ import {
   KIT_TYPE_LABELS,
 } from "@/lib/kit-type";
 import { isJerseyProduct } from "@/lib/product-collection";
+import { productHasStock } from "@/lib/product-stock";
 import { prestashop } from "@/services/prestashop";
 import type { Product } from "@/types/domain";
 
@@ -20,6 +21,7 @@ export type KitSiblingOption = {
   kitType: KitType;
   label: string;
   imageUrl: string | null;
+  inStock: boolean;
 };
 
 function collectCandidates(
@@ -37,6 +39,7 @@ export async function findKitSiblings(product: {
   name: string;
   defaultCategoryId?: string | null;
   coverUrl?: string | null;
+  inStock?: boolean;
 }): Promise<KitSiblingOption[]> {
   if (!isJerseyProduct(product.name)) return [];
 
@@ -84,6 +87,7 @@ export async function findKitSiblings(product: {
         kitType,
         label: KIT_TYPE_LABELS[kitType],
         imageUrl: candidate.cover?.url ?? candidate.images[0]?.url ?? null,
+        inStock: productHasStock(candidate),
       });
     }
   }
@@ -94,6 +98,7 @@ export async function findKitSiblings(product: {
     kitType: currentKit,
     label: KIT_TYPE_LABELS[currentKit],
     imageUrl: product.coverUrl ?? null,
+    inStock: product.inStock ?? true,
   };
 
   const options = KIT_TYPE_ORDER.map((type) => {

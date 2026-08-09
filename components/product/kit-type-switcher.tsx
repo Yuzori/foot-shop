@@ -4,16 +4,20 @@ import Link from "next/link";
 import { useState, type CSSProperties } from "react";
 
 import { ProductImage } from "@/components/product/product-image";
+import { StockAlertBell } from "@/components/product/stock-alert-bell";
 import { routes } from "@/config/site";
+import { useSession } from "@/hooks/use-auth";
 import { useImageAccentColor } from "@/hooks/use-image-accent-color";
 import { KIT_TYPE_ORDER, type KitType } from "@/lib/kit-type";
 import { cn } from "@/lib/utils";
 
 export type KitSwitcherOption = {
   id: string;
+  name: string;
   kitType: KitType;
   label: string;
   imageUrl: string | null;
+  inStock: boolean;
 };
 
 interface KitTypeSwitcherProps {
@@ -65,7 +69,11 @@ function KitTypeTile({
       className={cn(
         "relative shrink-0 overflow-hidden rounded-xl bg-white transition-all duration-300 ease-out",
         enlarged ? ACTIVE_SIZE : INACTIVE_SIZE,
-        enlarged ? "grayscale-0 opacity-100" : "grayscale opacity-40",
+        enlarged
+          ? option.inStock
+            ? "grayscale-0 opacity-100"
+            : "grayscale opacity-55"
+          : "grayscale opacity-40",
       )}
       style={accentRing(accent, ringStrength)}
     >
@@ -84,12 +92,31 @@ function KitTypeTile({
         "mt-2 block text-center text-[10px] font-bold uppercase tracking-[0.14em] transition-colors duration-200",
         isActive ? "text-ink" : "text-ink/35",
         hovered && !isActive && "text-ink/65",
+        !option.inStock && "text-ink/40",
       )}
-      style={isActive ? { color: accent.muted } : undefined}
+      style={isActive && option.inStock ? { color: accent.muted } : undefined}
     >
       {option.label}
     </span>
   );
+
+  const stockRow = !option.inStock ? (
+    <div
+      className="mt-1.5 flex items-center justify-center gap-1.5"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-ink/40">
+        Hors stock
+      </span>
+      <StockAlertBell
+        productId={option.id}
+        productName={option.name}
+        overlay
+        quickSubscribeAccount
+        className="!relative !right-auto !top-auto !h-6 !w-6"
+      />
+    </div>
+  ) : null;
 
   const body = (
     <div
@@ -99,6 +126,7 @@ function KitTypeTile({
     >
       {frame}
       {label}
+      {stockRow}
     </div>
   );
 
@@ -122,6 +150,8 @@ export function KitTypeSwitcher({
   currentProductId,
   options,
 }: KitTypeSwitcherProps) {
+  const { data: user } = useSession();
+
   if (options.length < 2) return null;
 
   const byType = new Map(options.map((o) => [o.kitType, o]));
@@ -130,6 +160,8 @@ export function KitTypeSwitcher({
   );
 
   if (ordered.length < 2) return null;
+
+  const hasOutOfStock = ordered.some((option) => !option.inStock);
 
   return (
     <div>
@@ -143,6 +175,18 @@ export function KitTypeSwitcher({
           />
         ))}
       </div>
+      {hasOutOfStock && user?.email ? (
+        <p className="mt-3 max-w-md text-[11px] leading-relaxed text-ink/45">
+          Connecté avec{" "}
+          <span className="font-medium text-ink/65">{user.email}</span> — la
+          cloche active une alerte retour en stock à cette adresse.
+        </p>
+      ) : hasOutOfStock ? (
+        <p className="mt-3 max-w-md text-[11px] leading-relaxed text-ink/45">
+          Cliquez sur la cloche pour être prévenu par email dès qu&apos;une
+          version est de nouveau disponible.
+        </p>
+      ) : null}
     </div>
   );
 }

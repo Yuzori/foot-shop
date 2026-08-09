@@ -51,6 +51,7 @@ export default async function ProductPage({ params }: PageProps) {
     name: product.name,
     defaultCategoryId: product.defaultCategoryId,
     coverUrl: product.cover?.url ?? product.images[0]?.url ?? null,
+    inStock: productHasStock(product),
   });
 
   const base = publicConfig.siteUrl.replace(/\/$/, "");

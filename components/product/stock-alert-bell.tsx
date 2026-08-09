@@ -17,6 +17,8 @@ interface StockAlertBellProps {
   variantLabel?: string | null;
   className?: string;
   overlay?: boolean;
+  /** Abonne directement avec l'email du compte connecté (sans ouvrir la modale). */
+  quickSubscribeAccount?: boolean;
   onFeedback?: (message: string | null) => void;
 }
 
@@ -45,6 +47,7 @@ export function StockAlertBell({
   variantLabel = null,
   className,
   overlay = false,
+  quickSubscribeAccount = false,
   onFeedback,
 }: StockAlertBellProps) {
   const { data: user } = useSession();
@@ -149,6 +152,10 @@ export function StockAlertBell({
     e.stopPropagation();
     e.preventDefault();
     if (active) return;
+    if (quickSubscribeAccount && userEmail) {
+      void subscribe(userEmail);
+      return;
+    }
     setOpen(true);
   }
 
