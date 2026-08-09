@@ -2510,10 +2510,10 @@ ${ids
   /** Ajoute une déclinaison XXL si le produit a des tailles mais pas encore XXL. */
   async ensureXxlForProduct(
     productId: string,
-  ): Promise<{ created: boolean; error?: string }> {
+  ): Promise<{ created: boolean; skipped?: boolean; error?: string }> {
     try {
       const product = await this.getProductById(productId);
-      if (!product?.variants.length) return { created: false };
+      if (!product?.variants.length) return { created: false, skipped: true };
 
       const hasXxl = product.variants.some((variant) =>
         variant.options.some((o) => o.label.trim().toUpperCase() === "XXL"),
@@ -2546,11 +2546,17 @@ ${ids
   async ensureXxlForCatalog(options?: {
     pageSize?: number;
     maxPages?: number;
-  }): Promise<{ scanned: number; created: number; errors: number }> {
+  }): Promise<{
+    scanned: number;
+    created: number;
+    skipped: number;
+    errors: number;
+  }> {
     const pageSize = options?.pageSize ?? 50;
-    const maxPages = options?.maxPages ?? 20;
+    const maxPages = options?.maxPages ?? 50;
     let scanned = 0;
     let created = 0;
+    let skipped = 0;
     let errors = 0;
 
     for (let page = 1; page <= maxPages; page++) {
@@ -2558,9 +2564,12 @@ ${ids
       if (!batch.items.length) break;
 
       for (const product of batch.items) {
-        if (!product.variants.length) continue;
-        scanned++;
         const result = await this.ensureXxlForProduct(product.id);
+        if (result.skipped) {
+          skipped++;
+          continue;
+        }
+        scanned++;
         if (result.created) created++;
         if (result.error) errors++;
       }
@@ -2568,7 +2577,7 @@ ${ids
       if (page * pageSize >= batch.total) break;
     }
 
-    return { scanned, created, errors };
+    return { scanned, created, skipped, errors };
   }
 
   /** Fixe le stock absolu pour un produit ou une déclinaison. */

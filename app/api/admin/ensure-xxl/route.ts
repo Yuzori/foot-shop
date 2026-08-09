@@ -20,15 +20,18 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as { maxPages?: number };
     if (typeof body.maxPages === "number" && body.maxPages > 0) {
-      maxPages = Math.min(body.maxPages, 200);
+      maxPages = Math.min(body.maxPages, 100);
     }
   } catch {
     /* corps vide = défaut */
   }
 
-  const result = await prestashop.ensureXxlForCatalog({ maxPages });
+  const result = await prestashop.ensureXxlForCatalog({ maxPages, pageSize: 50 });
   return NextResponse.json({
-    message: "Synchronisation XXL terminée.",
+    message:
+      result.created > 0
+        ? `${result.created} déclinaison(s) XXL créée(s).`
+        : "Aucune déclinaison XXL à créer — le catalogue est déjà à jour.",
     ...result,
   });
 }
