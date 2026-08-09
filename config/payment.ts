@@ -26,17 +26,8 @@ export const paymentConfig = {
     return Boolean(this.stripeSecretKey);
   },
   /** Identifiant interne pour vérifier le déploiement (GET /api/checkout/stripe/config). */
-  checkoutStripeVersion: "link-tabs-v5",
-  /**
-   * PayPal uniquement si explicitement activé (compte Stripe + STRIPE_PAYPAL_ENABLED=true).
-   * Link et carte sont toujours proposés.
-   */
-  get stripePaypalEnabled(): boolean {
-    return process.env.STRIPE_PAYPAL_ENABLED === "true";
-  },
-  get stripeCheckoutPaymentMethodTypes(): ("card" | "link" | "paypal")[] {
-    const methods: ("card" | "link" | "paypal")[] = ["card", "link"];
-    if (this.stripePaypalEnabled) methods.push("paypal");
-    return methods;
+  checkoutStripeVersion: "link-tabs-v6",
+  get stripeCheckoutPaymentMethodTypes(): ("card" | "link")[] {
+    return ["card", "link"];
   },
 } as const;

@@ -18,6 +18,10 @@ import { useUIStore } from "@/store/ui-store";
 
 const BOTTOM_THRESHOLD_PX = 96;
 
+function isCheckoutFlow(pathname: string): boolean {
+  return pathname.startsWith("/paiement") || pathname.startsWith("/panier");
+}
+
 function isNearPageBottom(): boolean {
   if (typeof window === "undefined") return false;
   const { scrollY, innerHeight } = window;
@@ -51,7 +55,12 @@ export function RecentProductBar() {
 
   const onSameProduct = recent && pathname === routes.product(recent.id);
   const visible =
-    recent && !hidden && !onSameProduct && !menuOpen && !nearBottom;
+    recent &&
+    !hidden &&
+    !onSameProduct &&
+    !menuOpen &&
+    !nearBottom &&
+    !isCheckoutFlow(pathname);
 
   return (
     <AnimatePresence>

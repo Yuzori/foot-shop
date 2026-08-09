@@ -299,32 +299,28 @@ export function CheckoutMobileStickyBar({
   return (
     <div
       className={cn(
-        "fixed inset-x-0 bottom-0 z-40 border-t border-ink/10 bg-paper/95 p-4 backdrop-blur-md lg:hidden",
+        "fixed inset-x-0 bottom-0 z-50 border-t border-ink/10 bg-paper/95 backdrop-blur-md lg:hidden",
         "pb-[max(1rem,env(safe-area-inset-bottom))]",
       )}
     >
-      <div className="mb-3 flex items-center justify-between text-sm">
-        <span className="font-medium text-ink/60">Total</span>
-        <span className="text-lg font-bold tabular-nums text-accent">
-          {formatPrice(orderTotal)}
-        </span>
+      <div className="mx-auto w-full max-w-8xl px-4 pt-3 sm:px-8">
+        <Button
+          type="button"
+          size="lg"
+          disabled={pending}
+          onClick={onContinue}
+          className="w-full bg-accent text-center text-ink hover:bg-accent-dark hover:shadow-glow-sm"
+        >
+          {pending ? (
+            <span className="flex items-center justify-center gap-2">
+              <Spinner className="h-4 w-4 border-paper/30 border-t-paper" />
+              Préparation…
+            </span>
+          ) : (
+            `Continuer — ${formatPrice(orderTotal)}`
+          )}
+        </Button>
       </div>
-      <Button
-        type="button"
-        size="lg"
-        disabled={pending}
-        onClick={onContinue}
-        className="w-full bg-accent text-ink hover:bg-accent-dark hover:shadow-glow-sm"
-      >
-        {pending ? (
-          <span className="flex items-center justify-center gap-2">
-            <Spinner className="h-4 w-4 border-paper/30 border-t-paper" />
-            Préparation…
-          </span>
-        ) : (
-          `Continuer — ${formatPrice(orderTotal)}`
-        )}
-      </Button>
     </div>
   );
 }
