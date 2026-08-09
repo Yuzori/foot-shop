@@ -31,8 +31,7 @@ function isPaypalUnavailableError(error: unknown): boolean {
 
 /**
  * Crée une Checkout Session Stripe Elements.
- * Par défaut : types explicites (card, link, paypal) pour un affichage fiable.
- * PMC dashboard uniquement si STRIPE_FORCE_PMC=true (sinon Link peut manquer).
+ * Utilise la PMC dashboard (pmc_…) si définie — Apple Pay, Link, PayPal, Samsung Pay…
  */
 export async function createStripeElementsCheckoutSession(
   stripe: Stripe,
@@ -42,10 +41,7 @@ export async function createStripeElementsCheckoutSession(
   paymentMethodTypes: StripeCheckoutPaymentMethodType[] | null;
   paymentMethodConfiguration: string | null;
 }> {
-  const pmcId =
-    process.env.STRIPE_FORCE_PMC === "true"
-      ? paymentConfig.stripePaymentMethodConfigurationId
-      : "";
+  const pmcId = paymentConfig.stripePaymentMethodConfigurationId;
 
   if (pmcId) {
     const session = await stripe.checkout.sessions.create({

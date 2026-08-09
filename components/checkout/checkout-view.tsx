@@ -973,7 +973,7 @@ export function CheckoutView() {
             <div>
               <h2 className="section-title">Paiement sécurisé</h2>
               <p className="mt-2 text-sm text-ink/55">
-                Apple Pay, Google Pay, PayPal, Link ou carte — traité par Stripe
+                Apple Pay, Google Pay, PayPal, Link, Samsung Pay ou carte — traité par Stripe
                 pour {publicConfig.siteName}.
               </p>
             </div>
