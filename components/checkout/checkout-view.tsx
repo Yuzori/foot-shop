@@ -48,6 +48,7 @@ import {
 } from "@/lib/checkout-profile";
 import { useCartStockGuard } from "@/hooks/use-cart-stock-guard";
 import { useHydrated } from "@/hooks/use-hydrated";
+import { useScrollToTop } from "@/hooks/use-scroll-to-top";
 import { useSession } from "@/hooks/use-auth";
 import { useCheckoutProfile } from "@/hooks/use-checkout-profile";
 import { cartLineUnitPrice } from "@/hooks/use-cart-bogo";
@@ -130,7 +131,10 @@ export function CheckoutView() {
   } | null>(null);
   const paymentRestoredRef = useRef(false);
   const detailsFormRef = useRef<HTMLFormElement>(null);
+  const paymentSectionRef = useRef<HTMLElement>(null);
   const accountPrefilled = useRef(false);
+
+  useScrollToTop();
 
   useLayoutEffect(() => {
     const snapshot = resolveCartLinesForCheckout();
@@ -147,6 +151,12 @@ export function CheckoutView() {
       }
     }
   }, []);
+
+  useEffect(() => {
+    if (step !== "payment") return;
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    paymentSectionRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
+  }, [step]);
 
   const checkoutLines = frozenLines ?? [];
 
@@ -956,7 +966,10 @@ export function CheckoutView() {
             </Button>
           </form>
         ) : (
-          <section className="surface-card space-y-6 p-6 sm:p-8">
+          <section
+            ref={paymentSectionRef}
+            className="surface-card scroll-mt-28 space-y-6 p-6 sm:p-8"
+          >
             <div>
               <h2 className="section-title">Paiement sécurisé</h2>
               <p className="mt-2 text-sm text-ink/55">
