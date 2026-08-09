@@ -7,8 +7,10 @@ import {
   emailButton,
   emailHeading,
   emailLayout,
+  emailOrderSupportBlock,
   emailParagraph,
   escapeHtml,
+  orderSupportNoticeText,
 } from "@/lib/email-template";
 import { formatPrice } from "@/lib/format";
 import { assertMailDelivered, sendMail } from "@/lib/mailer";
@@ -23,6 +25,7 @@ export async function sendOrderConfirmationEmail(input: {
   const { to, order, firstName, firstOrderPromo } = input;
   const base = getSiteUrl();
   const trackingUrl = `${base}${routes.tracking}?ref=${encodeURIComponent(order.reference)}`;
+  const contactUrl = `${base}${routes.contact}`;
   const greeting = firstName?.trim() ? `Bonjour ${escapeHtml(firstName)},` : "Bonjour,";
 
   const linesHtml = order.lines
@@ -65,8 +68,9 @@ export async function sendOrderConfirmationEmail(input: {
     </table>
     ${promoBlock}
     ${emailButton(trackingUrl, "Suivre ma commande")}
-    ${emailParagraph("Comptez <strong>2 à 7 jours</strong> pour recevoir par email le <strong>lien de suivi Chronopost</strong> dès l'expédition de votre colis.")}
+    ${emailParagraph("Comptez <strong>2 à 7 jours ouvrés</strong> pour recevoir par email le <strong>lien de suivi Chronopost</strong> dès l'expédition de votre colis.")}
     ${emailParagraph("Conservez cette référence pour suivre l'avancement de votre commande.")}
+    ${emailOrderSupportBlock(contactUrl)}
   `;
 
   const subject = firstOrderPromo
@@ -87,9 +91,11 @@ export async function sendOrderConfirmationEmail(input: {
       ? `Code promo prochaine commande : ${firstOrderPromo.code} (${firstOrderPromo.percent} %)`
       : "",
     "",
-    `Comptez 2 à 7 jours pour recevoir par email le lien de suivi Chronopost.`,
+    `Comptez 2 à 7 jours ouvrés pour recevoir par email le lien de suivi Chronopost.`,
     "",
     `Suivre la commande : ${trackingUrl}`,
+    "",
+    orderSupportNoticeText(contactUrl),
   ]
     .filter(Boolean)
     .join("\n");

@@ -58,6 +58,18 @@ export function emailParagraph(text: string): string {
   return `<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#333">${text}</p>`;
 }
 
+/** Mention délai Chronopost + lien vers le service client (emails commande). */
+export function emailOrderSupportBlock(contactUrl: string): string {
+  return `${emailParagraph(
+    `Pour toute question concernant votre commande ou en cas de retard, veuillez contacter le <a href="${escapeHtml(contactUrl)}" style="color:#3DA8F5;font-weight:600">service client sur le site internet</a>.`,
+  )}
+${emailButton(contactUrl, "Contacter le service client")}`;
+}
+
+export function orderSupportNoticeText(contactUrl: string): string {
+  return `Pour toute question concernant votre commande ou en cas de retard, contactez le service client sur le site : ${contactUrl}`;
+}
+
 export function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
