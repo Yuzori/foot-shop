@@ -21,6 +21,16 @@ interface StripePaymentFormProps {
   disabled?: boolean;
 }
 
+const EXPRESS_OPTIONS = {
+  buttonHeight: 48,
+  layout: { maxColumns: 1, maxRows: 3, overflow: "never" as const },
+  paymentMethods: {
+    applePay: "always" as const,
+    googlePay: "always" as const,
+    link: "auto" as const,
+  },
+};
+
 async function finalizeCheckout(
   checkout: { confirm: (opts: Record<string, unknown>) => Promise<unknown> },
   confirmArgs: Record<string, unknown>,
@@ -63,7 +73,7 @@ function PaymentForm({
   const [pending, setPending] = useState(false);
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [expressVisible, setExpressVisible] = useState(false);
+  const [expressAvailable, setExpressAvailable] = useState(false);
 
   const totalLabel =
     checkoutState.type === "success"
@@ -145,29 +155,28 @@ function PaymentForm({
         </p>
       ) : null}
 
-      <div className={expressVisible ? "space-y-4" : "hidden"}>
+      <div className="space-y-4">
         <p className="text-center text-xs font-semibold uppercase tracking-widest text-ink/40">
           Paiement express
         </p>
         <ExpressCheckoutElement
           onConfirm={handleConfirmExpressCheckout}
           onAvailablePaymentMethodsChange={({ paymentMethods }) => {
-            setExpressVisible(Boolean(paymentMethods));
+            setExpressAvailable(Boolean(paymentMethods));
           }}
-          options={{
-            buttonHeight: 48,
-            layout: { maxColumns: 1, maxRows: 2 },
-          } as ComponentProps<typeof ExpressCheckoutElement>["options"]}
+          options={EXPRESS_OPTIONS as ComponentProps<typeof ExpressCheckoutElement>["options"]}
         />
-        <div className="relative flex items-center gap-3 py-1">
-          <div className="h-px flex-1 bg-ink/10" />
-          <span className="text-xs text-ink/40">ou carte bancaire</span>
-          <div className="h-px flex-1 bg-ink/10" />
-        </div>
+        {expressAvailable ? (
+          <div className="relative flex items-center gap-3 py-1">
+            <div className="h-px flex-1 bg-ink/10" />
+            <span className="text-xs text-ink/40">ou carte bancaire</span>
+            <div className="h-px flex-1 bg-ink/10" />
+          </div>
+        ) : null}
       </div>
 
       {!ready && !loadError ? (
-        <div className="flex items-center justify-center py-10">
+        <div className="flex items-center justify-center py-6">
           <Spinner className="h-6 w-6" />
         </div>
       ) : null}

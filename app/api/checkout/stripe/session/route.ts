@@ -8,6 +8,7 @@ import { placeOrder, type CheckoutBody } from "@/lib/orders";
 import { isWelcomePromoEligible } from "@/lib/welcome-promo-store";
 import { getStripe } from "@/lib/stripe-server";
 import { getOrCreateStripeCustomer } from "@/lib/stripe-customer";
+import { ensureStripePaymentMethodDomains } from "@/lib/stripe-payment-domains";
 import {
   formatStripeError,
   getStripePublishableKey,
@@ -186,6 +187,7 @@ export async function POST(request: Request) {
   );
 
   const savePayment = body.savePaymentMethod === true;
+  await ensureStripePaymentMethodDomains();
   const stripeCustomerId = await getOrCreateStripeCustomer({
     email: body.contact.email,
     customerId: order.customerId ?? authSession?.id,

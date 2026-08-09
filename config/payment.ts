@@ -26,5 +26,5 @@ export const paymentConfig = {
     return Boolean(this.stripeSecretKey);
   },
   /** Identifiant interne pour vérifier le déploiement (GET /api/checkout/stripe/config). */
-  checkoutStripeVersion: "card-only-v3",
+  checkoutStripeVersion: "wallets-v4",
 } as const;
