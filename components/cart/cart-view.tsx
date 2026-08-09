@@ -95,8 +95,8 @@ export function CartView() {
         description={`${itemCount} article${itemCount > 1 ? "s" : ""} dans votre panier.`}
       />
 
-      <div className="grid gap-10 lg:grid-cols-[1fr_380px] lg:gap-12">
-        <ul className="surface-card divide-y divide-ink/5 px-4 sm:px-6">
+      <div className="grid gap-10 lg:grid-cols-[1fr_380px] lg:items-start lg:gap-12">
+        <ul className="surface-card h-fit divide-y divide-ink/5 self-start px-4 sm:px-6">
           <AnimatePresence initial={false}>
             {lines.map((line, index) => (
               <motion.li
@@ -184,7 +184,7 @@ export function CartView() {
           </AnimatePresence>
         </ul>
 
-        <div className="space-y-4">
+        <aside className="space-y-4 lg:sticky lg:top-28 lg:self-start">
           <WelcomePromoGuestNudge totalUnits={itemCount} />
           <OrderSummary
             lines={lines}
@@ -195,6 +195,7 @@ export function CartView() {
             promoCode={promoCode}
             onPromoCodeChange={handlePromoCodeChange}
             showEditCart={false}
+            pinSummary={false}
           />
           <Link
             href={routes.checkout}
@@ -208,7 +209,7 @@ export function CartView() {
           >
             Continuer mes achats
           </Link>
-        </div>
+        </aside>
       </div>
     </Container>
   );

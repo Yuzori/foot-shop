@@ -29,14 +29,15 @@ const EXPRESS_OPTIONS = {
     paypal: "gold" as const,
   },
   layout: {
-    maxColumns: 2,
-    maxRows: 2,
-    overflow: "auto" as const,
+    maxColumns: 3,
+    maxRows: 4,
+    overflow: "never" as const,
   },
-  paymentMethodOrder: ["applePay", "googlePay", "paypal", "link"],
+  paymentMethodOrder: ["paypal", "link", "applePay", "googlePay"],
   paymentMethods: {
-    applePay: "always" as const,
-    googlePay: "always" as const,
+    applePay: "auto" as const,
+    googlePay: "auto" as const,
+    paypal: "auto" as const,
     link: "auto" as const,
   },
 };
@@ -201,9 +202,12 @@ function PaymentForm({
         <PaymentElement
           options={{
             layout: {
-              type: "tabs",
+              type: "accordion",
               defaultCollapsed: false,
+              radios: false,
+              spacedAccordionItems: true,
             },
+            paymentMethodOrder: ["card", "paypal", "link"],
             wallets: {
               applePay: "never",
               googlePay: "never",

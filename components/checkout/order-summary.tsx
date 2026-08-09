@@ -35,6 +35,8 @@ interface OrderSummaryProps {
   promoError?: string | null;
   promoPending?: boolean;
   showEditCart?: boolean;
+  /** Coller le récap seul au scroll — false si le parent englobe récap + boutons. */
+  pinSummary?: boolean;
   /** `mobile` = récap compact en haut sur petit écran ; `sidebar` = panneau latéral desktop */
   variant?: "mobile" | "sidebar";
 }
@@ -146,6 +148,7 @@ export function OrderSummary({
   promoError,
   promoPending = false,
   showEditCart = true,
+  pinSummary = true,
   variant = "sidebar",
 }: OrderSummaryProps) {
   const units = itemCount(lines);
@@ -233,6 +236,7 @@ export function OrderSummary({
         </p>
       }
       title="Votre commande"
+      sticky={pinSummary}
       className="hidden lg:block"
     >
       <div className="mt-6">

@@ -582,7 +582,8 @@
 
 /* Checkout Stripe — logos express alignés et non tronqués */
 .checkout-express-grid {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 0.625rem;
 }
 
@@ -597,18 +598,15 @@
   max-height: 48px !important;
 }
 
-.checkout-payment-tabs .p-TabsHeader {
-  gap: 0.5rem;
+.checkout-payment-tabs .p-AccordionItem {
+  border-radius: 0.75rem;
+  margin-bottom: 0.5rem;
 }
 
-.checkout-payment-tabs .Tab {
-  min-height: 3rem;
-  align-items: center;
-  justify-content: center;
+.checkout-payment-tabs .p-AccordionButton {
+  padding: 0.875rem 1rem;
 }
 
-.checkout-payment-tabs .TabIcon {
-  width: auto !important;
-  max-height: 1.25rem;
-  object-fit: contain;
+.checkout-payment-tabs .p-AccordionPanel {
+  padding: 0 1rem 1rem;
 }

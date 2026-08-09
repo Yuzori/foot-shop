@@ -7,6 +7,8 @@ interface SummaryCardProps {
   className?: string;
   title?: string;
   badge?: ReactNode;
+  /** Coller le récap en haut au scroll desktop (désactiver si le parent gère le sticky). */
+  sticky?: boolean;
 }
 
 /** Panneau récapitulatif (panier, checkout). */
@@ -15,11 +17,13 @@ export function SummaryCard({
   className,
   title,
   badge,
+  sticky = true,
 }: SummaryCardProps) {
   return (
     <aside
       className={cn(
-        "h-fit rounded-3xl border border-ink/8 bg-paper p-6 shadow-soft lg:sticky lg:top-28 lg:p-8",
+        "h-fit rounded-3xl border border-ink/8 bg-paper p-6 shadow-soft lg:p-8",
+        sticky && "lg:sticky lg:top-28",
         className,
       )}
     >
