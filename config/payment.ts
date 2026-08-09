@@ -26,7 +26,13 @@ export const paymentConfig = {
     return Boolean(this.stripeSecretKey);
   },
   /** Identifiant interne pour vérifier le déploiement (GET /api/checkout/stripe/config). */
-  checkoutStripeVersion: "wallets-paypal-v7",
+  checkoutStripeVersion: "pmc-v8",
+  /**
+   * Configuration Stripe Dashboard (pmc_…) — Apple Pay, PayPal, Link, etc.
+   * https://dashboard.stripe.com/settings/payment_methods
+   */
+  stripePaymentMethodConfigurationId:
+    process.env.STRIPE_PAYMENT_METHOD_CONFIGURATION?.trim() ?? "",
   get stripeCheckoutPaymentMethodTypes(): ("card" | "link" | "paypal")[] {
     return ["card", "link", "paypal"];
   },

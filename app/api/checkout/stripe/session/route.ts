@@ -197,7 +197,7 @@ export async function POST(request: Request) {
   });
 
   try {
-    const { session, paymentMethodTypes } =
+    const { session, paymentMethodTypes, paymentMethodConfiguration } =
       await createStripeElementsCheckoutSession(stripe, {
       mode: "payment",
       ui_mode: "elements",
@@ -249,6 +249,7 @@ export async function POST(request: Request) {
       promoDiscount,
       promoCode: promo?.valid ? promo.code : null,
       paymentMethodTypes,
+      paymentMethodConfiguration,
     });
   } catch (error) {
     console.error("[stripe] checkout.sessions.create failed", error);

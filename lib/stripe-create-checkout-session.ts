@@ -2,11 +2,18 @@ import "server-only";
 
 import type Stripe from "stripe";
 
+import { paymentConfig } from "@/config/payment";
+
 export type StripeCheckoutPaymentMethodType = "card" | "link" | "paypal";
 
 export function stripePreferredPaymentMethodTypes(): StripeCheckoutPaymentMethodType[] {
   return ["card", "link", "paypal"];
 }
+
+type SessionParams = Omit<
+  Stripe.Checkout.SessionCreateParams,
+  "payment_method_types" | "payment_method_configuration"
+>;
 
 function isPaypalUnavailableError(error: unknown): boolean {
   const message =
@@ -22,14 +29,32 @@ function isPaypalUnavailableError(error: unknown): boolean {
   return lower.includes("paypal") && lower.includes("invalid");
 }
 
-/** Crée une Checkout Session ; retire PayPal si le compte Stripe ne l'a pas encore activé. */
+/**
+ * Crée une Checkout Session Stripe Elements.
+ * Utilise la configuration PMC du dashboard si définie (Apple Pay, PayPal, Link…).
+ */
 export async function createStripeElementsCheckoutSession(
   stripe: Stripe,
-  params: Omit<Stripe.Checkout.SessionCreateParams, "payment_method_types">,
+  params: SessionParams,
 ): Promise<{
   session: Stripe.Checkout.Session;
-  paymentMethodTypes: StripeCheckoutPaymentMethodType[];
+  paymentMethodTypes: StripeCheckoutPaymentMethodType[] | null;
+  paymentMethodConfiguration: string | null;
 }> {
+  const pmcId = paymentConfig.stripePaymentMethodConfigurationId;
+
+  if (pmcId) {
+    const session = await stripe.checkout.sessions.create({
+      ...params,
+      payment_method_configuration: pmcId,
+    });
+    return {
+      session,
+      paymentMethodTypes: null,
+      paymentMethodConfiguration: pmcId,
+    };
+  }
+
   let types = stripePreferredPaymentMethodTypes();
 
   try {
@@ -37,7 +62,7 @@ export async function createStripeElementsCheckoutSession(
       ...params,
       payment_method_types: types,
     });
-    return { session, paymentMethodTypes: types };
+    return { session, paymentMethodTypes: types, paymentMethodConfiguration: null };
   } catch (error) {
     if (!types.includes("paypal") || !isPaypalUnavailableError(error)) {
       throw error;
@@ -52,6 +77,6 @@ export async function createStripeElementsCheckoutSession(
       ...params,
       payment_method_types: types,
     });
-    return { session, paymentMethodTypes: types };
+    return { session, paymentMethodTypes: types, paymentMethodConfiguration: null };
   }
 }
