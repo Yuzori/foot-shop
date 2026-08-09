@@ -580,25 +580,27 @@
   }
 }
 
-/* Checkout Stripe — boutons express empilés, pleine largeur */
+/* Checkout Stripe — boutons express sur une ligne */
 .checkout-express-block {
   width: 100%;
 }
 
 .checkout-express-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  width: 100%;
-}
-
-.checkout-express-grid > * {
   width: 100%;
 }
 
 .checkout-express-grid iframe {
-  width: 100% !important;
-  border-radius: 12px !important;
+  border-radius: 10px !important;
+}
+
+.checkout-payment-card .p-AccordionItem,
+.checkout-payment-card .p-AccordionButton {
+  display: none;
+}
+
+.checkout-payment-card .p-AccordionPanel {
+  padding: 0;
+  border: 0;
 }
 
 .checkout-payment-accordion .p-AccordionItem {

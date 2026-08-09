@@ -21,17 +21,17 @@ interface StripePaymentFormProps {
   disabled?: boolean;
 }
 
-/** Boutons pleine largeur : Google/Apple noir, PayPal jaune, Link vert. */
+/** Boutons compacts sur une ligne : Google/Apple noir, PayPal jaune, Link. */
 const EXPRESS_OPTIONS = {
-  buttonHeight: 48,
+  buttonHeight: 40,
   buttonTheme: {
     applePay: "black" as const,
     googlePay: "black" as const,
     paypal: "gold" as const,
   },
   layout: {
-    maxColumns: 1,
-    overflow: "auto" as const,
+    maxColumns: 4,
+    overflow: "never" as const,
   },
   paymentMethodOrder: ["googlePay", "applePay", "paypal", "link"],
   paymentMethods: {
@@ -42,14 +42,9 @@ const EXPRESS_OPTIONS = {
   },
 };
 
-/** Carte bancaire sélectionnée par défaut. */
+/** Formulaire carte seul — wallets déjà dans le bandeau express au-dessus. */
 const PAYMENT_ELEMENT_OPTIONS = {
-  layout: {
-    type: "accordion" as const,
-    defaultCollapsed: false,
-    spacedAccordionItems: true,
-  },
-  paymentMethodOrder: ["card", "link", "paypal"],
+  paymentMethodOrder: ["card"],
   wallets: {
     applePay: "never" as const,
     googlePay: "never" as const,
@@ -67,14 +62,6 @@ const STRIPE_APPEARANCE = {
     spacingUnit: "3px",
   },
   rules: {
-    ".AccordionItem": {
-      border: "1px solid rgba(15, 23, 42, 0.08)",
-      borderRadius: "12px",
-      boxShadow: "none",
-    },
-    ".AccordionItem--selected": {
-      borderColor: "rgba(15, 23, 42, 0.14)",
-    },
     ".Label": {
       fontWeight: "500",
     },
@@ -275,8 +262,8 @@ function PaymentForm({
       <div
         className={
           ready
-            ? "checkout-payment-accordion block"
-            : "checkout-payment-accordion pointer-events-none min-h-[1px] opacity-0"
+            ? "checkout-payment-card block"
+            : "checkout-payment-card pointer-events-none min-h-[1px] opacity-0"
         }
         aria-hidden={!ready}
       >
