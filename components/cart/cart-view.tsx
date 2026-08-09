@@ -103,108 +103,101 @@ export function CartView() {
   };
 
   return (
-    <Container className="pb-28 pt-10 lg:pb-16 lg:pt-16">
+    <Container className="pb-28 pt-12 lg:pb-16 lg:pt-16">
       <PageHeader
         eyebrow="Commande"
         title="Panier"
         description={`${itemCount} article${itemCount > 1 ? "s" : ""} dans votre panier.`}
       />
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-10">
-        <div className="space-y-4">
-          <ul className="divide-y divide-ink/8 overflow-hidden rounded-2xl border border-ink/8 bg-paper">
-            <AnimatePresence initial={false}>
-              {lines.map((line, index) => (
-                <motion.li
-                  key={`${line.productId}-${line.variantId ?? "base"}`}
-                  layout
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="flex gap-4 p-4 sm:gap-5 sm:p-5"
+      <div className="mt-8 grid gap-10 lg:grid-cols-[1fr_380px] lg:items-start lg:gap-12">
+        <ul className="surface-card h-fit divide-y divide-ink/5 self-start px-4 sm:px-6">
+          <AnimatePresence initial={false}>
+            {lines.map((line, index) => (
+              <motion.li
+                key={`${line.productId}-${line.variantId ?? "base"}`}
+                layout
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0, height: 0 }}
+                className="flex gap-4 py-6"
+              >
+                <Link
+                  href={routes.product(line.productId)}
+                  className="relative aspect-[4/5] w-24 shrink-0 overflow-hidden rounded-xl bg-paper-soft"
                 >
-                  <Link
-                    href={routes.product(line.productId)}
-                    className="relative aspect-[4/5] w-20 shrink-0 overflow-hidden rounded-xl bg-paper-soft sm:w-24"
-                  >
-                    <ProductImage src={line.image} alt={line.name} sizes="96px" />
-                  </Link>
+                  <ProductImage src={line.image} alt={line.name} sizes="96px" />
+                </Link>
 
-                  <div className="flex min-w-0 flex-1 flex-col">
-                    <div className="flex justify-between gap-3">
-                      <div className="min-w-0">
-                        <Link
-                          href={routes.product(line.productId)}
-                          className="line-clamp-2 text-sm font-semibold leading-snug hover:text-accent sm:text-base"
-                        >
-                          {line.name}
-                        </Link>
-                        {line.optionsLabel ? (
-                          <p className="mt-1 text-xs text-ink/50">{line.optionsLabel}</p>
-                        ) : null}
-                      </div>
-                      <CartLinePricing
-                        unitPrice={cartLineUnitPrice(line)}
-                        quantity={line.quantity}
-                        freeQuantity={freePerLine[index] ?? 0}
-                      />
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <div className="flex justify-between gap-4">
+                    <div className="min-w-0">
+                      <Link
+                        href={routes.product(line.productId)}
+                        className="line-clamp-2 font-medium hover:text-accent"
+                      >
+                        {line.name}
+                      </Link>
+                      {line.optionsLabel ? (
+                        <p className="mt-1 text-xs text-ink/50">
+                          {line.optionsLabel}
+                        </p>
+                      ) : null}
                     </div>
+                    <CartLinePricing
+                      unitPrice={cartLineUnitPrice(line)}
+                      quantity={line.quantity}
+                      freeQuantity={freePerLine[index] ?? 0}
+                    />
+                  </div>
 
-                    <div className="mt-3 flex items-center justify-between gap-3 sm:mt-4">
-                      <div className="flex h-9 items-center rounded-full border border-ink/12 bg-paper-soft sm:h-10">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setQuantity(
-                              line.productId,
-                              line.variantId,
-                              line.quantity - 1,
-                            )
-                          }
-                          className="flex h-full w-9 items-center justify-center text-ink/60 hover:text-ink"
-                          aria-label="Diminuer"
-                        >
-                          −
-                        </button>
-                        <span className="w-8 text-center text-sm tabular-nums">
-                          {line.quantity}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setQuantity(
-                              line.productId,
-                              line.variantId,
-                              line.quantity + 1,
-                            )
-                          }
-                          className="flex h-full w-9 items-center justify-center text-ink/60 hover:text-ink"
-                          aria-label="Augmenter"
-                        >
-                          +
-                        </button>
-                      </div>
+                  <div className="mt-auto flex items-center justify-between pt-4">
+                    <div className="flex h-10 items-center rounded-full border border-ink/12 bg-paper">
                       <button
                         type="button"
-                        onClick={() => removeLine(line.productId, line.variantId)}
-                        className="text-xs text-ink/45 underline-offset-2 hover:text-accent hover:underline"
+                        onClick={() =>
+                          setQuantity(
+                            line.productId,
+                            line.variantId,
+                            line.quantity - 1,
+                          )
+                        }
+                        className="flex h-full w-10 items-center justify-center text-ink/60 hover:text-ink"
+                        aria-label="Diminuer"
                       >
-                        Retirer
+                        −
+                      </button>
+                      <span className="w-8 text-center text-sm tabular-nums">
+                        {line.quantity}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setQuantity(
+                            line.productId,
+                            line.variantId,
+                            line.quantity + 1,
+                          )
+                        }
+                        className="flex h-full w-10 items-center justify-center text-ink/60 hover:text-ink"
+                        aria-label="Augmenter"
+                      >
+                        +
                       </button>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => removeLine(line.productId, line.variantId)}
+                      className="text-xs text-ink/50 underline-offset-2 hover:text-accent hover:underline"
+                    >
+                      Retirer
+                    </button>
                   </div>
-                </motion.li>
-              ))}
-            </AnimatePresence>
-          </ul>
-
-          <Link
-            href={routes.catalogue}
-            className="inline-flex text-sm text-ink/55 transition-colors hover:text-ink lg:hidden"
-          >
-            ← Continuer mes achats
-          </Link>
-        </div>
+                </div>
+              </motion.li>
+            ))}
+          </AnimatePresence>
+        </ul>
 
         <aside className="space-y-4">
           <WelcomePromoGuestNudge totalUnits={itemCount} />
