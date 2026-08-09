@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { CartLinePricing } from "@/components/cart/cart-line-pricing";
 import { WelcomePromoCheckoutBanner } from "@/components/checkout/welcome-promo-banner";
@@ -283,7 +283,7 @@ export function summarySubtotal(lines: CartLine[]): number {
   }, 0);
 }
 
-/** Barre sticky mobile — total visible en bas, masquée au-dessus du footer. */
+/** Barre mobile : fixée en bas pendant le formulaire, puis garée après le flocage. */
 export function CheckoutMobileStickyBar({
   orderTotal,
   step,
@@ -295,52 +295,64 @@ export function CheckoutMobileStickyBar({
   pending?: boolean;
   onContinue?: () => void;
 }) {
-  const [hideForFooter, setHideForFooter] = useState(false);
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
+  const [pinned, setPinned] = useState(true);
 
   useEffect(() => {
-    const footer = document.querySelector("footer");
-    if (!footer) return;
+    if (step !== "details") return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        if (entry) setHideForFooter(entry.isIntersecting);
-      },
-      { root: null, threshold: 0, rootMargin: "0px 0px -8px 0px" },
-    );
-    observer.observe(footer);
-    return () => observer.disconnect();
-  }, []);
+    const anchor = anchorRef.current;
+    if (!anchor) return;
+
+    const update = () => {
+      const rect = anchor.getBoundingClientRect();
+      const barHeight = barRef.current?.offsetHeight ?? 80;
+      setPinned(rect.top > window.innerHeight - barHeight);
+    };
+
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, [step]);
 
   if (step !== "details") return null;
 
   return (
-    <div
-      className={cn(
-        "fixed inset-x-0 bottom-0 z-50 border-t border-ink/10 bg-paper/95 backdrop-blur-md transition-transform duration-300 ease-premium lg:hidden",
-        "pb-[max(1rem,env(safe-area-inset-bottom))]",
-        hideForFooter && "pointer-events-none translate-y-full",
-      )}
-      aria-hidden={hideForFooter}
-    >
-      <div className="mx-auto w-full max-w-8xl px-4 pt-3 sm:px-8">
-        <Button
-          type="button"
-          size="lg"
-          disabled={pending}
-          onClick={onContinue}
-          className="w-full bg-accent text-center text-ink hover:bg-accent-dark hover:shadow-glow-sm"
-        >
-          {pending ? (
-            <span className="flex items-center justify-center gap-2">
-              <Spinner className="h-4 w-4 border-paper/30 border-t-paper" />
-              Préparation…
-            </span>
-          ) : (
-            `Continuer — ${formatPrice(orderTotal)}`
-          )}
-        </Button>
+    <>
+      <div ref={anchorRef} className="h-0 w-full" aria-hidden />
+      {pinned ? <div className="h-20 w-full lg:hidden" aria-hidden /> : null}
+      <div
+        ref={barRef}
+        className={cn(
+          "z-40 border-t border-ink/10 bg-paper/95 backdrop-blur-md lg:hidden",
+          "pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3",
+          pinned ? "fixed inset-x-0 bottom-0" : "relative -mx-1 mt-2",
+        )}
+      >
+        <div className={cn("w-full", pinned && "mx-auto max-w-8xl px-4 sm:px-8")}>
+          <Button
+            type="button"
+            size="lg"
+            disabled={pending}
+            onClick={onContinue}
+            className="w-full bg-accent text-center text-ink hover:bg-accent-dark hover:shadow-glow-sm"
+          >
+            {pending ? (
+              <span className="flex items-center justify-center gap-2">
+                <Spinner className="h-4 w-4 border-paper/30 border-t-paper" />
+                Préparation…
+              </span>
+            ) : (
+              `Continuer — ${formatPrice(orderTotal)}`
+            )}
+          </Button>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

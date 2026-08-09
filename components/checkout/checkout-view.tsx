@@ -688,7 +688,7 @@ export function CheckoutView() {
   }
 
   return (
-    <Container className="pb-36 pt-12 lg:pb-16 lg:pt-16">
+    <Container className="pb-12 pt-12 lg:pb-16 lg:pt-16">
       <PageHeader
         eyebrow="Commande"
         title="Paiement"
@@ -739,7 +739,7 @@ export function CheckoutView() {
           <form
             ref={detailsFormRef}
             onSubmit={handleDetailsSubmit}
-            className="space-y-8"
+            className="space-y-8 pb-24 lg:pb-0"
           >
             <WelcomePromoGuestNudge
               totalUnits={lines.reduce((sum, line) => sum + line.quantity, 0)}
@@ -932,6 +932,13 @@ export function CheckoutView() {
               </p>
             ) : null}
 
+            <CheckoutMobileStickyBar
+              orderTotal={orderTotal}
+              step={step}
+              pending={pending}
+              onContinue={() => detailsFormRef.current?.requestSubmit()}
+            />
+
             <Button
               type="submit"
               size="lg"
@@ -1014,13 +1021,6 @@ export function CheckoutView() {
           promoPending={promoPending}
         />
       </div>
-
-      <CheckoutMobileStickyBar
-        orderTotal={orderTotal}
-        step={step}
-        pending={pending}
-        onContinue={() => detailsFormRef.current?.requestSubmit()}
-      />
     </Container>
   );
 }
