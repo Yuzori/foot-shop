@@ -302,7 +302,10 @@ export function CheckoutMobileStickyBar({
     if (!footer) return;
 
     const observer = new IntersectionObserver(
-      ([entry]) => setHideForFooter(entry.isIntersecting),
+      (entries) => {
+        const entry = entries[0];
+        if (entry) setHideForFooter(entry.isIntersecting);
+      },
       { root: null, threshold: 0, rootMargin: "0px 0px -8px 0px" },
     );
     observer.observe(footer);
