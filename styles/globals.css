@@ -593,6 +593,10 @@
   width: 100% !important;
 }
 
+.checkout-payment-tabs .Tab {
+  min-height: 2.75rem;
+}
+
 .checkout-payment-tabs .p-AccordionItem {
   border-radius: 0.75rem;
   margin-bottom: 0.5rem;

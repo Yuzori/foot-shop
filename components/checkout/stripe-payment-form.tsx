@@ -1,13 +1,11 @@
 "use client";
 
-import { useCallback, useState, type ComponentProps, type FormEvent } from "react";
+import { useState, type ComponentProps, type FormEvent } from "react";
 import {
   CheckoutElementsProvider,
-  ExpressCheckoutElement,
   PaymentElement,
   useCheckoutElements,
 } from "@stripe/react-stripe-js/checkout";
-import type { StripeExpressCheckoutElementConfirmEvent } from "@stripe/stripe-js";
 
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -21,57 +19,54 @@ interface StripePaymentFormProps {
   disabled?: boolean;
 }
 
-/** Grille multi-colonnes (comme avant) — ne pas limiter la hauteur de l’iframe Stripe. */
-const EXPRESS_OPTIONS = {
-  buttonHeight: 44,
-  buttonTheme: {
-    applePay: "black" as const,
-    googlePay: "black" as const,
-    paypal: "gold" as const,
-  },
+/**
+ * Onglets avec logos en haut + portefeuilles (Google Pay, Apple Pay, Link).
+ * Plus fiable que ExpressCheckoutElement (souvent vide avec Checkout Sessions + PMC).
+ */
+const PAYMENT_ELEMENT_OPTIONS = {
   layout: {
-    maxColumns: 3,
-    maxRows: 4,
-    overflow: "never" as const,
+    type: "tabs" as const,
+    defaultCollapsed: false,
   },
-  paymentMethodOrder: ["paypal", "link", "applePay", "googlePay"],
-  paymentMethods: {
+  paymentMethodOrder: [
+    "google_pay",
+    "apple_pay",
+    "paypal",
+    "link",
+    "card",
+  ],
+  wallets: {
     applePay: "auto" as const,
     googlePay: "auto" as const,
-    paypal: "auto" as const,
-    link: "auto" as const,
   },
 };
 
 const STRIPE_APPEARANCE = {
   theme: "stripe" as const,
-  fonts: [
-    {
-      cssSrc:
-        "https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap",
-    },
-  ],
   variables: {
     colorPrimary: "#66BAFF",
     borderRadius: "12px",
-    fontFamily: "Poppins, system-ui, -apple-system, sans-serif",
+    fontFamily:
+      "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     fontSizeBase: "15px",
     spacingUnit: "4px",
   },
   rules: {
     ".Tab": {
       border: "1px solid rgba(15, 23, 42, 0.1)",
-      padding: "12px 14px",
+      borderRadius: "10px",
+      padding: "10px 12px",
     },
     ".Tab--selected": {
       borderColor: "#66BAFF",
       boxShadow: "0 0 0 1px rgba(102, 186, 255, 0.35)",
     },
     ".TabIcon": {
-      height: "1.25rem",
+      height: "1.35rem",
     },
     ".TabLabel": {
       fontWeight: "600",
+      fontSize: "13px",
     },
     ".Label": {
       fontWeight: "500",
@@ -124,37 +119,11 @@ function PaymentForm({
   const [pending, setPending] = useState(false);
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [expressAvailable, setExpressAvailable] = useState(false);
 
   const totalLabel =
     checkoutState.type === "success"
       ? checkoutState.checkout.total.total.amount
       : null;
-
-  const handleConfirmExpressCheckout = useCallback(
-    async (event: StripeExpressCheckoutElementConfirmEvent) => {
-      if (checkoutState.type !== "success" || disabled) return;
-      setPending(true);
-      onError("");
-      try {
-        await finalizeCheckout(
-          checkoutState.checkout,
-          { expressCheckoutConfirmEvent: event },
-          onSuccess,
-          onError,
-        );
-      } catch (err) {
-        onError(
-          err instanceof Error
-            ? err.message
-            : "Une erreur est survenue pendant le paiement.",
-        );
-      } finally {
-        setPending(false);
-      }
-    },
-    [checkoutState, disabled, onError, onSuccess],
-  );
 
   async function handlePay(e: FormEvent) {
     e.preventDefault();
@@ -206,34 +175,8 @@ function PaymentForm({
         </p>
       ) : null}
 
-      <div className="checkout-express-shell space-y-3">
-        <p className="text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-ink/40">
-          Paiement express
-        </p>
-        <div className="checkout-express-grid min-h-[48px]">
-          <ExpressCheckoutElement
-            onConfirm={handleConfirmExpressCheckout}
-            onAvailablePaymentMethodsChange={({ paymentMethods }) => {
-              setExpressAvailable(Boolean(paymentMethods));
-            }}
-            options={
-              EXPRESS_OPTIONS as ComponentProps<
-                typeof ExpressCheckoutElement
-              >["options"]
-            }
-          />
-        </div>
-        {expressAvailable ? (
-          <div className="relative flex items-center gap-3 py-1">
-            <div className="h-px flex-1 bg-ink/10" />
-            <span className="text-xs text-ink/40">ou autre moyen</span>
-            <div className="h-px flex-1 bg-ink/10" />
-          </div>
-        ) : null}
-      </div>
-
       {!ready && !loadError ? (
-        <div className="flex items-center justify-center py-6">
+        <div className="flex items-center justify-center py-10">
           <Spinner className="h-6 w-6" />
         </div>
       ) : null}
@@ -241,18 +184,9 @@ function PaymentForm({
       <div className={ready ? "checkout-payment-tabs block" : "sr-only"}>
         <PaymentElement
           options={
-            {
-              layout: {
-                type: "accordion",
-                defaultCollapsed: false,
-                spacedAccordionItems: true,
-              },
-              paymentMethodOrder: ["card", "paypal", "link"],
-              wallets: {
-                applePay: "never",
-                googlePay: "never",
-              },
-            } as ComponentProps<typeof PaymentElement>["options"]
+            PAYMENT_ELEMENT_OPTIONS as ComponentProps<
+              typeof PaymentElement
+            >["options"]
           }
           onReady={() => setReady(true)}
           onLoadError={(event) => {
