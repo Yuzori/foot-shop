@@ -65,7 +65,7 @@ export async function sendOrderConfirmationEmail(input: {
     </table>
     ${promoBlock}
     ${emailButton(trackingUrl, "Suivre ma commande")}
-    ${emailParagraph("Vous recevrez sous 48 h un email dédié au suivi de préparation, puis le numéro de suivi dès l'expédition.")}
+    ${emailParagraph("Comptez <strong>2 à 7 jours</strong> pour recevoir par email le <strong>lien de suivi Chronopost</strong> dès l'expédition de votre colis.")}
     ${emailParagraph("Conservez cette référence pour suivre l'avancement de votre commande.")}
   `;
 
@@ -86,6 +86,8 @@ export async function sendOrderConfirmationEmail(input: {
     firstOrderPromo
       ? `Code promo prochaine commande : ${firstOrderPromo.code} (${firstOrderPromo.percent} %)`
       : "",
+    "",
+    `Comptez 2 à 7 jours pour recevoir par email le lien de suivi Chronopost.`,
     "",
     `Suivre la commande : ${trackingUrl}`,
   ]

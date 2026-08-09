@@ -187,7 +187,7 @@ export async function runAllEmailTests(
       },
       {
         id: "shipping-pending",
-        label: "Suivi colis sous 48 h",
+        label: "Suivi Chronopost sous 2 à 7 jours",
         fn: () =>
           sendShippingPendingEmail({
             to,
