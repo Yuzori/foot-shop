@@ -65,7 +65,7 @@ export async function sendOrderConfirmationEmail(input: {
     </table>
     ${promoBlock}
     ${emailButton(trackingUrl, "Suivre ma commande")}
-    ${emailParagraph("Vous recevrez sous 24 h un email dédié au suivi de préparation, puis le numéro de suivi dès l'expédition.")}
+    ${emailParagraph("Vous recevrez sous 48 h un email dédié au suivi de préparation, puis le numéro de suivi dès l'expédition.")}
     ${emailParagraph("Conservez cette référence pour suivre l'avancement de votre commande.")}
   `;
 
