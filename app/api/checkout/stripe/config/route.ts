@@ -26,6 +26,7 @@ export async function GET() {
     publishableKey,
     enabled: paymentConfig.stripeEnabled && Boolean(publishableKey),
     checkoutStripeVersion: paymentConfig.checkoutStripeVersion,
+    paymentMethodTypes: paymentConfig.stripeCheckoutPaymentMethodTypes,
     error: null,
   });
 }
