@@ -232,6 +232,27 @@ export const api = {
     return data;
   },
 
+  async getStripeSessionStatus(sessionId: string): Promise<{
+    state: "paid" | "pending" | "failed";
+    reason: string | null;
+    reference: string | null;
+    orderId: string | null;
+    paymentStatus: string;
+    sessionStatus: string | null;
+  }> {
+    const { data } = await http.get<{
+      state: "paid" | "pending" | "failed";
+      reason: string | null;
+      reference: string | null;
+      orderId: string | null;
+      paymentStatus: string;
+      sessionStatus: string | null;
+    }>("/checkout/stripe/session-status", {
+      params: { session_id: sessionId },
+    });
+    return data;
+  },
+
   async confirmStripePayment(checkoutSessionId: string): Promise<{
     ok: boolean;
     reference: string | null;

@@ -338,7 +338,7 @@ export function CheckoutView() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("canceled") === "1") {
+    if (params.get("canceled") === "1" || params.get("payment_failed") === "1") {
       setPaymentCanceled(true);
       window.history.replaceState({}, "", routes.checkout);
     }
@@ -624,10 +624,7 @@ export function CheckoutView() {
   }
 
   async function handlePaymentSuccess(checkoutSessionId: string) {
-    useCartStore.getState().unlockCheckout();
-    clear();
     clearCheckoutSession();
-    clearCheckoutCartSnapshot();
     const ref = orderReference ?? "";
     const params = new URLSearchParams();
     if (ref) params.set("ref", ref);

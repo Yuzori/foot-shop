@@ -7,6 +7,9 @@
  * Le webhook à configurer dans le dashboard Stripe :
  *   URL   : https://votre-domaine.com/api/webhooks/stripe
  *   Events: payment_intent.succeeded (paiement intégré Foot Shop)
+ *   Events recommandés : checkout.session.completed,
+ *     checkout.session.async_payment_succeeded,
+ *     checkout.session.async_payment_failed
  *
  * Côté navigateur, définir aussi NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY.
  *
@@ -26,7 +29,7 @@ export const paymentConfig = {
     return Boolean(this.stripeSecretKey);
   },
   /** Identifiant interne pour vérifier le déploiement (GET /api/checkout/stripe/config). */
-  checkoutStripeVersion: "pmc-v8",
+  checkoutStripeVersion: "payment-verify-v9",
   /**
    * Configuration Stripe Dashboard (pmc_…) — Apple Pay, PayPal, Link, etc.
    * https://dashboard.stripe.com/settings/payment_methods

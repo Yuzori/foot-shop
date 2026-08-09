@@ -4,20 +4,23 @@ import type Stripe from "stripe";
 import { paymentConfig } from "@/config/payment";
 import { fulfillPaidOrder } from "@/lib/order-paid";
 import { markWelcomePromoUsed } from "@/lib/welcome-promo-store";
+import { isCheckoutSessionPaidOnStripe } from "@/lib/stripe-checkout-session-status";
 import { formatStripeError } from "@/lib/stripe-keys";
 import { getStripe } from "@/lib/stripe-server";
 
 export const runtime = "nodejs";
 
 function isSessionPaid(session: Stripe.Checkout.Session): boolean {
-  return session.payment_status === "paid" || session.status === "complete";
+  return isCheckoutSessionPaidOnStripe(session);
 }
 
 async function retrievePaidSession(
   stripe: Stripe,
   checkoutSessionId: string,
 ): Promise<Stripe.Checkout.Session> {
-  const session = await stripe.checkout.sessions.retrieve(checkoutSessionId);
+  const session = await stripe.checkout.sessions.retrieve(checkoutSessionId, {
+    expand: ["payment_intent"],
+  });
   if (isSessionPaid(session)) {
     return session;
   }
@@ -26,7 +29,9 @@ async function retrievePaidSession(
   const delays = [300, 600, 1000];
   for (const delay of delays) {
     await new Promise((resolve) => setTimeout(resolve, delay));
-    const retry = await stripe.checkout.sessions.retrieve(checkoutSessionId);
+    const retry = await stripe.checkout.sessions.retrieve(checkoutSessionId, {
+      expand: ["payment_intent"],
+    });
     if (isSessionPaid(retry)) {
       return retry;
     }
