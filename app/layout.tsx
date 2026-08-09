@@ -5,6 +5,7 @@ import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
 import { AnnouncementBar } from "@/components/layout/announcement-bar";
 import { ClientShell } from "@/components/layout/client-shell";
+import { ChunkErrorRecovery } from "@/components/layout/chunk-error-recovery";
 import { SiteModalHost } from "@/components/marketing/site-modal-host";
 import { SiteLoader } from "@/components/layout/site-loader";
 import { ProductNameMigration } from "@/components/migrations/product-name-migration";
@@ -100,6 +101,7 @@ export default function RootLayout({
           }}
         />
         <SiteLoader />
+        <ChunkErrorRecovery />
         <ProductNameMigration />
         <AppProviders>
           <AnnouncementBar />
