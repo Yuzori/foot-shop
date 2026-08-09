@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useCallback, useState, type ComponentProps, type FormEvent } from "react";
 import {
   CheckoutElementsProvider,
+  ExpressCheckoutElement,
   PaymentElement,
   useCheckoutElements,
 } from "@stripe/react-stripe-js/checkout";
+import type { StripeExpressCheckoutElementConfirmEvent } from "@stripe/stripe-js";
 
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -19,6 +21,50 @@ interface StripePaymentFormProps {
   disabled?: boolean;
 }
 
+const EXPRESS_OPTIONS = {
+  buttonHeight: 48,
+  layout: { maxColumns: 1, maxRows: 4, overflow: "never" as const },
+  paymentMethodOrder: ["applePay", "googlePay", "paypal", "link"],
+  paymentMethods: {
+    applePay: "always" as const,
+    googlePay: "always" as const,
+    link: "auto" as const,
+  },
+};
+
+async function finalizeCheckout(
+  checkout: { confirm: (opts: Record<string, unknown>) => Promise<unknown> },
+  confirmArgs: Record<string, unknown>,
+  onSuccess: (checkoutSessionId: string) => void | Promise<void>,
+  onError: (message: string) => void,
+): Promise<boolean> {
+  const confirmResult = (await checkout.confirm({
+    redirect: "if_required",
+    ...confirmArgs,
+  })) as {
+    type: string;
+    error?: { message?: string };
+    session?: { id: string; status: { type: string } };
+  };
+
+  if (confirmResult.type === "error") {
+    onError(confirmResult.error?.message ?? "Le paiement a échoué.");
+    return false;
+  }
+
+  const session = confirmResult.session;
+  if (
+    session &&
+    (isCheckoutSessionPaid(session.status) || session.status.type === "complete")
+  ) {
+    await onSuccess(session.id);
+    return true;
+  }
+
+  onError("Le paiement n'a pas pu être finalisé. Réessayez.");
+  return false;
+}
+
 function PaymentForm({
   onSuccess,
   onError,
@@ -28,11 +74,37 @@ function PaymentForm({
   const [pending, setPending] = useState(false);
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [expressAvailable, setExpressAvailable] = useState(false);
 
   const totalLabel =
     checkoutState.type === "success"
       ? checkoutState.checkout.total.total.amount
       : null;
+
+  const handleConfirmExpressCheckout = useCallback(
+    async (event: StripeExpressCheckoutElementConfirmEvent) => {
+      if (checkoutState.type !== "success" || disabled) return;
+      setPending(true);
+      onError("");
+      try {
+        await finalizeCheckout(
+          checkoutState.checkout,
+          { expressCheckoutConfirmEvent: event },
+          onSuccess,
+          onError,
+        );
+      } catch (err) {
+        onError(
+          err instanceof Error
+            ? err.message
+            : "Une erreur est survenue pendant le paiement.",
+        );
+      } finally {
+        setPending(false);
+      }
+    },
+    [checkoutState, disabled, onError, onSuccess],
+  );
 
   async function handlePay(e: FormEvent) {
     e.preventDefault();
@@ -48,24 +120,7 @@ function PaymentForm({
     onError("");
 
     try {
-      const confirmResult = await checkout.confirm({
-        redirect: "if_required",
-      });
-
-      if (confirmResult.type === "error") {
-        onError(confirmResult.error.message ?? "Le paiement a échoué.");
-        return;
-      }
-
-      if (
-        isCheckoutSessionPaid(confirmResult.session.status) ||
-        confirmResult.session.status.type === "complete"
-      ) {
-        await onSuccess(confirmResult.session.id);
-        return;
-      }
-
-      onError("Le paiement n'a pas pu être finalisé. Réessayez.");
+      await finalizeCheckout(checkout, {}, onSuccess, onError);
     } catch (err) {
       onError(
         err instanceof Error
@@ -101,8 +156,32 @@ function PaymentForm({
         </p>
       ) : null}
 
+      <div className="space-y-4">
+        {expressAvailable ? (
+          <p className="text-center text-xs font-semibold uppercase tracking-widest text-ink/40">
+            Paiement express
+          </p>
+        ) : null}
+        <ExpressCheckoutElement
+          onConfirm={handleConfirmExpressCheckout}
+          onAvailablePaymentMethodsChange={({ paymentMethods }) => {
+            setExpressAvailable(Boolean(paymentMethods));
+          }}
+          options={
+            EXPRESS_OPTIONS as ComponentProps<typeof ExpressCheckoutElement>["options"]
+          }
+        />
+        {expressAvailable ? (
+          <div className="relative flex items-center gap-3 py-1">
+            <div className="h-px flex-1 bg-ink/10" />
+            <span className="text-xs text-ink/40">ou autre moyen</span>
+            <div className="h-px flex-1 bg-ink/10" />
+          </div>
+        ) : null}
+      </div>
+
       {!ready && !loadError ? (
-        <div className="flex items-center justify-center py-10">
+        <div className="flex items-center justify-center py-6">
           <Spinner className="h-6 w-6" />
         </div>
       ) : null}

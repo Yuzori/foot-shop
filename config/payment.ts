@@ -26,8 +26,8 @@ export const paymentConfig = {
     return Boolean(this.stripeSecretKey);
   },
   /** Identifiant interne pour vérifier le déploiement (GET /api/checkout/stripe/config). */
-  checkoutStripeVersion: "link-tabs-v6",
-  get stripeCheckoutPaymentMethodTypes(): ("card" | "link")[] {
-    return ["card", "link"];
+  checkoutStripeVersion: "wallets-paypal-v7",
+  get stripeCheckoutPaymentMethodTypes(): ("card" | "link" | "paypal")[] {
+    return ["card", "link", "paypal"];
   },
 } as const;

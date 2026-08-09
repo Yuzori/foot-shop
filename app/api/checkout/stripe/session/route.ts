@@ -9,6 +9,7 @@ import { isWelcomePromoEligible } from "@/lib/welcome-promo-store";
 import { getStripe } from "@/lib/stripe-server";
 import { getOrCreateStripeCustomer } from "@/lib/stripe-customer";
 import { ensureStripePaymentMethodDomains } from "@/lib/stripe-payment-domains";
+import { createStripeElementsCheckoutSession } from "@/lib/stripe-create-checkout-session";
 import {
   formatStripeError,
   getStripePublishableKey,
@@ -196,10 +197,10 @@ export async function POST(request: Request) {
   });
 
   try {
-    const session = await stripe.checkout.sessions.create({
+    const { session, paymentMethodTypes } =
+      await createStripeElementsCheckoutSession(stripe, {
       mode: "payment",
       ui_mode: "elements",
-      payment_method_types: paymentConfig.stripeCheckoutPaymentMethodTypes,
       ...(stripeCustomerId
         ? { customer: stripeCustomerId }
         : { customer_email: body.contact.email || undefined }),
@@ -247,6 +248,7 @@ export async function POST(request: Request) {
       shippingLabel: order.shippingLabel,
       promoDiscount,
       promoCode: promo?.valid ? promo.code : null,
+      paymentMethodTypes,
     });
   } catch (error) {
     console.error("[stripe] checkout.sessions.create failed", error);
