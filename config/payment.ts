@@ -29,7 +29,7 @@ export const paymentConfig = {
     return Boolean(this.stripeSecretKey);
   },
   /** Identifiant interne pour vérifier le déploiement (GET /api/checkout/stripe/config). */
-  checkoutStripeVersion: "payment-verify-v9",
+  checkoutStripeVersion: "checkout-email-v10",
   /**
    * Configuration Stripe Dashboard (pmc_…) — Apple Pay, PayPal, Link, etc.
    * https://dashboard.stripe.com/settings/payment_methods

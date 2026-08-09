@@ -3,6 +3,8 @@ import type Stripe from "stripe";
 
 import { paymentConfig } from "@/config/payment";
 import { fulfillPaidOrder } from "@/lib/order-paid";
+import { getOrderArchiveByReference } from "@/lib/order-archive-store";
+import { resolveCheckoutNotificationEmail } from "@/lib/checkout-notification-email";
 import { markWelcomePromoUsed } from "@/lib/welcome-promo-store";
 import { isCheckoutSessionPaidOnStripe } from "@/lib/stripe-checkout-session-status";
 import { getStripe } from "@/lib/stripe-server";
@@ -24,10 +26,14 @@ async function fulfillSessionIfPaid(
 
   const orderId = session.metadata?.orderId;
   if (orderId) {
-    await fulfillPaidOrder(
-      orderId,
-      session.metadata?.customerEmail ?? session.customer_email,
-    );
+    const archive = session.metadata?.reference
+      ? await getOrderArchiveByReference(session.metadata.reference)
+      : null;
+    const customerEmail = resolveCheckoutNotificationEmail({
+      archive,
+      checkoutEmail: session.metadata?.customerEmail ?? session.customer_email,
+    });
+    await fulfillPaidOrder(orderId, customerEmail);
   }
   if (
     session.metadata?.welcomePromo === "1" &&

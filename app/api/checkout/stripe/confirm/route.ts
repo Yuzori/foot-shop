@@ -3,6 +3,8 @@ import type Stripe from "stripe";
 
 import { paymentConfig } from "@/config/payment";
 import { fulfillPaidOrder } from "@/lib/order-paid";
+import { getOrderArchiveByReference } from "@/lib/order-archive-store";
+import { resolveCheckoutNotificationEmail } from "@/lib/checkout-notification-email";
 import { markWelcomePromoUsed } from "@/lib/welcome-promo-store";
 import { isCheckoutSessionPaidOnStripe } from "@/lib/stripe-checkout-session-status";
 import { formatStripeError } from "@/lib/stripe-keys";
@@ -69,7 +71,13 @@ export async function POST(request: Request) {
     const session = await retrievePaidSession(stripe, checkoutSessionId);
     const orderId = session.metadata?.orderId;
     const reference = session.metadata?.reference ?? null;
-    const customerEmail = session.metadata?.customerEmail ?? session.customer_email;
+    const archive = reference
+      ? await getOrderArchiveByReference(reference)
+      : null;
+    const customerEmail = resolveCheckoutNotificationEmail({
+      archive,
+      checkoutEmail: session.metadata?.customerEmail ?? session.customer_email,
+    });
 
     // PrestaShop + e-mails peuvent prendre >20s : ne pas bloquer le client.
     after(async () => {

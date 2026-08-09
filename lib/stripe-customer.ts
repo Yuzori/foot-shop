@@ -25,7 +25,12 @@ export async function getOrCreateStripeCustomer(input: {
     if (existingId) {
       try {
         const existing = await stripe.customers.retrieve(existingId);
-        if (!existing.deleted) return existingId;
+        if (!existing.deleted) {
+          if (email && existing.email?.toLowerCase() !== email) {
+            await stripe.customers.update(existingId, { email });
+          }
+          return existingId;
+        }
       } catch {
         /* recréer */
       }

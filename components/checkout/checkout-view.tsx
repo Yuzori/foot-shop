@@ -129,6 +129,7 @@ export function CheckoutView() {
   } | null>(null);
   const paymentRestoredRef = useRef(false);
   const detailsFormRef = useRef<HTMLFormElement>(null);
+  const accountPrefilled = useRef(false);
 
   useLayoutEffect(() => {
     const snapshot = resolveCartLinesForCheckout();
@@ -385,7 +386,8 @@ export function CheckoutView() {
 
   useEffect(() => {
     const user = sessionQuery.data;
-    if (!user) return;
+    if (!user || accountPrefilled.current) return;
+    accountPrefilled.current = true;
     setDeliveryForm((current) => ({
       ...current,
       contact: {
@@ -483,11 +485,17 @@ export function CheckoutView() {
       !contact.firstName ||
       !contact.lastName ||
       !contact.email ||
+      !contact.phone ||
       !address.address1 ||
       !address.postcode ||
       !address.city
     ) {
       setError("Veuillez remplir tous les champs obligatoires.");
+      return;
+    }
+
+    if (contact.phone.replace(/\D/g, "").length < 8) {
+      setError("Veuillez renseigner un numéro de téléphone valide.");
       return;
     }
 
@@ -780,10 +788,15 @@ export function CheckoutView() {
                     }
                   }}
                 />
+                <p className="sm:col-span-2 text-xs text-ink/45">
+                  Les confirmations de commande seront envoyées à cette adresse
+                  (pas forcément celle du compte).
+                </p>
                 <Field
                   label="Téléphone"
                   name="phone"
                   type="tel"
+                  required
                   autoComplete="tel"
                   className="sm:col-span-2"
                   value={deliveryForm.contact.phone ?? ""}

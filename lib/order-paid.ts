@@ -12,6 +12,7 @@ import { sendOrderConfirmationEmail } from "@/lib/order-confirmation-email";
 import { sendShippingPendingEmail } from "@/lib/shipping-pending-email";
 import { notifySupplierOfOrder } from "@/lib/supplier-order";
 import { claimOrderFulfillment } from "@/lib/order-fulfillment-store";
+import { resolveCheckoutNotificationEmail } from "@/lib/checkout-notification-email";
 import { prestashop } from "@/services/prestashop";
 
 /** Marque une commande payée, envoie l'email client et notifie le fournisseur. */
@@ -51,9 +52,11 @@ export async function fulfillPaidOrder(
     console.warn("[order-paid] addOrderHistory failed", key, history.error);
   }
 
-  const email =
-    customerEmail?.trim() || archive?.contact.email?.trim() ||
-    (await prestashop.getCustomerEmailByOrderId(key));
+  const email = resolveCheckoutNotificationEmail({
+    archive,
+    checkoutEmail: customerEmail,
+    fallbackEmail: await prestashop.getCustomerEmailByOrderId(key),
+  });
 
   const paidAt = new Date().toISOString();
   await markOrderArchivePaid(order.reference, paidAt).catch((err) => {

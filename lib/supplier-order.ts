@@ -1,6 +1,7 @@
 import "server-only";
 
 import { buildBbdBuyOrderDraft } from "@/lib/bbdbuy/build-draft";
+import { resolveCheckoutNotificationEmail } from "@/lib/checkout-notification-email";
 import { getOrderArchiveByReference } from "@/lib/order-archive-store";
 import { sendBbdBuyOperatorEmail } from "@/lib/supplier-order-email";
 import {
@@ -30,8 +31,12 @@ export async function notifySupplierOfOrder(
 
   const archive = await getOrderArchiveByReference(order.reference);
   if (archive) {
-    if (!context.customerEmail && archive.contact.email) {
-      context.customerEmail = archive.contact.email;
+    const checkoutEmail = resolveCheckoutNotificationEmail({
+      archive,
+      fallbackEmail: context.customerEmail,
+    });
+    if (checkoutEmail) {
+      context.customerEmail = checkoutEmail;
     }
     const deliveryEmpty =
       !context.delivery.address1?.trim() ||

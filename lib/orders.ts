@@ -240,6 +240,8 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
 
     !contact?.email ||
 
+    !contact?.phone?.trim() ||
+
     !address?.address1 ||
 
     !address?.city ||
@@ -254,6 +256,14 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
 
     return { ok: false, status: 400, message: "Informations de commande incomplètes." };
 
+  }
+
+  if (contact.phone.replace(/\D/g, "").length < 8) {
+    return {
+      ok: false,
+      status: 400,
+      message: "Numéro de téléphone invalide (8 chiffres minimum).",
+    };
   }
 
   const lineResult = await validateCheckoutLines(lines);

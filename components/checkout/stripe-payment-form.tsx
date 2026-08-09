@@ -190,7 +190,6 @@ function PaymentForm({
         <PaymentElement
           options={{
             layout: "tabs",
-            paymentMethodOrder: ["link", "card"],
             wallets: {
               applePay: "auto",
               googlePay: "auto",
