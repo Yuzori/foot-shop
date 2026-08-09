@@ -20,6 +20,8 @@ export const productImportConfig = {
   parentCategoryId:
     process.env.PRODUCT_IMPORT_PARENT_CATEGORY_ID?.trim() || "2",
   sizeAttributeGroupId: process.env.PRESTASHOP_SIZE_GROUP_ID?.trim() ?? "",
+  /** ID attribut XXL (ex. 27) — secours si l'API ne le trouve pas par libellé. */
+  xxlAttributeId: process.env.PRESTASHOP_XXL_ATTRIBUTE_ID?.trim() ?? "",
   sizes: shopConfig.sizeOrder,
   maxImages: 24,
   fetchTimeoutMs: 15_000,

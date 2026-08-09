@@ -139,16 +139,16 @@ async function cloneOneProduct(
     throw new Error("Aucune image téléversée.");
   }
 
-  const sizeLabels =
-    source.variants.length > 0
-      ? [
-          ...new Set(
-            source.variants
-              .flatMap((variant) => variant.options.map((opt) => opt.label.trim()))
-              .filter(Boolean),
-          ),
-        ]
-      : productImportConfig.sizes;
+  const sizeLabels = [
+    ...new Set([
+      ...(source.variants.length > 0
+        ? source.variants.flatMap((variant) =>
+            variant.options.map((opt) => opt.label.trim()),
+          )
+        : []),
+      ...productImportConfig.sizes,
+    ]),
+  ].filter(Boolean);
 
   const stockPerSize = new Map<string, number>();
   for (const variant of source.variants) {
@@ -321,4 +321,61 @@ export async function recloneMissingProducts(
   }
 
   return { ...scan, cloned, failed, errors };
+}
+
+/** Re-clone une liste précise de produits (appel admin par lots). */
+export async function recloneProductsByIds(
+  productIds: string[],
+  options: RecloneOptions & { boNameKeys?: string[] } = {},
+): Promise<{
+  cloned: number;
+  failed: number;
+  errors: { sourceId: string; name: string; error: string }[];
+  entries: RecloneManifestEntry[];
+}> {
+  const manifest = await loadManifest();
+  const boNameKeys = new Set(options.boNameKeys ?? []);
+
+  if (boNameKeys.size === 0) {
+    for (const row of await prestashop.listAllProductNames({ includeInactive: true })) {
+      if (await prestashop.isProductBoListable(row.id)) {
+        boNameKeys.add(normalizeNameKey(row.name));
+      }
+    }
+  }
+
+  let cloned = 0;
+  let failed = 0;
+  const errors: { sourceId: string; name: string; error: string }[] = [];
+  const entries: RecloneManifestEntry[] = [];
+
+  for (const productId of productIds) {
+    try {
+      const product = await prestashop.getProductById(productId);
+      if (!product) {
+        throw new Error("Produit source introuvable.");
+      }
+
+      const entry = await cloneOneProduct(product, boNameKeys, options);
+      manifest.clones.push(entry);
+      await saveManifest(manifest);
+      boNameKeys.add(normalizeNameKey(entry.name));
+      entries.push(entry);
+      cloned += 1;
+    } catch (error) {
+      failed += 1;
+      const message = error instanceof Error ? error.message : String(error);
+      errors.push({
+        sourceId: productId,
+        name: productId,
+        error: message,
+      });
+    }
+
+    if (options.delayMs && options.delayMs > 0) {
+      await sleep(options.delayMs);
+    }
+  }
+
+  return { cloned, failed, errors, entries };
 }

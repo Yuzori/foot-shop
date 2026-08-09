@@ -2258,42 +2258,59 @@ ${ids
     );
   }
 
+  /** Liste une page de produits (sans filtre boutique — couvre tout le catalogue actif). */
+  async listProductNamesPage(options: {
+    page: number;
+    pageSize?: number;
+    includeInactive?: boolean;
+  }): Promise<{
+    items: { id: string; name: string }[];
+    hasMore: boolean;
+  }> {
+    const page = Math.max(1, options.page);
+    const limit = Math.max(1, options.pageSize ?? 25);
+    const offset = (page - 1) * limit;
+    const includeInactive =
+      options.includeInactive ?? process.env.PRESTASHOP_INCLUDE_INACTIVE === "1";
+
+    const params: Record<string, string | number> = {
+      display: "[id,name]",
+      limit: offset > 0 ? `${offset},${limit + 1}` : `${limit + 1}`,
+    };
+    if (!includeInactive) {
+      params["filter[active]"] = "1";
+    }
+
+    const { data } = await this.request<{ products?: PsProduct[] }>(
+      "/products",
+      params,
+    );
+    const raw = asArray<PsProduct>(data as never, "products");
+    const hasMore = raw.length > limit;
+    const items = raw.slice(0, limit).map((product) => ({
+      id: psStr(product.id),
+      name: resolveLang(product.name),
+    }));
+
+    return { items, hasMore };
+  }
+
   /** Liste tous les produits (noms bruts PrestaShop) pour migrations batch. */
   async listAllProductNames(
     options: { includeInactive?: boolean } = {},
   ): Promise<{ id: string; name: string }[]> {
-    const includeInactive =
-      options.includeInactive ?? process.env.PRESTASHOP_INCLUDE_INACTIVE === "1";
     const items: { id: string; name: string }[] = [];
     let page = 1;
     const limit = 100;
 
     while (true) {
-      const offset = (page - 1) * limit;
-      const params: Record<string, string | number> = {
-        display: "[id,name]",
-        limit: offset > 0 ? `${offset},${limit + 1}` : `${limit + 1}`,
-      };
-      if (!includeInactive) {
-        params["filter[active]"] = "1";
-      }
-
-      const { data } = await this.request<{ products?: PsProduct[] }>(
-        "/products",
-        params,
-      );
-      const raw = asArray<PsProduct>(data as never, "products");
-      const hasMore = raw.length > limit;
-      const batch = raw.slice(0, limit);
-
-      for (const product of batch) {
-        items.push({
-          id: psStr(product.id),
-          name: resolveLang(product.name),
-        });
-      }
-
-      if (!hasMore) break;
+      const batch = await this.listProductNamesPage({
+        page,
+        pageSize: limit,
+        includeInactive: options.includeInactive,
+      });
+      items.push(...batch.items);
+      if (!batch.hasMore) break;
       page += 1;
     }
 
@@ -2418,15 +2435,18 @@ ${ids
   ): Promise<{ id: string; label: string }[]> {
     let groupId = attributeGroupId?.trim() || (await this.findSizeAttributeGroupId());
 
-    const params: Record<string, string | number> = { display: "full" };
-    if (groupId) params["filter[id_attribute_group]"] = groupId;
+    const loadValues = async (filterGroupId?: string) => {
+      const params: Record<string, string | number> = { display: "full" };
+      if (filterGroupId) params["filter[id_attribute_group]"] = filterGroupId;
 
-    const data = await this.get<{ product_option_values?: PsProductOptionValue[] }>(
-      "/product_option_values",
-      params,
-    );
+      const data = await this.get<{ product_option_values?: PsProductOptionValue[] }>(
+        "/product_option_values",
+        params,
+      );
+      return data?.product_option_values ?? [];
+    };
 
-    const values = data?.product_option_values ?? [];
+    let values = await loadValues(groupId);
     const byLabel = new Map<string, PsProductOptionValue>();
     for (const value of values) {
       const label = resolveLang(value.name).trim().toUpperCase();
@@ -2437,6 +2457,24 @@ ${ids
     for (const size of sizeLabels) {
       const key = size.trim().toUpperCase();
       let row = byLabel.get(key);
+
+      if (!row?.id && groupId) {
+        const unfiltered = await loadValues();
+        for (const value of unfiltered) {
+          const label = resolveLang(value.name).trim().toUpperCase();
+          if (label === key) {
+            row = value;
+            byLabel.set(key, value);
+            break;
+          }
+        }
+      }
+
+      if (!row?.id && key === "XXL" && productImportConfig.xxlAttributeId) {
+        matched.push({ id: productImportConfig.xxlAttributeId, label: size });
+        continue;
+      }
+
       if (!row?.id && groupId) {
         const createdId = await this.createSizeOptionValue(groupId, size);
         if (createdId) {
@@ -2558,7 +2596,7 @@ ${ids
   }> {
     const pageSize = options.pageSize ?? 25;
     const page = Math.max(1, options.page);
-    const batch = await this.getProducts({ page, limit: pageSize });
+    const batch = await this.listProductNamesPage({ page, pageSize });
 
     let scanned = 0;
     let created = 0;
@@ -2585,8 +2623,6 @@ ${ids
       }
     }
 
-    const hasMore = batch.items.length >= pageSize;
-
     return {
       page,
       processed: batch.items.length,
@@ -2594,7 +2630,7 @@ ${ids
       created,
       skipped,
       errors,
-      hasMore,
+      hasMore: batch.hasMore,
       errorDetails,
     };
   }
