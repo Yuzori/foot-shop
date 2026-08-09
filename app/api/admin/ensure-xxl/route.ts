@@ -16,11 +16,11 @@ export async function POST(request: Request) {
     );
   }
 
-  let maxPages = 20;
+  let maxPages = 50;
   try {
     const body = (await request.json()) as { maxPages?: number };
     if (typeof body.maxPages === "number" && body.maxPages > 0) {
-      maxPages = Math.min(body.maxPages, 100);
+      maxPages = Math.min(body.maxPages, 200);
     }
   } catch {
     /* corps vide = défaut */
