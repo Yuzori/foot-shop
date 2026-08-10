@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 
 import { FavoriteButton } from "@/components/product/favorite-button";
 import { ProductImage } from "@/components/product/product-image";
 import { buttonClasses } from "@/components/ui/button";
 import { routes } from "@/config/site";
+import { useImageAccentColor } from "@/hooks/use-image-accent-color";
 import { formatPrice } from "@/lib/format";
 import { brandButtonStyle } from "@/lib/brand-button";
 import { accentFromProductCover } from "@/lib/image-accent-client";
@@ -52,6 +53,13 @@ export function RecentProductBar() {
     () => accentFromProductCover(recent?.accent ?? null),
     [recent?.accent],
   );
+  const { accent: imageAccent } = useImageAccentColor(recent?.image, {
+    enabled: Boolean(recent?.image),
+  });
+  const displayAccent = recent?.accent ? accent : imageAccent;
+  const nameStyle = {
+    "--product-accent": displayAccent.rgb,
+  } as CSSProperties;
 
   const onSameProduct = recent && pathname === routes.product(recent.id);
   const visible =
@@ -79,7 +87,7 @@ export function RecentProductBar() {
                 "relative block shrink-0 overflow-hidden rounded-lg",
                 "h-12 w-12 sm:h-14 sm:w-14",
               )}
-              style={{ boxShadow: `0 0 0 1.5px ${accent.rgb}` }}
+              style={{ boxShadow: `0 0 0 1.5px ${displayAccent.rgb}` }}
               aria-label={recent.name}
             >
               <ProductImage
@@ -96,18 +104,15 @@ export function RecentProductBar() {
               </p>
               <Link
                 href={routes.product(recent.id)}
-                className="group inline-block max-w-full truncate text-xs font-semibold sm:text-sm"
+                className="group inline-block max-w-full truncate text-xs font-semibold transition-opacity duration-300 hover:opacity-80 sm:text-sm"
               >
-                <motion.span
-                  key={recent.id}
-                  className="block truncate"
-                  initial={{ color: "rgb(10, 10, 10)" }}
-                  animate={{ color: accent.rgb }}
-                  whileHover={{ opacity: 0.82 }}
-                  transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                <span
+                  key={`${recent.id}-${displayAccent.rgb}`}
+                  className="recent-product-name block truncate"
+                  style={nameStyle}
                 >
                   {recent.name}
-                </motion.span>
+                </span>
               </Link>
               <p className="hidden text-xs tabular-nums text-ink/55 sm:block">
                 {formatPrice(recent.price, recent.currency)}
@@ -117,7 +122,7 @@ export function RecentProductBar() {
             <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
               <FavoriteButton
                 productId={recent.id}
-                accentColor={accent.rgb}
+                accentColor={displayAccent.rgb}
                 className="!h-8 !w-8 !min-h-8 !min-w-8 border border-ink/10 bg-paper/95 sm:!h-9 sm:!w-9"
               />
 
@@ -128,7 +133,7 @@ export function RecentProductBar() {
                   "sm",
                   "whitespace-nowrap px-3 sm:px-4",
                 )}
-                style={brandButtonStyle(accent)}
+                style={brandButtonStyle(displayAccent)}
               >
                 Voir
               </Link>
