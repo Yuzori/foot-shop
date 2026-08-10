@@ -9,7 +9,6 @@ import { FavoriteButton } from "@/components/product/favorite-button";
 import { ProductImage } from "@/components/product/product-image";
 import { buttonClasses } from "@/components/ui/button";
 import { routes } from "@/config/site";
-import { useImageAccentColor } from "@/hooks/use-image-accent-color";
 import { formatPrice } from "@/lib/format";
 import { brandButtonStyle } from "@/lib/brand-button";
 import { accentFromProductCover } from "@/lib/image-accent-client";
@@ -18,7 +17,6 @@ import { useRecentProductStore } from "@/store/recent-product-store";
 import { useUIStore } from "@/store/ui-store";
 
 const BOTTOM_THRESHOLD_PX = 96;
-const NAME_START_COLOR = "#0a0a0a";
 
 function isCheckoutFlow(pathname: string): boolean {
   return pathname.startsWith("/paiement") || pathname.startsWith("/panier");
@@ -38,7 +36,6 @@ export function RecentProductBar() {
   const hidden = useRecentProductStore((s) => s.hidden);
   const hide = useRecentProductStore((s) => s.hide);
   const [nearBottom, setNearBottom] = useState(false);
-  const [nameColor, setNameColor] = useState(NAME_START_COLOR);
 
   useEffect(() => {
     const update = () => setNearBottom(isNearPageBottom());
@@ -51,16 +48,10 @@ export function RecentProductBar() {
     };
   }, [pathname]);
 
-  const storedAccent = useMemo(
+  const accent = useMemo(
     () => accentFromProductCover(recent?.accent ?? null),
     [recent?.accent],
   );
-  const { accent: imageAccent, ready: imageAccentReady } = useImageAccentColor(
-    recent?.image,
-    { enabled: Boolean(recent?.image) && !recent?.accent },
-  );
-  const displayAccent = recent?.accent ? storedAccent : imageAccent;
-  const accentReady = Boolean(recent?.accent) || imageAccentReady;
 
   const onSameProduct = recent && pathname === routes.product(recent.id);
   const visible =
@@ -70,20 +61,6 @@ export function RecentProductBar() {
     !menuOpen &&
     !nearBottom &&
     !isCheckoutFlow(pathname);
-
-  useEffect(() => {
-    if (!visible || !accentReady || !recent) {
-      setNameColor(NAME_START_COLOR);
-      return;
-    }
-
-    setNameColor(NAME_START_COLOR);
-    const timer = window.setTimeout(() => {
-      setNameColor(displayAccent.rgb);
-    }, 60);
-
-    return () => window.clearTimeout(timer);
-  }, [visible, accentReady, recent?.id, displayAccent.rgb]);
 
   return (
     <AnimatePresence>
@@ -102,7 +79,7 @@ export function RecentProductBar() {
                 "relative block shrink-0 overflow-hidden rounded-lg",
                 "h-12 w-12 sm:h-14 sm:w-14",
               )}
-              style={{ boxShadow: `0 0 0 1.5px ${displayAccent.rgb}` }}
+              style={{ boxShadow: `0 0 0 1.5px ${accent.rgb}` }}
               aria-label={recent.name}
             >
               <ProductImage
@@ -119,15 +96,9 @@ export function RecentProductBar() {
               </p>
               <Link
                 href={routes.product(recent.id)}
-                className="group inline-block max-w-full truncate text-xs font-semibold transition-opacity duration-300 hover:opacity-80 sm:text-sm"
+                className="inline-block max-w-full truncate text-xs font-semibold text-ink transition-colors duration-300 hover:text-accent sm:text-sm"
               >
-                <span
-                  key={recent.id}
-                  className="block truncate transition-[color] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none"
-                  style={{ color: nameColor }}
-                >
-                  {recent.name}
-                </span>
+                {recent.name}
               </Link>
               <p className="hidden text-xs tabular-nums text-ink/55 sm:block">
                 {formatPrice(recent.price, recent.currency)}
@@ -137,7 +108,7 @@ export function RecentProductBar() {
             <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
               <FavoriteButton
                 productId={recent.id}
-                accentColor={displayAccent.rgb}
+                accentColor={accent.rgb}
                 className="!h-8 !w-8 !min-h-8 !min-w-8 border border-ink/10 bg-paper/95 sm:!h-9 sm:!w-9"
               />
 
@@ -148,7 +119,7 @@ export function RecentProductBar() {
                   "sm",
                   "whitespace-nowrap px-3 sm:px-4",
                 )}
-                style={brandButtonStyle(displayAccent)}
+                style={brandButtonStyle(accent)}
               >
                 Voir
               </Link>
