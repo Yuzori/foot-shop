@@ -60,12 +60,24 @@ function readSmtpCode(buffer: string): number | null {
  * Tente une vérification SMTP RCPT TO (meilleure effort).
  * Beaucoup de fournisseurs (Gmail, Outlook) répondent toujours OK → inconclusif.
  */
+const SMTP_PROBE_MS = 6_000;
+const DELIVERABILITY_TIMEOUT_MS = 8_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | "timeout"> {
+  return Promise.race([
+    promise,
+    new Promise<"timeout">((resolve) => {
+      setTimeout(() => resolve("timeout"), ms);
+    }),
+  ]);
+}
+
 function smtpMailboxProbe(
   mxHost: string,
   email: string,
 ): Promise<"valid" | "invalid" | "unknown"> {
   return new Promise((resolve) => {
-    const socket = net.connect({ host: mxHost, port: 25, timeout: 6_000 });
+    const socket = net.connect({ host: mxHost, port: 25, timeout: SMTP_PROBE_MS });
     let buffer = "";
     let step = 0;
     let settled = false;
@@ -133,11 +145,31 @@ function smtpMailboxProbe(
 
     socket.on("error", () => finish("unknown"));
     socket.on("timeout", () => finish("unknown"));
+
+    setTimeout(() => finish("unknown"), SMTP_PROBE_MS + 500);
   });
 }
 
 /** Vérifie qu'une adresse email peut recevoir des messages (DNS + SMTP si possible). */
 export async function verifyEmailDeliverability(
+  email: string,
+): Promise<EmailDeliverabilityResult> {
+  try {
+    const result = await withTimeout(
+      verifyEmailDeliverabilityInner(email),
+      DELIVERABILITY_TIMEOUT_MS,
+    );
+    if (result === "timeout") {
+      return { valid: true };
+    }
+    return result;
+  } catch (error) {
+    console.warn("[verifyEmailDeliverability] skipped", error);
+    return { valid: true };
+  }
+}
+
+async function verifyEmailDeliverabilityInner(
   email: string,
 ): Promise<EmailDeliverabilityResult> {
   const formatError = validateCheckoutEmail(email);

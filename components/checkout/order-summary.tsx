@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
 
 import { CartLinePricing } from "@/components/cart/cart-line-pricing";
 import { WelcomePromoCheckoutBanner } from "@/components/checkout/welcome-promo-banner";
@@ -12,6 +11,7 @@ import { SummaryCard } from "@/components/ui/summary-card";
 import { routes } from "@/config/site";
 import { shopConfig } from "@/config/shop";
 import { cartLineUnitPrice } from "@/hooks/use-cart-bogo";
+import { useStickyBottomBar } from "@/hooks/use-sticky-bottom-bar";
 import { getFlocageDisplay } from "@/lib/flocage";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -287,7 +287,7 @@ export function summarySubtotal(lines: CartLine[]): number {
   }, 0);
 }
 
-/** Barre mobile : fixée en bas pendant le formulaire, puis garée après le flocage. */
+/** Barre mobile : fixée en bas pendant le formulaire, puis garée avant le footer. */
 export function CheckoutMobileStickyBar({
   orderTotal,
   step,
@@ -299,46 +299,25 @@ export function CheckoutMobileStickyBar({
   pending?: boolean;
   onContinue?: () => void;
 }) {
-  const anchorRef = useRef<HTMLDivElement>(null);
-  const barRef = useRef<HTMLDivElement>(null);
-  const [pinned, setPinned] = useState(true);
+  const enabled = step === "details";
+  const { anchorRef, barRef, isFixed, footerLift } = useStickyBottomBar(enabled);
 
-  useEffect(() => {
-    if (step !== "details") return;
-
-    const anchor = anchorRef.current;
-    if (!anchor) return;
-
-    const update = () => {
-      const rect = anchor.getBoundingClientRect();
-      const barHeight = barRef.current?.offsetHeight ?? 80;
-      setPinned(rect.top > window.innerHeight - barHeight);
-    };
-
-    update();
-    window.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
-    return () => {
-      window.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
-    };
-  }, [step]);
-
-  if (step !== "details") return null;
+  if (!enabled) return null;
 
   return (
     <>
       <div ref={anchorRef} className="h-0 w-full" aria-hidden />
-      {pinned ? <div className="h-20 w-full lg:hidden" aria-hidden /> : null}
+      {isFixed ? <div className="h-20 w-full lg:hidden" aria-hidden /> : null}
       <div
         ref={barRef}
+        style={isFixed ? { bottom: footerLift } : undefined}
         className={cn(
           "z-40 border-t border-ink/10 bg-paper/95 backdrop-blur-md lg:hidden",
           "pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3",
-          pinned ? "fixed inset-x-0 bottom-0" : "relative -mx-1 mt-2",
+          isFixed ? "fixed inset-x-0" : "relative -mx-1 mt-2",
         )}
       >
-        <div className={cn("w-full", pinned && "mx-auto max-w-8xl px-4 sm:px-8")}>
+        <div className={cn("w-full", isFixed && "mx-auto max-w-8xl px-4 sm:px-8")}>
           <Button
             type="button"
             size="lg"

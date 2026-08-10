@@ -31,7 +31,12 @@ export async function POST(request: Request) {
       });
     }
 
-    const deliverability = await verifyEmailDeliverability(email);
+    let deliverability: Awaited<ReturnType<typeof verifyEmailDeliverability>>;
+    try {
+      deliverability = await verifyEmailDeliverability(email);
+    } catch {
+      deliverability = { valid: true };
+    }
     if (!deliverability.valid) {
       return NextResponse.json({
         valid: false,

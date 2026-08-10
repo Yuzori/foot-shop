@@ -14,12 +14,14 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Spinner } from "@/components/ui/spinner";
 import { routes } from "@/config/site";
 import { useHydrated } from "@/hooks/use-hydrated";
+import { useStickyBottomBar } from "@/hooks/use-sticky-bottom-bar";
 import { useCartPersistHydrated } from "@/hooks/use-cart-persist-hydrated";
 import { useCartBogo, cartLineUnitPrice } from "@/hooks/use-cart-bogo";
 import { WelcomePromoGuestNudge } from "@/components/marketing/welcome-promo-guest-nudge";
 import { useCartStockGuard } from "@/hooks/use-cart-stock-guard";
 import { useScrollToTop } from "@/hooks/use-scroll-to-top";
 import { formatPrice } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { readPersistedCartLines, useCartStore } from "@/store/cart-store";
 
 export function CartView() {
@@ -44,6 +46,9 @@ export function CartView() {
   const { freePerLine, total, bogoLines } = useCartBogo();
   const subtotal = summarySubtotal(lines);
   const [promoCode, setPromoCode] = useState("");
+  const { anchorRef, barRef, isFixed, footerLift } = useStickyBottomBar(
+    hydrated && lines.length > 0,
+  );
 
   useEffect(() => {
     try {
@@ -226,28 +231,42 @@ export function CartView() {
         </aside>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-ink/10 bg-paper/95 backdrop-blur-md pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 lg:hidden">
-        <Container className="flex items-center gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-ink/45">
-              Total
-            </p>
-            <p className="text-lg font-bold tabular-nums text-accent">
-              {formatPrice(total)}
-            </p>
-          </div>
-          <Link
-            href={routes.checkout}
-            className={buttonClasses(
-              "accent",
-              "lg",
-              "shrink-0 bg-accent px-6 text-ink hover:bg-accent-dark",
+      {lines.length > 0 ? (
+        <>
+          <div ref={anchorRef} className="h-0 w-full" aria-hidden />
+          {isFixed ? <div className="h-20 w-full lg:hidden" aria-hidden /> : null}
+          <div
+            ref={barRef}
+            style={isFixed ? { bottom: footerLift } : undefined}
+            className={cn(
+              "z-40 border-t border-ink/10 bg-paper/95 backdrop-blur-md lg:hidden",
+              "pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3",
+              isFixed ? "fixed inset-x-0" : "relative -mx-1 mt-2",
             )}
           >
-            Paiement
-          </Link>
-        </Container>
-      </div>
+            <Container className="flex items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-ink/45">
+                  Total
+                </p>
+                <p className="text-lg font-bold tabular-nums text-accent">
+                  {formatPrice(total)}
+                </p>
+              </div>
+              <Link
+                href={routes.checkout}
+                className={buttonClasses(
+                  "accent",
+                  "lg",
+                  "shrink-0 bg-accent px-6 text-ink hover:bg-accent-dark",
+                )}
+              >
+                Paiement
+              </Link>
+            </Container>
+          </div>
+        </>
+      ) : null}
     </Container>
   );
 }

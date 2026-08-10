@@ -54,6 +54,7 @@ import {
   type CheckoutDeliveryProfile,
 } from "@/lib/checkout-profile";
 import { useCartStockGuard } from "@/hooks/use-cart-stock-guard";
+import { useDebounce } from "@/hooks/use-debounce";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { useScrollToTop } from "@/hooks/use-scroll-to-top";
 import { useSession } from "@/hooks/use-auth";
@@ -92,6 +93,13 @@ const CHECKOUT_FIELD_NAMES: CheckoutFieldName[] = [
   "lastName",
   "email",
   "phone",
+  "address1",
+  "postcode",
+  "city",
+  "country",
+];
+
+const ADDRESS_FIELD_NAMES: CheckoutFieldName[] = [
   "address1",
   "postcode",
   "city",
@@ -147,6 +155,19 @@ export function CheckoutView() {
     Partial<Record<CheckoutFieldName, boolean>>
   >({});
   const emailVerifyRequest = useRef(0);
+  const addressVerifyRequest = useRef(0);
+  const deliveryFormRef = useRef(deliveryForm);
+  deliveryFormRef.current = deliveryForm;
+
+  const debouncedAddressKey = useDebounce(
+    JSON.stringify({
+      address1: deliveryForm.address.address1,
+      postcode: deliveryForm.address.postcode,
+      city: deliveryForm.address.city,
+      country: deliveryForm.address.country,
+    }),
+    450,
+  );
 
   const [frozenLines, setFrozenLines] = useState<CartLine[] | null>(null);
   const [step, setStep] = useState<Step>("details");
@@ -180,8 +201,78 @@ export function CheckoutView() {
     setTouchedFields((prev) => ({ ...prev, [field]: true }));
   }, []);
 
+  const validateAddressFields = useCallback(
+    async (
+      form: CheckoutDeliveryProfile,
+      options?: { touch?: boolean },
+    ): Promise<boolean> => {
+      const { contact, address } = normalizeDeliveryForm(form);
+      const localErrors = getCheckoutFieldErrors(contact, address);
+      const nextErrors: CheckoutFieldErrors = {};
+
+      for (const field of ADDRESS_FIELD_NAMES) {
+        if (localErrors[field]) nextErrors[field] = localErrors[field];
+      }
+
+      const hasLocalError = ADDRESS_FIELD_NAMES.some((field) => localErrors[field]);
+      if (
+        !hasLocalError &&
+        address.address1 &&
+        address.postcode &&
+        address.city
+      ) {
+        const requestId = ++addressVerifyRequest.current;
+        try {
+          const res = await fetch("/api/checkout/verify-address", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(address),
+          });
+          const data = (await res.json()) as {
+            valid?: boolean;
+            field?: CheckoutFieldName;
+            message?: string;
+          };
+          if (requestId !== addressVerifyRequest.current) {
+            return Object.keys(nextErrors).length === 0;
+          }
+          if (!data.valid && data.field && data.message) {
+            nextErrors[data.field] = data.message;
+          }
+        } catch {
+          /* réseau : format local suffit */
+        }
+      }
+
+      if (options?.touch) {
+        setTouchedFields((prev) => ({
+          ...prev,
+          ...Object.fromEntries(
+            ADDRESS_FIELD_NAMES.map((field) => [field, true]),
+          ),
+        }));
+      }
+
+      setFieldErrors((prev) => {
+        const merged = { ...prev };
+        for (const field of ADDRESS_FIELD_NAMES) {
+          if (nextErrors[field]) merged[field] = nextErrors[field];
+          else delete merged[field];
+        }
+        return merged;
+      });
+
+      return Object.keys(nextErrors).length === 0;
+    },
+    [],
+  );
+
   const validateCheckoutField = useCallback(
     async (field: CheckoutFieldName, form: CheckoutDeliveryProfile) => {
+      if (ADDRESS_FIELD_NAMES.includes(field)) {
+        return validateAddressFields(form);
+      }
+
       const { contact, address } = normalizeDeliveryForm(form);
       const errors = getCheckoutFieldErrors(contact, address);
       const message = errors[field] ?? null;
@@ -247,8 +338,31 @@ export function CheckoutView() {
 
       return valid;
     },
-    [],
+    [validateAddressFields],
   );
+
+  useEffect(() => {
+    const parsed = JSON.parse(debouncedAddressKey) as {
+      address1?: string;
+      postcode?: string;
+      city?: string;
+      country?: string;
+    };
+    const hasInput =
+      Boolean(parsed.address1?.trim()) ||
+      Boolean(parsed.postcode?.trim()) ||
+      Boolean(parsed.city?.trim());
+    if (!hasInput) return;
+
+    setTouchedFields((prev) => ({
+      ...prev,
+      ...(parsed.address1?.trim() ? { address1: true } : {}),
+      ...(parsed.postcode?.trim() ? { postcode: true } : {}),
+      ...(parsed.city?.trim() ? { city: true } : {}),
+      ...(parsed.country?.trim() ? { country: true } : {}),
+    }));
+    void validateAddressFields(deliveryFormRef.current);
+  }, [debouncedAddressKey, validateAddressFields]);
 
   const touchAllCheckoutFields = useCallback(() => {
     setTouchedFields(
@@ -678,7 +792,8 @@ export function CheckoutView() {
 
     const emailOk = await validateCheckoutField("email", deliveryForm);
     const phoneOk = await validateCheckoutField("phone", deliveryForm);
-    if (!emailOk || !phoneOk) {
+    const addressOk = await validateAddressFields(deliveryForm, { touch: true });
+    if (!emailOk || !phoneOk || !addressOk) {
       return;
     }
 
@@ -1037,7 +1152,7 @@ export function CheckoutView() {
                   }
                   onBlur={() => {
                     markFieldTouched("address1");
-                    void validateCheckoutField("address1", deliveryForm);
+                    void validateAddressFields(deliveryFormRef.current);
                   }}
                 />
                 <Field
@@ -1068,7 +1183,7 @@ export function CheckoutView() {
                   }
                   onBlur={() => {
                     markFieldTouched("postcode");
-                    void validateCheckoutField("postcode", deliveryForm);
+                    void validateAddressFields(deliveryFormRef.current);
                   }}
                 />
                 <Field
@@ -1086,7 +1201,7 @@ export function CheckoutView() {
                   }
                   onBlur={() => {
                     markFieldTouched("city");
-                    void validateCheckoutField("city", deliveryForm);
+                    void validateAddressFields(deliveryFormRef.current);
                   }}
                 />
                 <Field
@@ -1105,9 +1220,9 @@ export function CheckoutView() {
                   }
                   onBlur={() => {
                     markFieldTouched("country");
-                    void validateCheckoutField("country", deliveryForm);
+                    void validateAddressFields(deliveryFormRef.current);
                     if (touchedFields.phone || deliveryForm.contact.phone?.trim()) {
-                      void validateCheckoutField("phone", deliveryForm);
+                      void validateCheckoutField("phone", deliveryFormRef.current);
                     }
                   }}
                 />

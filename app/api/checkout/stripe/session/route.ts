@@ -33,6 +33,18 @@ interface StripeSessionBody extends CheckoutBody {
  * elements) pour le Payment Element intégré sur Foot Shop.
  */
 export async function POST(request: Request) {
+  try {
+    return await handleStripeSession(request);
+  } catch (error) {
+    console.error("[stripe/session] unhandled", error);
+    return NextResponse.json(
+      { message: "Impossible de préparer le paiement. Réessayez dans un instant." },
+      { status: 500 },
+    );
+  }
+}
+
+async function handleStripeSession(request: Request) {
   if (!paymentConfig.stripeEnabled) {
     return NextResponse.json({ message: "stripe_disabled" }, { status: 503 });
   }
