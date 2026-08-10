@@ -96,10 +96,18 @@ export function RecentProductBar() {
               </p>
               <Link
                 href={routes.product(recent.id)}
-                className="inline-block max-w-full truncate text-xs font-semibold transition-opacity duration-300 hover:opacity-80 sm:text-sm"
-                style={{ color: accent.rgb }}
+                className="group inline-block max-w-full truncate text-xs font-semibold sm:text-sm"
               >
-                {recent.name}
+                <motion.span
+                  key={recent.id}
+                  className="block truncate"
+                  initial={{ color: "rgb(10, 10, 10)" }}
+                  animate={{ color: accent.rgb }}
+                  whileHover={{ opacity: 0.82 }}
+                  transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  {recent.name}
+                </motion.span>
               </Link>
               <p className="hidden text-xs tabular-nums text-ink/55 sm:block">
                 {formatPrice(recent.price, recent.currency)}

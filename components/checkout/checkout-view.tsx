@@ -24,11 +24,11 @@ import { routes } from "@/config/site";
 import { publicConfig } from "@/config";
 import {
   getCheckoutFieldErrors,
-  validateCheckoutEmail,
   type CheckoutFieldErrors,
   type CheckoutFieldName,
   validateCheckoutContactForm,
 } from "@/lib/checkout-contact-validation";
+import { verifyFrenchPostcodeCity } from "@/lib/verify-french-address-client";
 import { api } from "@/lib/api";
 import {
   clearCheckoutCartSnapshot,
@@ -154,7 +154,6 @@ export function CheckoutView() {
   const [touchedFields, setTouchedFields] = useState<
     Partial<Record<CheckoutFieldName, boolean>>
   >({});
-  const emailVerifyRequest = useRef(0);
   const addressVerifyRequest = useRef(0);
   const deliveryFormRef = useRef(deliveryForm);
   deliveryFormRef.current = deliveryForm;
@@ -214,33 +213,23 @@ export function CheckoutView() {
         if (localErrors[field]) nextErrors[field] = localErrors[field];
       }
 
-      const hasLocalError = ADDRESS_FIELD_NAMES.some((field) => localErrors[field]);
-      if (
-        !hasLocalError &&
-        address.address1 &&
-        address.postcode &&
-        address.city
-      ) {
+      const postcodeCityBlocked =
+        Boolean(localErrors.postcode) ||
+        Boolean(localErrors.city) ||
+        Boolean(localErrors.country);
+
+      if (!postcodeCityBlocked && address.postcode && address.city) {
         const requestId = ++addressVerifyRequest.current;
-        try {
-          const res = await fetch("/api/checkout/verify-address", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(address),
-          });
-          const data = (await res.json()) as {
-            valid?: boolean;
-            field?: CheckoutFieldName;
-            message?: string;
-          };
-          if (requestId !== addressVerifyRequest.current) {
-            return Object.keys(nextErrors).length === 0;
-          }
-          if (!data.valid && data.field && data.message) {
-            nextErrors[data.field] = data.message;
-          }
-        } catch {
-          /* réseau : format local suffit */
+        const geoError = await verifyFrenchPostcodeCity({
+          postcode: address.postcode,
+          city: address.city,
+          country: address.country,
+        });
+        if (requestId !== addressVerifyRequest.current) {
+          return Object.keys(nextErrors).length === 0;
+        }
+        if (geoError) {
+          nextErrors[geoError.field] = geoError.message;
         }
       }
 
@@ -277,66 +266,7 @@ export function CheckoutView() {
       const errors = getCheckoutFieldErrors(contact, address);
       const message = errors[field] ?? null;
       setFieldErrors((prev) => ({ ...prev, [field]: message }));
-      const valid = !message;
-
-      if (field === "email" && valid && contact.email) {
-        const formatError = validateCheckoutEmail(contact.email);
-        if (formatError) {
-          setFieldErrors((prev) => ({ ...prev, email: formatError }));
-          return false;
-        }
-
-        const requestId = ++emailVerifyRequest.current;
-        try {
-          const res = await fetch("/api/checkout/verify-contact", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: contact.email }),
-          });
-          const data = (await res.json()) as {
-            valid?: boolean;
-            message?: string;
-          };
-          if (requestId !== emailVerifyRequest.current) return valid;
-          if (!data.valid) {
-            setFieldErrors((prev) => ({
-              ...prev,
-              email: data.message ?? "Adresse email introuvable.",
-            }));
-            return false;
-          }
-        } catch {
-          /* réseau : format OK suffit côté client */
-        }
-      }
-
-      if (field === "phone" && valid && contact.phone) {
-        try {
-          const res = await fetch("/api/checkout/verify-contact", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              phone: contact.phone,
-              country: address.country,
-            }),
-          });
-          const data = (await res.json()) as {
-            valid?: boolean;
-            message?: string;
-          };
-          if (!data.valid) {
-            setFieldErrors((prev) => ({
-              ...prev,
-              phone: data.message ?? "Numéro de téléphone invalide.",
-            }));
-            return false;
-          }
-        } catch {
-          /* ignore */
-        }
-      }
-
-      return valid;
+      return !message;
     },
     [validateAddressFields],
   );
@@ -1174,7 +1104,11 @@ export function CheckoutView() {
                   required
                   autoComplete="postal-code"
                   value={deliveryForm.address.postcode}
-                  error={touchedFields.postcode ? fieldErrors.postcode : null}
+                  error={
+                    touchedFields.postcode || touchedFields.city
+                      ? fieldErrors.postcode
+                      : null
+                  }
                   onChange={(e) =>
                     updateDeliveryField("postcode", (f) => ({
                       ...f,
@@ -1192,7 +1126,11 @@ export function CheckoutView() {
                   required
                   autoComplete="address-level2"
                   value={deliveryForm.address.city}
-                  error={touchedFields.city ? fieldErrors.city : null}
+                  error={
+                    touchedFields.city || touchedFields.postcode
+                      ? fieldErrors.city
+                      : null
+                  }
                   onChange={(e) =>
                     updateDeliveryField("city", (f) => ({
                       ...f,
