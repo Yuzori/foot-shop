@@ -183,7 +183,13 @@ function imageOrder(product: QuickProduct, url: string): number {
   return index >= 0 ? index + 1 : 0;
 }
 
-export function QuickImportSection({ secret }: { secret: string }) {
+export function QuickImportSection({
+  secret,
+  embedded = false,
+}: {
+  secret: string;
+  embedded?: boolean;
+}) {
   const saved = loadInitialDraft();
   const [urlsText, setUrlsText] = useState(saved?.urlsText ?? "");
   const [price, setPrice] = useState(saved?.price ?? "25.99");
@@ -522,8 +528,15 @@ export function QuickImportSection({ secret }: { secret: string }) {
   }
 
   return (
-    <section className="relative mt-16 rounded-3xl border border-[#1a7f37]/30 bg-[#1a7f37]/[0.04] p-6 lg:p-8">
-      <h2 className="font-display text-xl font-semibold">Import rapide PrestaShop</h2>
+    <section
+      className={cn(
+        "relative rounded-3xl border border-[#1a7f37]/30 bg-[#1a7f37]/[0.04] p-6 lg:p-8",
+        embedded ? "mt-0 border-0 bg-transparent p-0 lg:p-0" : "mt-16",
+      )}
+    >
+      {!embedded ? (
+        <h2 className="font-display text-xl font-semibold">Import rapide PrestaShop</h2>
+      ) : null}
       <p className="mt-1 text-sm text-ink/55">
         Scrape → images brutes (sans détourage ni rendu) → envoi PrestaShop. Même
         noms et catégories que le studio, en beaucoup plus rapide.

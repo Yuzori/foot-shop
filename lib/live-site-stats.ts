@@ -54,6 +54,14 @@ export function recordLivePresence(input: {
   prune(store);
 }
 
+export function removeLiveSession(sessionId: string): void {
+  getStore().delete(sessionId.trim());
+}
+
+export function clearLiveSessions(): void {
+  getStore().clear();
+}
+
 export function getLiveSiteStats(): LiveSiteStats {
   const store = getStore();
   prune(store);

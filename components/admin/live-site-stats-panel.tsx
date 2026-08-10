@@ -59,11 +59,18 @@ function formatDay(isoDay: string): string {
   }).format(date);
 }
 
-export function LiveSiteStatsPanel({ secret }: { secret: string }) {
+export function LiveSiteStatsPanel({
+  secret,
+  embedded = false,
+}: {
+  secret: string;
+  embedded?: boolean;
+}) {
   const [data, setData] = useState<StatsResponse | null>(null);
   const [period, setPeriod] = useState<RecapPeriod>("day");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(
@@ -96,17 +103,47 @@ export function LiveSiteStatsPanel({ secret }: { secret: string }) {
     return () => window.clearInterval(id);
   }, [load]);
 
+  async function handleReset() {
+    if (
+      !window.confirm(
+        "Réinitialiser tous les compteurs visiteurs (en direct et historique) ?",
+      )
+    ) {
+      return;
+    }
+
+    setResetting(true);
+    try {
+      const res = await fetch("/api/admin/live-stats", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${secret}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action: "reset" }),
+      });
+      if (!res.ok) throw new Error("reset_failed");
+      await load({ silent: true });
+    } catch {
+      setError("Impossible de réinitialiser les compteurs.");
+    } finally {
+      setResetting(false);
+    }
+  }
+
   const live = data?.live;
   const recap = data?.recap;
 
-  return (
-    <section className="mt-10 rounded-2xl border border-ink/10 bg-paper p-5 sm:p-6">
+  const content = (
+    <>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="font-display text-lg font-semibold uppercase tracking-wide text-ink">
-            Boutique en direct
-          </h2>
-          <p className="mt-1 text-sm text-ink/50">
+          {!embedded ? (
+            <h2 className="font-display text-lg font-semibold uppercase tracking-wide text-ink">
+              Boutique en direct
+            </h2>
+          ) : null}
+          <p className={cn("text-sm text-ink/50", !embedded && "mt-1")}>
             Mise à jour automatique toutes les 4 s · visiteurs actifs sur les
             45 dernières secondes
           </p>
@@ -119,11 +156,22 @@ export function LiveSiteStatsPanel({ secret }: { secret: string }) {
             type="button"
             variant="outline"
             size="sm"
-            disabled={refreshing}
+            disabled={refreshing || resetting}
             onClick={() => void load()}
           >
             {refreshing ? <Spinner className="h-3.5 w-3.5" /> : null}
             Actualiser
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={refreshing || resetting}
+            onClick={() => void handleReset()}
+            className="text-accent hover:bg-accent/10"
+          >
+            {resetting ? <Spinner className="h-3.5 w-3.5" /> : null}
+            Réinitialiser
           </Button>
         </div>
       </div>
@@ -219,6 +267,16 @@ export function LiveSiteStatsPanel({ secret }: { secret: string }) {
           </div>
         ) : null}
       </div>
+    </>
+  );
+
+  if (embedded) {
+    return <div className="pt-4">{content}</div>;
+  }
+
+  return (
+    <section className="mt-10 rounded-2xl border border-ink/10 bg-paper p-5 sm:p-6">
+      {content}
     </section>
   );
 }

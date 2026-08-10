@@ -516,7 +516,13 @@ function productToDraft(product: StudioProduct): PersistedStudioProduct {
   };
 }
 
-export function JerseyStudioSection({ secret }: { secret: string }) {
+export function JerseyStudioSection({
+  secret,
+  embedded = false,
+}: {
+  secret: string;
+  embedded?: boolean;
+}) {
   const topRef = useRef<HTMLDivElement>(null);
   const productRefs = useRef(new Map<string, HTMLElement | null>());
   const restoredDraftRef = useRef(false);
@@ -1138,9 +1144,16 @@ export function JerseyStudioSection({ secret }: { secret: string }) {
   }
 
   return (
-    <section className="relative mt-16 rounded-3xl border border-accent/25 bg-accent/[0.03] p-6 lg:p-8">
+    <section
+      className={cn(
+        "relative rounded-3xl border border-accent/25 bg-accent/[0.03] p-6 lg:p-8",
+        embedded ? "mt-0 border-0 bg-transparent p-0 lg:p-0" : "mt-16",
+      )}
+    >
       <div ref={topRef} className="scroll-mt-24" />
-      <h2 className="font-display text-xl font-semibold">Studio Footshop</h2>
+      {!embedded ? (
+        <h2 className="font-display text-xl font-semibold">Studio Footshop</h2>
+      ) : null}
       <p className="mt-1 text-sm text-ink/55">
         Scrape, rendu maillot / short / détail et envoi PrestaShop.
       </p>

@@ -10,11 +10,16 @@ import type { BbdBuyOrderDraft } from "@/lib/bbdbuy/types";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { ProductImage } from "@/components/product/product-image";
+import { AdminFlyer } from "@/components/admin/admin-flyer";
 import { QuickImportSection } from "@/components/admin/quick-import-section";
 import { LiveSiteStatsPanel } from "@/components/admin/live-site-stats-panel";
 import { JerseyStudioSection } from "@/components/admin/jersey-studio-section";
+import {
+  ADMIN_SECRET_KEY,
+  purgeVisitorFromLiveStats,
+} from "@/lib/admin-session";
 
-const SECRET_KEY = "footshop-admin-secret";
+const SECRET_KEY = ADMIN_SECRET_KEY;
 
 type DraftList = {
   pending: BbdBuyOrderDraft[];
@@ -636,6 +641,7 @@ export function BbdBuyPanel() {
       const ok = await load(saved);
       if (ok) {
         setSecret(saved);
+        void purgeVisitorFromLiveStats();
       } else {
         sessionStorage.removeItem(SECRET_KEY);
         setSecret("");
@@ -664,6 +670,7 @@ export function BbdBuyPanel() {
     sessionStorage.setItem(SECRET_KEY, trimmed);
     setSecret(trimmed);
     setInputSecret("");
+    void purgeVisitorFromLiveStats();
   }
 
   function logout() {
@@ -744,7 +751,31 @@ export function BbdBuyPanel() {
           </p>
         ) : null}
 
-        <LiveSiteStatsPanel secret={secret} />
+        <div className="mt-10 space-y-3">
+          <AdminFlyer
+            title="Récapitulatif boutique"
+            subtitle="Visiteurs en direct et stats par période"
+            tone="stats"
+          >
+            <LiveSiteStatsPanel secret={secret} embedded />
+          </AdminFlyer>
+
+          <AdminFlyer
+            title="Import rapide"
+            subtitle="Scraping et publication PrestaShop"
+            tone="import"
+          >
+            <QuickImportSection secret={secret} embedded />
+          </AdminFlyer>
+
+          <AdminFlyer
+            title="Studio Footshop"
+            subtitle="Maillots, rendu et import catalogue"
+            tone="studio"
+          >
+            <JerseyStudioSection secret={secret} embedded />
+          </AdminFlyer>
+        </div>
 
         <div className="mt-10 flex gap-2 border-b border-ink/8">
           {(
@@ -796,8 +827,6 @@ export function BbdBuyPanel() {
 
         <OrderArchiveSection secret={secret} />
         <ShippingForm secret={secret} />
-        <QuickImportSection secret={secret} />
-        <JerseyStudioSection secret={secret} />
       </div>
     </Container>
   );

@@ -266,3 +266,24 @@ export function isRecapPeriod(value: string | null): value is RecapPeriod {
     value === "all"
   );
 }
+
+export async function resetSiteAnalytics(): Promise<void> {
+  await loadStoreFromDisk();
+  const g = globalThis as typeof globalThis & {
+    __footshopLiveAnalytics?: AnalyticsFile;
+    __footshopLiveAnalyticsDirty?: boolean;
+    __footshopLiveAnalyticsFlushTimer?: ReturnType<typeof setTimeout>;
+  };
+
+  const fresh = emptyFile();
+  g.__footshopLiveAnalytics = fresh;
+  g.__footshopLiveAnalyticsDirty = false;
+
+  if (g.__footshopLiveAnalyticsFlushTimer) {
+    clearTimeout(g.__footshopLiveAnalyticsFlushTimer);
+    g.__footshopLiveAnalyticsFlushTimer = undefined;
+  }
+
+  await fs.mkdir(DATA_DIR, { recursive: true });
+  await fs.writeFile(FILE, JSON.stringify(fresh, null, 2), "utf8");
+}
