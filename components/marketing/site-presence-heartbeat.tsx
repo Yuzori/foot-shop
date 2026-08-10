@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import { useCartStore } from "@/store/cart-store";
 
 const VISITOR_KEY = "footshop-visitor-id";
-const INTERVAL_MS = 30_000;
+const INTERVAL_MS = 8_000;
 
 function getVisitorId(): string {
   let id = sessionStorage.getItem(VISITOR_KEY);
@@ -53,9 +53,15 @@ export function SitePresenceHeartbeat() {
     const timer = window.setInterval(ping, INTERVAL_MS);
     const unsub = useCartStore.subscribe(ping);
 
+    const onVisible = () => {
+      if (document.visibilityState === "visible") ping();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
     return () => {
       window.clearInterval(timer);
       unsub();
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [pathname]);
 

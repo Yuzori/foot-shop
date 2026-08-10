@@ -1,3 +1,6 @@
+import { recordAnalyticsPresence } from "@/lib/live-site-analytics";
+import type { LiveSiteStats } from "@/lib/live-site-stats-types";
+
 /** Sessions visiteurs actives (heartbeat client). Mémoire process — suffisant pour le VPS mono-instance. */
 
 export type LiveVisitorSession = {
@@ -8,15 +11,7 @@ export type LiveVisitorSession = {
   pathname: string;
 };
 
-export type LiveSiteStats = {
-  activeVisitors: number;
-  cartsWithItems: number;
-  totalCartLines: number;
-  totalCartItems: number;
-  updatedAt: string;
-};
-
-const TTL_MS = 90_000;
+const TTL_MS = 45_000;
 
 type Store = Map<string, LiveVisitorSession>;
 
@@ -51,6 +46,11 @@ export function recordLivePresence(input: {
     cartItems: Math.max(0, input.cartItems),
     pathname: input.pathname?.trim() || "/",
   });
+  recordAnalyticsPresence({
+    sessionId: input.sessionId,
+    cartLines: Math.max(0, input.cartLines),
+    cartItems: Math.max(0, input.cartItems),
+  });
   prune(store);
 }
 
@@ -68,3 +68,5 @@ export function getLiveSiteStats(): LiveSiteStats {
     updatedAt: new Date().toISOString(),
   };
 }
+
+export type { LiveSiteStats } from "@/lib/live-site-stats-types";
