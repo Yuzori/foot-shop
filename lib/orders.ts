@@ -10,6 +10,7 @@ import { formatFlocageLabel } from "@/config/shop";
 
 import { getSession } from "@/lib/auth";
 import { archiveOrder } from "@/lib/order-archive-store";
+import { backupFromArchive } from "@/lib/order-backup-store";
 import { validatePromoCodeForCheckout } from "@/lib/validate-promo-code";
 import { resolveCartLines } from "@/lib/resolve-cart-lines";
 import { resolveShippingFee } from "@/lib/shipping-fee";
@@ -417,14 +418,14 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
   const archiveId = `ord-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
   const total = Math.max(0, subtotal - promoDiscount + shipping.fee);
 
-  await archiveOrder({
+  const archiveRecord = {
     id: archiveId,
     reference: result.reference ?? archiveId,
     orderId: result.orderId,
     customerId,
     createdAt: new Date().toISOString(),
     paidAt: null,
-    status: "created",
+    status: "created" as const,
     contact,
     address: normalizedAddress,
     lines: resolvedLines,
@@ -435,10 +436,16 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
     total,
     currency: "EUR",
     note: note || undefined,
-    source: "checkout",
+    source: "checkout" as const,
     stockReserved: false,
-  }).catch((err) => {
+  };
+
+  await archiveOrder(archiveRecord).catch((err) => {
     console.error("[placeOrder] archive failed", err);
+  });
+
+  await backupFromArchive("created", archiveRecord).catch((err) => {
+    console.error("[placeOrder] backup failed", err);
   });
 
   return {

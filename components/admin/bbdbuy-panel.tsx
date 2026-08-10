@@ -241,8 +241,69 @@ type ArchiveRow = {
   lineCount: number;
 };
 
-function OrderArchiveSection({ secret }: { secret: string }) {
+function PurgeTestDataButton({
+  secret,
+  onDone,
+}: {
+  secret: string;
+  onDone: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function purge() {
+    if (
+      !window.confirm(
+        "Supprimer toutes les commandes, expéditions et brouillons de test (références TEST-*) ?",
+      )
+    ) {
+      return;
+    }
+    setBusy(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/admin/purge-test", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${secret}` },
+      });
+      const data = (await res.json()) as {
+        message?: string;
+        removed?: { archives: number; shipping: number; supplier: number };
+      };
+      if (!res.ok) throw new Error(data.message ?? "Échec");
+      const r = data.removed;
+      setMessage(
+        r
+          ? `Nettoyage effectué : ${r.archives} archive(s), ${r.shipping} expédition(s), ${r.supplier} brouillon(s).`
+          : "Nettoyage effectué.",
+      );
+      onDone();
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Erreur");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-end gap-2">
+      <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => void purge()}>
+        {busy ? <Spinner className="h-4 w-4" /> : "Supprimer les tests"}
+      </Button>
+      {message ? <p className="max-w-xs text-right text-xs text-ink/55">{message}</p> : null}
+    </div>
+  );
+}
+
+function OrderArchiveSection({
+  secret,
+  onPurgeDone,
+}: {
+  secret: string;
+  onPurgeDone: () => void;
+}) {
   const [records, setRecords] = useState<ArchiveRow[]>([]);
+  const [backupTotal, setBackupTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -250,12 +311,22 @@ function OrderArchiveSection({ secret }: { secret: string }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/order-archive?limit=100", {
-        headers: { Authorization: `Bearer ${secret}` },
-      });
-      const data = (await res.json()) as { records?: ArchiveRow[]; message?: string };
-      if (!res.ok) throw new Error(data.message ?? "Chargement impossible.");
-      setRecords(data.records ?? []);
+      const [archiveRes, backupRes] = await Promise.all([
+        fetch("/api/admin/order-archive?limit=100", {
+          headers: { Authorization: `Bearer ${secret}` },
+        }),
+        fetch("/api/admin/order-backup?limit=1", {
+          headers: { Authorization: `Bearer ${secret}` },
+        }),
+      ]);
+      const archiveData = (await archiveRes.json()) as {
+        records?: ArchiveRow[];
+        message?: string;
+      };
+      const backupData = (await backupRes.json()) as { total?: number };
+      if (!archiveRes.ok) throw new Error(archiveData.message ?? "Chargement impossible.");
+      setRecords(archiveData.records ?? []);
+      setBackupTotal(backupData.total ?? 0);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur");
     } finally {
@@ -273,12 +344,23 @@ function OrderArchiveSection({ secret }: { secret: string }) {
         <div>
           <h2 className="font-display text-xl font-semibold">Historique des commandes</h2>
           <p className="mt-1 text-sm text-ink/55">
-            Sauvegarde sécurisée de toutes les commandes (y compris tests) — accessible admin uniquement.
+            Sauvegarde temps réel sécurisée ({backupTotal} entrée
+            {backupTotal > 1 ? "s" : ""} dans le journal). Les commandes de test sont
+            exclues.
           </p>
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={() => void load()}>
-          Actualiser
-        </Button>
+        <div className="flex flex-wrap items-start gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={() => void load()}>
+            Actualiser
+          </Button>
+          <PurgeTestDataButton
+            secret={secret}
+            onDone={() => {
+              void load();
+              onPurgeDone();
+            }}
+          />
+        </div>
       </div>
 
       {loading ? (
@@ -410,7 +492,9 @@ function ShippingForm({ secret }: { secret: string }) {
     <section className="mt-16 rounded-3xl border border-ink/8 p-6 lg:p-8">
       <h2 className="font-display text-xl font-semibold">Expédition & suivi</h2>
       <p className="mt-2 text-sm text-ink/55">
-        Saisissez le numéro de suivi et le lien transporteur, puis envoyez l&apos;email au client.
+        Saisissez le numéro de suivi et le lien transporteur, puis envoyez l&apos;email au
+        client. Les envois de test (réf. TEST-*) sont exclus et peuvent être supprimés via
+        « Supprimer les tests ».
       </p>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -489,6 +573,7 @@ export function BbdBuyPanel() {
   const [loading, setLoading] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
   const [tab, setTab] = useState<AdminTab>("pending");
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const load = useCallback(async (token: string): Promise<boolean> => {
     setLoading(true);
@@ -513,6 +598,11 @@ export function BbdBuyPanel() {
       setLoading(false);
     }
   }, []);
+
+  const refreshAll = useCallback(() => {
+    setRefreshKey((k) => k + 1);
+    if (secret) void load(secret);
+  }, [load, secret]);
 
   useEffect(() => {
     const saved = sessionStorage.getItem(SECRET_KEY);
@@ -677,8 +767,8 @@ export function BbdBuyPanel() {
           ))}
         </div>
 
-        <OrderArchiveSection secret={secret} />
-        <ShippingForm secret={secret} />
+        <OrderArchiveSection secret={secret} onPurgeDone={refreshAll} key={`archive-${refreshKey}`} />
+        <ShippingForm secret={secret} key={`ship-${refreshKey}`} />
         <QuickImportSection secret={secret} />
         <JerseyStudioSection secret={secret} />
       </div>

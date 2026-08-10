@@ -3,6 +3,8 @@ import "server-only";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
+import { isTestOrderReference } from "@/lib/is-test-order";
+
 export interface OrderShippingInfo {
   reference: string;
   trackingNumber: string;
@@ -78,4 +80,12 @@ export async function markShippingEmailSent(reference: string): Promise<void> {
 export async function listOrderShipping(): Promise<OrderShippingInfo[]> {
   const items = await readAll();
   return items.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
+export async function purgeTestShippingEntries(): Promise<{ removed: number }> {
+  const items = await readAll();
+  const keep = items.filter((i) => !isTestOrderReference(i.reference));
+  const removed = items.length - keep.length;
+  await writeAll(keep);
+  return { removed };
 }

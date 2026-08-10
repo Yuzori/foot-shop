@@ -5,6 +5,8 @@ import path from "node:path";
 
 import type { CreateOrderLine } from "@/services/prestashop";
 
+import { isTestArchiveRecord } from "@/lib/is-test-order";
+
 const ARCHIVE_DIR = path.join(process.cwd(), ".data", "order-archives");
 const INDEX_FILE = path.join(ARCHIVE_DIR, "_index.json");
 
@@ -124,4 +126,15 @@ export async function markOrderArchiveStockReserved(
   hit.stockReserved = true;
   await writeIndex(index);
   await fs.writeFile(fileFor(hit.id), JSON.stringify(hit, null, 2), "utf8");
+}
+
+export async function purgeTestOrderArchives(): Promise<{ removed: number }> {
+  const index = await readIndex();
+  const toRemove = index.filter((r) => isTestArchiveRecord(r));
+  for (const record of toRemove) {
+    await fs.unlink(fileFor(record.id)).catch(() => {});
+  }
+  const keep = index.filter((r) => !isTestArchiveRecord(r));
+  await writeIndex(keep);
+  return { removed: toRemove.length };
 }

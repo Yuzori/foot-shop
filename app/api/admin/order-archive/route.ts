@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { isAdminAuthorized } from "@/lib/admin-auth";
+import { isTestArchiveRecord } from "@/lib/is-test-order";
 import {
   getOrderArchive,
   listOrderArchives,
@@ -26,7 +27,9 @@ export async function GET(request: Request) {
     1000,
     Math.max(1, Number.parseInt(url.searchParams.get("limit") ?? "200", 10) || 200),
   );
-  const records = await listOrderArchives(limit);
+  const records = (await listOrderArchives(limit)).filter(
+    (r) => !isTestArchiveRecord(r),
+  );
   return NextResponse.json({
     total: records.length,
     records: records.map((r) => ({

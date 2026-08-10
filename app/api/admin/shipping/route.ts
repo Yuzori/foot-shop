@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 
 import { mailConfig } from "@/config/mail";
+import { isTestOrderReference } from "@/lib/is-test-order";
+import { backupFromArchive } from "@/lib/order-backup-store";
+import { getOrderArchiveByReference } from "@/lib/order-archive-store";
 import {
   getOrderShipping,
   listOrderShipping,
@@ -26,7 +29,9 @@ export async function GET(request: Request) {
   if (!isAuthorized(request)) {
     return NextResponse.json({ message: "unauthorized" }, { status: 401 });
   }
-  const items = await listOrderShipping();
+  const items = (await listOrderShipping()).filter(
+    (i) => !isTestOrderReference(i.reference),
+  );
   return NextResponse.json({ items });
 }
 
@@ -72,6 +77,17 @@ export async function POST(request: Request) {
     carrierUrl,
     customerEmail,
   });
+
+  const archive = await getOrderArchiveByReference(reference);
+  if (archive) {
+    await backupFromArchive("shipping_updated", archive, {
+      trackingNumber,
+      carrierUrl,
+      status: body.action === "send" ? "shipped" : archive.status,
+    }).catch((err) => {
+      console.error("[admin/shipping] backup failed", err);
+    });
+  }
 
   if (body.action === "send") {
     if (!trackingNumber || !carrierUrl) {

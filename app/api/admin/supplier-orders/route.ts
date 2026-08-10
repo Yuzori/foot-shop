@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { mailConfig } from "@/config/mail";
+import { isTestOrderReference } from "@/lib/is-test-order";
 import {
   archiveSupplierOrderDraft,
   getSupplierOrderDraft,
@@ -28,7 +29,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ message: "unauthorized" }, { status: 401 });
   }
 
-  const drafts = await listSupplierOrderDrafts();
+  const drafts = (await listSupplierOrderDrafts()).filter(
+    (d) => !isTestOrderReference(d.reference),
+  );
   return NextResponse.json({
     pending: drafts.filter((d) => d.status === "pending"),
     submitted: drafts.filter((d) => d.status === "submitted"),

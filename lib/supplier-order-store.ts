@@ -4,6 +4,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 
 import type { BbdBuyOrderDraft } from "@/lib/bbdbuy/types";
+import { isTestOrderReference } from "@/lib/is-test-order";
 
 const DATA_DIR = path.join(process.cwd(), ".data", "supplier-orders");
 
@@ -63,4 +64,23 @@ export async function archiveSupplierOrderDraft(
   draft.status = "archived";
   await saveSupplierOrderDraft(draft);
   return draft;
+}
+
+export async function deleteSupplierOrderDraft(reference: string): Promise<boolean> {
+  try {
+    await fs.unlink(fileFor(reference));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function purgeTestSupplierDrafts(): Promise<{ removed: number }> {
+  const drafts = await listSupplierOrderDrafts();
+  let removed = 0;
+  for (const draft of drafts) {
+    if (!isTestOrderReference(draft.reference)) continue;
+    if (await deleteSupplierOrderDraft(draft.reference)) removed += 1;
+  }
+  return { removed };
 }

@@ -3,6 +3,7 @@ import "server-only";
 import { paymentConfig } from "@/config/payment";
 import { firstOrderThankYouPromo } from "@/config/promotions";
 import { countPaidOrdersByCustomer } from "@/lib/customer-order-history";
+import { backupFromArchive } from "@/lib/order-backup-store";
 import {
   getOrderArchiveByReference,
   markOrderArchivePaid,
@@ -62,6 +63,13 @@ export async function fulfillPaidOrder(
   await markOrderArchivePaid(order.reference, paidAt).catch((err) => {
     console.error("[order-paid] archive update failed", err);
   });
+
+  const paidArchive = await getOrderArchiveByReference(order.reference);
+  if (paidArchive) {
+    await backupFromArchive("paid", paidArchive, { status: "paid" }).catch((err) => {
+      console.error("[order-paid] backup failed", err);
+    });
+  }
 
   const customerId = email
     ? (await prestashop.getCustomerAuthByEmail(email))?.id ?? null
