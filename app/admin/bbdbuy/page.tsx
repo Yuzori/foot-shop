@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+/** Always serve fresh HTML so JS chunk hashes match the current build. */
+export const dynamic = "force-dynamic";
+
 export default function BbdBuyAdminPage() {
   return <BbdBuyPanel />;
 }
