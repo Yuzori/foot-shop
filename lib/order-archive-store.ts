@@ -138,3 +138,12 @@ export async function purgeTestOrderArchives(): Promise<{ removed: number }> {
   await writeIndex(keep);
   return { removed: toRemove.length };
 }
+
+export async function purgeAllOrderArchives(): Promise<{ removed: number }> {
+  const index = await readIndex();
+  for (const record of index) {
+    await fs.unlink(fileFor(record.id)).catch(() => {});
+  }
+  await writeIndex([]);
+  return { removed: index.length };
+}

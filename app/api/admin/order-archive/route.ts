@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { isAdminAuthorized } from "@/lib/admin-auth";
-import { isTestArchiveRecord } from "@/lib/is-test-order";
+import { ensureAdminDataReset } from "@/lib/admin-data-wipe";
 import {
   getOrderArchive,
   listOrderArchives,
@@ -23,13 +23,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ record });
   }
 
+  await ensureAdminDataReset();
+
   const limit = Math.min(
     1000,
     Math.max(1, Number.parseInt(url.searchParams.get("limit") ?? "200", 10) || 200),
   );
-  const records = (await listOrderArchives(limit)).filter(
-    (r) => !isTestArchiveRecord(r),
-  );
+  const records = await listOrderArchives(limit);
   return NextResponse.json({
     total: records.length,
     records: records.map((r) => ({

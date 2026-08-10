@@ -11,7 +11,8 @@
     "type-check": "tsc --noEmit",
     "reclone": "tsx scripts/reclone-missing-products.ts",
     "reclone:dry-run": "tsx scripts/reclone-missing-products.ts --dry-run",
-    "test:emails": "tsx scripts/test-emails.ts"
+    "test:emails": "tsx scripts/test-emails.ts",
+    "admin:wipe": "tsx scripts/admin-wipe-data.ts"
   },
   "dependencies": {
     "@stripe/react-stripe-js": "^6.6.0",

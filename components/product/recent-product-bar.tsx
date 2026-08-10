@@ -96,7 +96,8 @@ export function RecentProductBar() {
               </p>
               <Link
                 href={routes.product(recent.id)}
-                className="inline-block max-w-full truncate text-xs font-semibold text-ink transition-colors duration-300 hover:text-accent sm:text-sm"
+                className="inline-block max-w-full truncate text-xs font-semibold transition-opacity duration-300 hover:opacity-80 sm:text-sm"
+                style={{ color: accent.rgb }}
               >
                 {recent.name}
               </Link>

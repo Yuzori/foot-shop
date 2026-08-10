@@ -84,3 +84,12 @@ export async function purgeTestSupplierDrafts(): Promise<{ removed: number }> {
   }
   return { removed };
 }
+
+export async function purgeAllSupplierDrafts(): Promise<{ removed: number }> {
+  const drafts = await listSupplierOrderDrafts();
+  let removed = 0;
+  for (const draft of drafts) {
+    if (await deleteSupplierOrderDraft(draft.reference)) removed += 1;
+  }
+  return { removed };
+}

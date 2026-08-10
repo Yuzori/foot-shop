@@ -1,15 +1,12 @@
 import { NextResponse } from "next/server";
 
+import { ensureAdminDataReset } from "@/lib/admin-data-wipe";
 import { mailConfig } from "@/config/mail";
-import { isTestOrderReference } from "@/lib/is-test-order";
-import { purgeTestOrderArchives } from "@/lib/order-archive-store";
-import { purgeTestShippingEntries } from "@/lib/order-shipping-store";
 import {
   archiveSupplierOrderDraft,
   getSupplierOrderDraft,
   listSupplierOrderDrafts,
   markSupplierOrderSubmitted,
-  purgeTestSupplierDrafts,
 } from "@/lib/supplier-order-store";
 import { notifySupplierOfOrder } from "@/lib/supplier-order";
 import { prestashop } from "@/services/prestashop";
@@ -32,15 +29,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ message: "unauthorized" }, { status: 401 });
   }
 
-  await Promise.all([
-    purgeTestOrderArchives(),
-    purgeTestShippingEntries(),
-    purgeTestSupplierDrafts(),
-  ]);
+  await ensureAdminDataReset();
 
-  const drafts = (await listSupplierOrderDrafts()).filter(
-    (d) => !isTestOrderReference(d.reference),
-  );
+  const drafts = await listSupplierOrderDrafts();
   return NextResponse.json({
     pending: drafts.filter((d) => d.status === "pending"),
     submitted: drafts.filter((d) => d.status === "submitted"),

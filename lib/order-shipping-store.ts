@@ -89,3 +89,9 @@ export async function purgeTestShippingEntries(): Promise<{ removed: number }> {
   await writeAll(keep);
   return { removed };
 }
+
+export async function purgeAllShippingEntries(): Promise<{ removed: number }> {
+  const items = await readAll();
+  await writeAll([]);
+  return { removed: items.length };
+}
