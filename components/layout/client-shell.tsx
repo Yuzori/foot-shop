@@ -3,6 +3,8 @@
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 
+import { SitePresenceHeartbeat } from "@/components/marketing/site-presence-heartbeat";
+
 const CartDrawer = dynamic(
   () => import("@/components/cart/cart-drawer").then((m) => ({ default: m.CartDrawer })),
   { ssr: false },
@@ -75,10 +77,13 @@ export function ClientShell() {
     };
   }, []);
 
-  if (!ready) return null;
+  if (!ready) {
+    return <SitePresenceHeartbeat />;
+  }
 
   return (
     <>
+      <SitePresenceHeartbeat />
       <CartDrawer />
       <FavoritesDrawer />
       <AccountDrawer />

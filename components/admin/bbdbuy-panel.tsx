@@ -11,6 +11,7 @@ import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { ProductImage } from "@/components/product/product-image";
 import { QuickImportSection } from "@/components/admin/quick-import-section";
+import { LiveSiteStatsPanel } from "@/components/admin/live-site-stats-panel";
 import { JerseyStudioSection } from "@/components/admin/jersey-studio-section";
 
 const SECRET_KEY = "footshop-admin-secret";
@@ -742,6 +743,8 @@ export function BbdBuyPanel() {
             {error}
           </p>
         ) : null}
+
+        <LiveSiteStatsPanel secret={secret} />
 
         <div className="mt-10 flex gap-2 border-b border-ink/8">
           {(
