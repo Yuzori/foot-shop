@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { paymentConfig } from "@/config/payment";
+import { getOrderArchiveByReference } from "@/lib/order-archive-store";
+import { hasOrderBeenFulfilled } from "@/lib/order-fulfillment-store";
 import {
   classifyCheckoutSession,
   type CheckoutPaymentState,
@@ -9,6 +11,18 @@ import { formatStripeError } from "@/lib/stripe-keys";
 import { getStripe } from "@/lib/stripe-server";
 
 export const runtime = "nodejs";
+
+async function isOrderPaidLocally(input: {
+  orderId: string | null;
+  reference: string | null;
+}): Promise<boolean> {
+  if (input.orderId && (await hasOrderBeenFulfilled(input.orderId))) {
+    return true;
+  }
+  if (!input.reference) return false;
+  const archive = await getOrderArchiveByReference(input.reference);
+  return Boolean(archive?.paidAt || archive?.status === "paid");
+}
 
 /** Vérifie le statut réel d'une Checkout Session (retour PayPal, 3DS, etc.). */
 export async function GET(request: Request) {
@@ -31,14 +45,22 @@ export async function GET(request: Request) {
       expand: ["payment_intent"],
     });
     const status = classifyCheckoutSession(session);
+    const fulfilled = await isOrderPaidLocally({
+      orderId: status.orderId,
+      reference: status.reference,
+    });
+
+    const state: CheckoutPaymentState =
+      status.state === "paid" || fulfilled ? "paid" : status.state;
 
     return NextResponse.json({
-      state: status.state as CheckoutPaymentState,
+      state,
       reason: status.reason ?? null,
       reference: status.reference,
       orderId: status.orderId,
       paymentStatus: status.paymentStatus,
       sessionStatus: status.sessionStatus,
+      fulfilled,
     });
   } catch (error) {
     console.error("[stripe] session-status failed", error);

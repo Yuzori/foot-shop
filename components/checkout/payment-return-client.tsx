@@ -13,11 +13,11 @@ import { useCartStore } from "@/store/cart-store";
 
 type Phase = "verifying" | "pending" | "paid" | "failed";
 
-const PENDING_POLLS = 30;
+const PENDING_POLLS = 20;
 const PENDING_INTERVAL_MS = 2_000;
 
 /**
- * Retour Stripe (PayPal, 3DS, etc.) — n'affiche le succès qu'après
+ * Retour paiement (PayPal, 3DS, etc.) — n'affiche le succès qu'après
  * vérification serveur du paiement.
  */
 export function PaymentReturnClient({
@@ -31,6 +31,7 @@ export function PaymentReturnClient({
   const [reference, setReference] = useState<string | null>(refParam ?? null);
   const [failureReason, setFailureReason] = useState<string | null>(null);
   const started = useRef(false);
+  const confirmAttempted = useRef(false);
   const qc = useQueryClient();
   const clearCart = useCartStore((s) => s.clear);
   const unlockCheckout = useCartStore((s) => s.unlockCheckout);
@@ -62,23 +63,48 @@ export function PaymentReturnClient({
       setPhase("failed");
     }
 
-    async function verifyPaid(): Promise<{
-      ok: true;
-      reference: string | null;
-    } | { ok: false; state: "pending" | "failed"; reason: string | null }> {
+    async function confirmPaymentOnce(): Promise<boolean> {
+      if (confirmAttempted.current) return true;
+      confirmAttempted.current = true;
+      try {
+        await api.confirmStripePayment(sessionId!);
+        return true;
+      } catch {
+        confirmAttempted.current = false;
+        return false;
+      }
+    }
+
+    async function verifyPaid(): Promise<
+      | { ok: true; reference: string | null }
+      | { ok: false; state: "pending" | "failed"; reason: string | null }
+    > {
       const status = await api.getStripeSessionStatus(sessionId!);
       if (status.reference) setReference(status.reference);
 
       if (status.state === "paid") {
-        const confirmed = await api.confirmStripePayment(sessionId!);
-        return {
-          ok: true,
-          reference: confirmed.reference ?? status.reference,
-        };
+        if (status.fulfilled) {
+          return {
+            ok: true,
+            reference: status.reference ?? refParam ?? null,
+          };
+        }
+
+        const confirmed = await confirmPaymentOnce();
+        if (confirmed) {
+          return {
+            ok: true,
+            reference: status.reference ?? refParam ?? null,
+          };
+        }
+
+        return { ok: false, state: "pending", reason: "processing" };
       }
+
       if (status.state === "pending") {
         return { ok: false, state: "pending", reason: status.reason };
       }
+
       return {
         ok: false,
         state: "failed",
@@ -148,7 +174,11 @@ export function PaymentReturnClient({
       cancelled = true;
       if (pollTimer) clearTimeout(pollTimer);
     };
-  }, [sessionId, clearCart, unlockCheckout, qc]);
+  }, [sessionId, refParam, clearCart, unlockCheckout, qc]);
+
+  const trackingHref = reference
+    ? `${routes.tracking}?ref=${encodeURIComponent(reference)}`
+    : routes.tracking;
 
   if (phase === "verifying" || phase === "pending") {
     return (
@@ -162,7 +192,7 @@ export function PaymentReturnClient({
         <p className="mt-4 text-sm text-ink/55">
           {phase === "pending"
             ? "Votre banque ou PayPal confirme encore le paiement. Ne fermez pas cette page."
-            : "Nous vérifions auprès de Stripe que le paiement a bien été accepté…"}
+            : "Nous vérifions que votre paiement a bien été accepté…"}
         </p>
       </div>
     );
@@ -204,8 +234,8 @@ export function PaymentReturnClient({
             ? `Paiement confirmé — Référence ${reference}`
             : "Paiement confirmé"
         }
-        description="Votre paiement a bien été reçu et vérifié. Votre commande est confirmée et apparaît dans votre espace client."
-        action={{ label: "Suivre ma commande", href: routes.tracking }}
+        description="Votre paiement a bien été reçu. Conservez votre référence : vous pouvez suivre votre commande sans créer de compte."
+        action={{ label: "Suivre ma commande", href: trackingHref }}
       />
     </div>
   );

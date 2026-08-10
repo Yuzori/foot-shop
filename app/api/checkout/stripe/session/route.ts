@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { publicConfig } from "@/config";
+import { getCheckoutBaseUrl } from "@/lib/site-url";
 import { paymentConfig } from "@/config/payment";
 import { welcomePromo } from "@/config/promotions";
 import { getSession } from "@/lib/auth";
+import { countPaidOrdersForCheckout } from "@/lib/customer-order-history";
 import { placeOrder, type CheckoutBody } from "@/lib/orders";
 import { isWelcomePromoEligible } from "@/lib/welcome-promo-store";
 import { getStripe } from "@/lib/stripe-server";
@@ -45,9 +46,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: keyCheck.message }, { status: 502 });
   }
 
+  const checkoutBaseUrl = getCheckoutBaseUrl();
   const siteCheck = validateStripeSiteUrl(
     paymentConfig.stripeSecretKey,
-    publicConfig.siteUrl,
+    checkoutBaseUrl,
   );
   if (!siteCheck.ok) {
     return NextResponse.json({ message: siteCheck.message }, { status: 502 });
@@ -74,7 +76,7 @@ export async function POST(request: Request) {
   }
 
   const stripe = getStripe();
-  const base = publicConfig.siteUrl.replace(/\/$/, "");
+  const base = checkoutBaseUrl.replace(/\/$/, "");
   const ref = order.reference ?? "";
   const returnUrl = `${base}/paiement/succes?ref=${encodeURIComponent(ref)}&session_id={CHECKOUT_SESSION_ID}`;
 
@@ -88,11 +90,17 @@ export async function POST(request: Request) {
     quantity: line.quantity,
   }));
 
+  const paidOrders = await countPaidOrdersForCheckout({
+    email: body.contact.email,
+    customerId: order.customerId,
+  });
+
   const promoEligible =
     welcomePromo.enabled &&
     authSession?.id &&
     order.customerId &&
     String(authSession.id) === String(order.customerId) &&
+    paidOrders === 0 &&
     (await isWelcomePromoEligible(String(authSession.id)));
 
   if (promoEligible) {

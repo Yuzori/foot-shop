@@ -239,6 +239,7 @@ export const api = {
     orderId: string | null;
     paymentStatus: string;
     sessionStatus: string | null;
+    fulfilled?: boolean;
   }> {
     const { data } = await http.get<{
       state: "paid" | "pending" | "failed";
@@ -247,6 +248,7 @@ export const api = {
       orderId: string | null;
       paymentStatus: string;
       sessionStatus: string | null;
+      fulfilled?: boolean;
     }>("/checkout/stripe/session-status", {
       params: { session_id: sessionId },
     });

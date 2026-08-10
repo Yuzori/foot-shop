@@ -30,10 +30,13 @@ export function classifyCheckoutSession(
   const orderId = session.metadata?.orderId ?? null;
   const paymentStatus = session.payment_status;
   const sessionStatus = session.status;
+  const piStatus = paymentIntentStatus(session);
 
   if (
     paymentStatus === "paid" ||
-    paymentStatus === "no_payment_required"
+    paymentStatus === "no_payment_required" ||
+    (sessionStatus === "complete" && piStatus === "succeeded") ||
+    piStatus === "succeeded"
   ) {
     return {
       state: "paid",
@@ -55,7 +58,6 @@ export function classifyCheckoutSession(
     };
   }
 
-  const piStatus = paymentIntentStatus(session);
   if (piStatus === "processing" || piStatus === "requires_action") {
     return {
       state: "pending",

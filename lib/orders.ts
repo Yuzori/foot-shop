@@ -9,6 +9,8 @@ import crypto from "node:crypto";
 import { formatFlocageLabel } from "@/config/shop";
 
 import { getSession } from "@/lib/auth";
+import { verifyAddressWithGeoApi } from "@/lib/checkout-address-verify";
+import { validateCheckoutContactForm } from "@/lib/checkout-contact-validation";
 import { archiveOrder } from "@/lib/order-archive-store";
 import { backupFromArchive } from "@/lib/order-backup-store";
 import { validatePromoCodeForCheckout } from "@/lib/validate-promo-code";
@@ -259,12 +261,18 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
 
   }
 
-  if (contact.phone.replace(/\D/g, "").length < 8) {
-    return {
-      ok: false,
-      status: 400,
-      message: "Numéro de téléphone invalide (8 chiffres minimum).",
-    };
+  const contactValidation = validateCheckoutContactForm(contact, address);
+  if (contactValidation) {
+    return { ok: false, status: 400, message: contactValidation };
+  }
+
+  const geoError = await verifyAddressWithGeoApi({
+    postcode: address.postcode,
+    city: address.city,
+    country: address.country,
+  });
+  if (geoError) {
+    return { ok: false, status: 400, message: geoError };
   }
 
   const lineResult = await validateCheckoutLines(lines);

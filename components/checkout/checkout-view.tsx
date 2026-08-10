@@ -22,6 +22,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Spinner } from "@/components/ui/spinner";
 import { routes } from "@/config/site";
 import { publicConfig } from "@/config";
+import { validateCheckoutContactForm } from "@/lib/checkout-contact-validation";
 import { api } from "@/lib/api";
 import {
   clearCheckoutCartSnapshot,
@@ -542,8 +543,9 @@ export function CheckoutView() {
       return;
     }
 
-    if (contact.phone.replace(/\D/g, "").length < 8) {
-      setError("Veuillez renseigner un numéro de téléphone valide.");
+    const validationError = validateCheckoutContactForm(contact, address);
+    if (validationError) {
+      setError(validationError);
       return;
     }
 

@@ -31,6 +31,8 @@ export const routes = {
   account: "/compte",
   orders: "/compte/commandes",
   tracking: "/suivi",
+  trackingWithRef: (reference: string) =>
+    `/suivi?ref=${encodeURIComponent(reference)}`,
   contact: "/contact",
   about: "/a-propos",
   legal: "/mentions-legales",
@@ -45,6 +47,7 @@ export type NavLink = {
 
 export const primaryNav: NavLink[] = [
   { label: "Collections", href: routes.categories },
+  { label: "Suivi", href: routes.tracking },
   { label: "Contact", href: routes.contact },
 ];
 

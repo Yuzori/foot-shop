@@ -77,7 +77,7 @@ export function TrackingView() {
       <div className="mx-auto max-w-xl">
         <h1 className="display-2 text-center">Suivi de commande</h1>
         <p className="mt-3 text-center text-sm text-ink/55">
-          Saisissez la référence reçue par email pour suivre votre commande.
+          Saisissez la référence reçue par email pour suivre votre commande — aucun compte requis.
         </p>
 
         <form

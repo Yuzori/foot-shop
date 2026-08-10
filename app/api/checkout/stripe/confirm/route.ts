@@ -3,6 +3,7 @@ import type Stripe from "stripe";
 
 import { paymentConfig } from "@/config/payment";
 import { fulfillPaidOrder } from "@/lib/order-paid";
+import { hasOrderBeenFulfilled } from "@/lib/order-fulfillment-store";
 import { getOrderArchiveByReference } from "@/lib/order-archive-store";
 import { resolveCheckoutNotificationEmail } from "@/lib/checkout-notification-email";
 import { markWelcomePromoUsed } from "@/lib/welcome-promo-store";
@@ -69,8 +70,17 @@ export async function POST(request: Request) {
 
   try {
     const session = await retrievePaidSession(stripe, checkoutSessionId);
-    const orderId = session.metadata?.orderId;
+    const orderId = session.metadata?.orderId?.trim() ?? "";
     const reference = session.metadata?.reference ?? null;
+
+    if (orderId && (await hasOrderBeenFulfilled(orderId))) {
+      return NextResponse.json({
+        ok: true,
+        reference,
+        orderId,
+        alreadyFulfilled: true,
+      });
+    }
     const archive = reference
       ? await getOrderArchiveByReference(reference)
       : null;

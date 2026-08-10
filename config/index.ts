@@ -24,7 +24,7 @@ export const serverConfig = {
 /** Values safe to expose in the browser. */
 export const publicConfig = {
   siteName: process.env.NEXT_PUBLIC_SITE_NAME ?? "Foot Shop",
-  siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+  siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? process.env.SITE_URL ?? "https://foot-shop.fr",
   currency: process.env.NEXT_PUBLIC_CURRENCY ?? "EUR",
   locale: process.env.NEXT_PUBLIC_LOCALE ?? "fr-FR",
 } as const;
