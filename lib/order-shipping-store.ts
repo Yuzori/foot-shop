@@ -95,3 +95,13 @@ export async function purgeAllShippingEntries(): Promise<{ removed: number }> {
   await writeAll([]);
   return { removed: items.length };
 }
+
+export async function deleteOrderShipping(reference: string): Promise<boolean> {
+  const key = reference.trim().toUpperCase();
+  if (!key) return false;
+  const items = await readAll();
+  const next = items.filter((i) => i.reference.toUpperCase() !== key);
+  if (next.length === items.length) return false;
+  await writeAll(next);
+  return true;
+}

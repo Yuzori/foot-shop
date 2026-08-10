@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 
 import { mailConfig } from "@/config/mail";
 import { ensureAdminDataReset } from "@/lib/admin-data-wipe";
-import { ensureAdminDataReset } from "@/lib/admin-data-wipe";
 import { backupFromArchive } from "@/lib/order-backup-store";
 import { getOrderArchiveByReference } from "@/lib/order-archive-store";
 import {
+  deleteOrderShipping,
   getOrderShipping,
   listOrderShipping,
   markShippingEmailSent,
@@ -135,4 +135,22 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ ok: true, shipping: saved });
+}
+
+export async function DELETE(request: Request) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json({ message: "unauthorized" }, { status: 401 });
+  }
+
+  const reference = new URL(request.url).searchParams.get("reference")?.trim();
+  if (!reference) {
+    return NextResponse.json({ message: "reference_required" }, { status: 400 });
+  }
+
+  const ok = await deleteOrderShipping(reference);
+  if (!ok) {
+    return NextResponse.json({ message: "not_found" }, { status: 404 });
+  }
+
+  return NextResponse.json({ ok: true });
 }

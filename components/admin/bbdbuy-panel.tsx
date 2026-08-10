@@ -36,6 +36,30 @@ async function copyText(text: string): Promise<void> {
   await navigator.clipboard.writeText(text);
 }
 
+/** TEMP — retirer après nettoyage des données admin. */
+function AdminTempDeleteButton({
+  busy,
+  onClick,
+  className,
+}: {
+  busy?: boolean;
+  onClick: () => void;
+  className?: string;
+}) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      disabled={busy}
+      onClick={onClick}
+      className={cn("shrink-0 text-accent hover:bg-accent/10", className)}
+    >
+      {busy ? <Spinner className="h-3 w-3" /> : "Supprimer"}
+    </Button>
+  );
+}
+
 function CopyField({
   label,
   value,
@@ -84,13 +108,34 @@ function DraftCard({
   secret,
   onSubmitted,
   onArchived,
+  onDeleted,
 }: {
   draft: BbdBuyOrderDraft;
   secret: string;
   onSubmitted: () => void;
   onArchived: () => void;
+  onDeleted: () => void;
 }) {
   const [busy, setBusy] = useState(false);
+
+  async function remove() {
+    if (!window.confirm(`Supprimer la commande ${draft.reference} ?`)) return;
+    setBusy(true);
+    try {
+      const res = await fetch("/api/admin/supplier-orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${secret}`,
+        },
+        body: JSON.stringify({ reference: draft.reference, action: "delete" }),
+      });
+      if (!res.ok) throw new Error("Échec");
+      onDeleted();
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function markSubmitted() {
     setBusy(true);
@@ -146,14 +191,17 @@ function DraftCard({
           <h2 className="mt-1 font-display text-2xl font-semibold">{draft.reference}</h2>
           <p className="mt-1 text-sm text-ink/55">{formatDate(draft.createdAt)}</p>
         </div>
-        <a
-          href="https://www.bbdbuy.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-sm font-medium text-accent underline-offset-2 hover:underline"
-        >
-          Ouvrir BBDBuy
-        </a>
+        <div className="flex flex-wrap items-start gap-2">
+          <a
+            href="https://www.bbdbuy.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-medium text-accent underline-offset-2 hover:underline"
+          >
+            Ouvrir BBDBuy
+          </a>
+          <AdminTempDeleteButton busy={busy} onClick={() => void remove()} />
+        </div>
       </div>
 
       <div className="mt-6 space-y-3">
@@ -246,6 +294,7 @@ function OrderArchiveSection({ secret }: { secret: string }) {
   const [backupTotal, setBackupTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -277,6 +326,23 @@ function OrderArchiveSection({ secret }: { secret: string }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  async function removeRow(id: string, reference: string) {
+    if (!window.confirm(`Supprimer ${reference} de l'historique ?`)) return;
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/admin/order-archive?id=${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${secret}` },
+      });
+      if (!res.ok) throw new Error("Échec");
+      await load();
+    } catch {
+      setError("Impossible de supprimer cette entrée.");
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   return (
     <section className="mt-16 rounded-3xl border border-ink/8 bg-paper-soft/40 p-6 lg:p-8">
@@ -312,6 +378,7 @@ function OrderArchiveSection({ secret }: { secret: string }) {
                 <th className="px-4 py-3">Statut</th>
                 <th className="px-4 py-3">Total</th>
                 <th className="px-4 py-3">Lignes</th>
+                <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody>
@@ -323,6 +390,12 @@ function OrderArchiveSection({ secret }: { secret: string }) {
                   <td className="px-4 py-3 capitalize text-ink/55">{row.status}</td>
                   <td className="px-4 py-3 tabular-nums">{row.total.toFixed(2)} €</td>
                   <td className="px-4 py-3">{row.lineCount}</td>
+                  <td className="px-4 py-3 text-right">
+                    <AdminTempDeleteButton
+                      busy={deletingId === row.id}
+                      onClick={() => void removeRow(row.id, row.reference)}
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -341,6 +414,7 @@ function ShippingForm({ secret }: { secret: string }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [items, setItems] = useState<ShippingItem[]>([]);
+  const [deletingRef, setDeletingRef] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/admin/shipping", {
@@ -418,6 +492,26 @@ function ShippingForm({ secret }: { secret: string }) {
     }
   }
 
+  async function removeShipping(ref: string) {
+    if (!window.confirm(`Supprimer le suivi ${ref} ?`)) return;
+    setDeletingRef(ref);
+    try {
+      const res = await fetch(
+        `/api/admin/shipping?reference=${encodeURIComponent(ref)}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${secret}` },
+        },
+      );
+      if (!res.ok) throw new Error("Échec");
+      await load();
+    } catch {
+      setMessage(`Impossible de supprimer ${ref}.`);
+    } finally {
+      setDeletingRef(null);
+    }
+  }
+
   return (
     <section className="mt-16 rounded-3xl border border-ink/8 p-6 lg:p-8">
       <h2 className="font-display text-xl font-semibold">Expédition & suivi</h2>
@@ -482,9 +576,15 @@ function ShippingForm({ secret }: { secret: string }) {
       {items.length > 0 ? (
         <ul className="mt-8 space-y-2 border-t border-ink/8 pt-6 text-sm text-ink/60">
           {items.slice(0, 8).map((item) => (
-            <li key={item.reference}>
-              <strong>{item.reference}</strong> — {item.trackingNumber || "sans suivi"}
-              {item.sentAt ? " · email envoyé" : ""}
+            <li key={item.reference} className="flex items-center justify-between gap-3">
+              <span>
+                <strong>{item.reference}</strong> — {item.trackingNumber || "sans suivi"}
+                {item.sentAt ? " · email envoyé" : ""}
+              </span>
+              <AdminTempDeleteButton
+                busy={deletingRef === item.reference}
+                onClick={() => void removeShipping(item.reference)}
+              />
             </li>
           ))}
         </ul>
@@ -686,6 +786,7 @@ export function BbdBuyPanel() {
               secret={secret}
               onSubmitted={() => load(secret)}
               onArchived={() => load(secret)}
+              onDeleted={() => load(secret)}
             />
           ))}
         </div>

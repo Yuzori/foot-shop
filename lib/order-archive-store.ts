@@ -147,3 +147,12 @@ export async function purgeAllOrderArchives(): Promise<{ removed: number }> {
   await writeIndex([]);
   return { removed: index.length };
 }
+
+export async function deleteOrderArchive(id: string): Promise<boolean> {
+  const index = await readIndex();
+  const hit = index.find((r) => r.id === id);
+  if (!hit) return false;
+  await fs.unlink(fileFor(hit.id)).catch(() => {});
+  await writeIndex(index.filter((r) => r.id !== id));
+  return true;
+}

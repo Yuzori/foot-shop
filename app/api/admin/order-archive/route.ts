@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { isAdminAuthorized } from "@/lib/admin-auth";
 import { ensureAdminDataReset } from "@/lib/admin-data-wipe";
 import {
+  deleteOrderArchive,
   getOrderArchive,
   listOrderArchives,
 } from "@/lib/order-archive-store";
@@ -46,4 +47,22 @@ export async function GET(request: Request) {
       source: r.source,
     })),
   });
+}
+
+export async function DELETE(request: Request) {
+  if (!isAdminAuthorized(request)) {
+    return NextResponse.json({ message: "Non autorisé." }, { status: 401 });
+  }
+
+  const id = new URL(request.url).searchParams.get("id")?.trim();
+  if (!id) {
+    return NextResponse.json({ message: "id_required" }, { status: 400 });
+  }
+
+  const ok = await deleteOrderArchive(id);
+  if (!ok) {
+    return NextResponse.json({ message: "not_found" }, { status: 404 });
+  }
+
+  return NextResponse.json({ ok: true });
 }

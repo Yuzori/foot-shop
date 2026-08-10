@@ -4,6 +4,7 @@ import { ensureAdminDataReset } from "@/lib/admin-data-wipe";
 import { mailConfig } from "@/config/mail";
 import {
   archiveSupplierOrderDraft,
+  deleteSupplierOrderDraft,
   getSupplierOrderDraft,
   listSupplierOrderDrafts,
   markSupplierOrderSubmitted,
@@ -71,6 +72,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "not_found" }, { status: 404 });
     }
     return NextResponse.json({ ok: true, draft });
+  }
+
+  if (body.action === "delete") {
+    const ok = await deleteSupplierOrderDraft(reference);
+    if (!ok) {
+      return NextResponse.json({ message: "not_found" }, { status: 404 });
+    }
+    return NextResponse.json({ ok: true });
   }
 
   if (body.action === "resend_email") {
