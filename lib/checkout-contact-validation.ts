@@ -2,12 +2,29 @@
  * Validation des coordonnées de livraison (client + serveur).
  */
 
+import {
+  isValidPhoneNumber,
+  type CountryCode,
+} from "libphonenumber-js";
+
 export type CheckoutContactInput = {
   firstName: string;
   lastName: string;
   email: string;
   phone?: string;
 };
+
+export type CheckoutFieldName =
+  | "firstName"
+  | "lastName"
+  | "email"
+  | "phone"
+  | "address1"
+  | "postcode"
+  | "city"
+  | "country";
+
+export type CheckoutFieldErrors = Partial<Record<CheckoutFieldName, string>>;
 
 export type CheckoutAddressInput = {
   address1: string;
@@ -16,7 +33,6 @@ export type CheckoutAddressInput = {
   city: string;
   country: string;
 };
-
 const EMAIL_RE =
   /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
 
@@ -65,30 +81,22 @@ export function validateCheckoutEmail(email: string): string | null {
   return null;
 }
 
-export function validateCheckoutPhone(phone: string): string | null {
+export function validateCheckoutPhone(
+  phone: string,
+  countryInput = "France",
+): string | null {
   const raw = phone.trim();
   if (!raw) return "Numéro de téléphone requis.";
 
-  const digits = raw.replace(/\D/g, "");
-  if (digits.length < 8 || digits.length > 15) {
-    return "Numéro de téléphone invalide (8 à 15 chiffres).";
+  const country = resolveCountry(countryInput);
+  const countryCode = (country?.code ?? "FR") as CountryCode;
+
+  if (!isValidPhoneNumber(raw, countryCode)) {
+    return "Numéro de téléphone invalide pour ce pays.";
   }
 
-  if (raw.startsWith("+")) {
-    return null;
-  }
-
-  if (/^0\d{9}$/.test(digits)) {
-    return null;
-  }
-
-  if (digits.length >= 8) {
-    return null;
-  }
-
-  return "Numéro de téléphone invalide.";
+  return null;
 }
-
 function validatePostcodeForCountry(
   postcode: string,
   countryCode: string,
@@ -152,6 +160,58 @@ export function validateCheckoutAddressFields(
   return null;
 }
 
+export function getCheckoutFieldErrors(
+  contact: CheckoutContactInput,
+  address: CheckoutAddressInput,
+): CheckoutFieldErrors {
+  const errors: CheckoutFieldErrors = {};
+
+  if (!contact.firstName.trim()) errors.firstName = "Prénom requis.";
+  if (!contact.lastName.trim()) errors.lastName = "Nom requis.";
+
+  const emailError = validateCheckoutEmail(contact.email);
+  if (emailError) errors.email = emailError;
+
+  const phoneError = validateCheckoutPhone(
+    contact.phone ?? "",
+    address.country || "France",
+  );
+  if (phoneError) errors.phone = phoneError;
+
+  const line1 = address.address1.trim();
+  if (!line1) {
+    errors.address1 = "Adresse requise.";
+  } else if (line1.length < 5) {
+    errors.address1 = "Adresse trop courte (5 caractères minimum).";
+  } else if (!/[a-zA-ZÀ-ÿ]/.test(line1) || !/\d/.test(line1)) {
+    errors.address1 = "Indiquez un numéro et une rue valides.";
+  }
+
+  const city = address.city.trim();
+  if (!city) {
+    errors.city = "Ville requise.";
+  } else if (city.length < 2) {
+    errors.city = "Ville requise.";
+  } else if (!/^[\p{L}\s'.-]+$/u.test(city)) {
+    errors.city = "Nom de ville invalide.";
+  }
+
+  const country = resolveCountry(address.country);
+  if (!country) {
+    errors.country =
+      "Pays non pris en charge. Livraison : France, Belgique, Suisse, Luxembourg, Allemagne, Espagne, Italie, Royaume-Uni.";
+  }
+
+  const postcodeError = country
+    ? validatePostcodeForCountry(address.postcode, country.code)
+    : !address.postcode.trim()
+      ? "Code postal requis."
+      : null;
+  if (postcodeError) errors.postcode = postcodeError;
+
+  return errors;
+}
+
 export function validateCheckoutContactForm(
   contact: CheckoutContactInput,
   address: CheckoutAddressInput,
@@ -163,7 +223,10 @@ export function validateCheckoutContactForm(
   const emailError = validateCheckoutEmail(contact.email);
   if (emailError) return emailError;
 
-  const phoneError = validateCheckoutPhone(contact.phone ?? "");
+  const phoneError = validateCheckoutPhone(
+    contact.phone ?? "",
+    address.country || "France",
+  );
   if (phoneError) return phoneError;
 
   return validateCheckoutAddressFields(address);

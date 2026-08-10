@@ -10,7 +10,11 @@ import { formatFlocageLabel } from "@/config/shop";
 
 import { getSession } from "@/lib/auth";
 import { verifyAddressWithGeoApi } from "@/lib/checkout-address-verify";
-import { validateCheckoutContactForm } from "@/lib/checkout-contact-validation";
+import {
+  validateCheckoutContactForm,
+  validateCheckoutPhone,
+} from "@/lib/checkout-contact-validation";
+import { verifyEmailDeliverability } from "@/lib/verify-email-deliverability";
 import { archiveOrder } from "@/lib/order-archive-store";
 import { backupFromArchive } from "@/lib/order-backup-store";
 import { validatePromoCodeForCheckout } from "@/lib/validate-promo-code";
@@ -264,6 +268,19 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
   const contactValidation = validateCheckoutContactForm(contact, address);
   if (contactValidation) {
     return { ok: false, status: 400, message: contactValidation };
+  }
+
+  const emailCheck = await verifyEmailDeliverability(contact.email);
+  if (!emailCheck.valid) {
+    return { ok: false, status: 400, message: emailCheck.message };
+  }
+
+  const phoneCheck = validateCheckoutPhone(
+    contact.phone ?? "",
+    address.country || "France",
+  );
+  if (phoneCheck) {
+    return { ok: false, status: 400, message: phoneCheck };
   }
 
   const geoError = await verifyAddressWithGeoApi({

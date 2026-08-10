@@ -22,7 +22,13 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Spinner } from "@/components/ui/spinner";
 import { routes } from "@/config/site";
 import { publicConfig } from "@/config";
-import { validateCheckoutContactForm } from "@/lib/checkout-contact-validation";
+import {
+  getCheckoutFieldErrors,
+  validateCheckoutEmail,
+  type CheckoutFieldErrors,
+  type CheckoutFieldName,
+  validateCheckoutContactForm,
+} from "@/lib/checkout-contact-validation";
 import { api } from "@/lib/api";
 import {
   clearCheckoutCartSnapshot,
@@ -81,6 +87,34 @@ function mapLineForApi(line: CartLine) {
 
 type Step = "details" | "payment";
 
+const CHECKOUT_FIELD_NAMES: CheckoutFieldName[] = [
+  "firstName",
+  "lastName",
+  "email",
+  "phone",
+  "address1",
+  "postcode",
+  "city",
+  "country",
+];
+
+function normalizeDeliveryForm(form: CheckoutDeliveryProfile) {
+  const contact = {
+    firstName: form.contact.firstName.trim(),
+    lastName: form.contact.lastName.trim(),
+    email: form.contact.email.trim(),
+    phone: form.contact.phone?.trim() || undefined,
+  };
+  const address = {
+    address1: form.address.address1.trim(),
+    address2: form.address.address2?.trim() || undefined,
+    postcode: form.address.postcode.trim(),
+    city: form.address.city.trim(),
+    country: form.address.country.trim() || "France",
+  };
+  return { contact, address };
+}
+
 function mergeLiveFlocage(base: CartLine[], live: CartLine[]): CartLine[] {
   if (live.length === 0) return base;
   return base.map((line) => {
@@ -108,6 +142,11 @@ export function CheckoutView() {
 
   const [deliveryForm, setDeliveryForm] = useState(() => emptyCheckoutProfile());
   const [usingSavedProfile, setUsingSavedProfile] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<CheckoutFieldErrors>({});
+  const [touchedFields, setTouchedFields] = useState<
+    Partial<Record<CheckoutFieldName, boolean>>
+  >({});
+  const emailVerifyRequest = useRef(0);
 
   const [frozenLines, setFrozenLines] = useState<CartLine[] | null>(null);
   const [step, setStep] = useState<Step>("details");
@@ -136,6 +175,104 @@ export function CheckoutView() {
   const accountPrefilled = useRef(false);
 
   useScrollToTop();
+
+  const markFieldTouched = useCallback((field: CheckoutFieldName) => {
+    setTouchedFields((prev) => ({ ...prev, [field]: true }));
+  }, []);
+
+  const validateCheckoutField = useCallback(
+    async (field: CheckoutFieldName, form: CheckoutDeliveryProfile) => {
+      const { contact, address } = normalizeDeliveryForm(form);
+      const errors = getCheckoutFieldErrors(contact, address);
+      const message = errors[field] ?? null;
+      setFieldErrors((prev) => ({ ...prev, [field]: message }));
+      const valid = !message;
+
+      if (field === "email" && valid && contact.email) {
+        const formatError = validateCheckoutEmail(contact.email);
+        if (formatError) {
+          setFieldErrors((prev) => ({ ...prev, email: formatError }));
+          return false;
+        }
+
+        const requestId = ++emailVerifyRequest.current;
+        try {
+          const res = await fetch("/api/checkout/verify-contact", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: contact.email }),
+          });
+          const data = (await res.json()) as {
+            valid?: boolean;
+            message?: string;
+          };
+          if (requestId !== emailVerifyRequest.current) return valid;
+          if (!data.valid) {
+            setFieldErrors((prev) => ({
+              ...prev,
+              email: data.message ?? "Adresse email introuvable.",
+            }));
+            return false;
+          }
+        } catch {
+          /* réseau : format OK suffit côté client */
+        }
+      }
+
+      if (field === "phone" && valid && contact.phone) {
+        try {
+          const res = await fetch("/api/checkout/verify-contact", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              phone: contact.phone,
+              country: address.country,
+            }),
+          });
+          const data = (await res.json()) as {
+            valid?: boolean;
+            message?: string;
+          };
+          if (!data.valid) {
+            setFieldErrors((prev) => ({
+              ...prev,
+              phone: data.message ?? "Numéro de téléphone invalide.",
+            }));
+            return false;
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+
+      return valid;
+    },
+    [],
+  );
+
+  const touchAllCheckoutFields = useCallback(() => {
+    setTouchedFields(
+      Object.fromEntries(
+        CHECKOUT_FIELD_NAMES.map((field) => [field, true]),
+      ) as Partial<Record<CheckoutFieldName, boolean>>,
+    );
+  }, []);
+
+  const updateDeliveryField = useCallback(
+    (
+      field: CheckoutFieldName,
+      updater: (form: CheckoutDeliveryProfile) => CheckoutDeliveryProfile,
+    ) => {
+      setDeliveryForm((prev) => {
+        const next = updater(prev);
+        if (touchedFields[field]) {
+          void validateCheckoutField(field, next);
+        }
+        return next;
+      });
+    },
+    [touchedFields, validateCheckoutField],
+  );
 
   useLayoutEffect(() => {
     const snapshot = resolveCartLinesForCheckout();
@@ -516,19 +653,7 @@ export function CheckoutView() {
     const snapshot = activeLines.map((line) => ({ ...line }));
     setSessionLines(snapshot);
 
-    const contact = {
-      firstName: deliveryForm.contact.firstName.trim(),
-      lastName: deliveryForm.contact.lastName.trim(),
-      email: deliveryForm.contact.email.trim(),
-      phone: deliveryForm.contact.phone?.trim() || undefined,
-    };
-    const address = {
-      address1: deliveryForm.address.address1.trim(),
-      address2: deliveryForm.address.address2?.trim() || undefined,
-      postcode: deliveryForm.address.postcode.trim(),
-      city: deliveryForm.address.city.trim(),
-      country: deliveryForm.address.country.trim() || "France",
-    };
+    const { contact, address } = normalizeDeliveryForm(deliveryForm);
 
     if (
       !contact.firstName ||
@@ -539,7 +664,21 @@ export function CheckoutView() {
       !address.postcode ||
       !address.city
     ) {
-      setError("Veuillez remplir tous les champs obligatoires.");
+      touchAllCheckoutFields();
+      setFieldErrors(getCheckoutFieldErrors(contact, address));
+      return;
+    }
+
+    touchAllCheckoutFields();
+    const errors = getCheckoutFieldErrors(contact, address);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
+    const emailOk = await validateCheckoutField("email", deliveryForm);
+    const phoneOk = await validateCheckoutField("phone", deliveryForm);
+    if (!emailOk || !phoneOk) {
       return;
     }
 
@@ -796,12 +935,17 @@ export function CheckoutView() {
                   required
                   autoComplete="given-name"
                   value={deliveryForm.contact.firstName}
+                  error={touchedFields.firstName ? fieldErrors.firstName : null}
                   onChange={(e) =>
-                    setDeliveryForm((f) => ({
+                    updateDeliveryField("firstName", (f) => ({
                       ...f,
                       contact: { ...f.contact, firstName: e.target.value },
                     }))
                   }
+                  onBlur={() => {
+                    markFieldTouched("firstName");
+                    void validateCheckoutField("firstName", deliveryForm);
+                  }}
                 />
                 <Field
                   label="Nom"
@@ -809,12 +953,17 @@ export function CheckoutView() {
                   required
                   autoComplete="family-name"
                   value={deliveryForm.contact.lastName}
+                  error={touchedFields.lastName ? fieldErrors.lastName : null}
                   onChange={(e) =>
-                    setDeliveryForm((f) => ({
+                    updateDeliveryField("lastName", (f) => ({
                       ...f,
                       contact: { ...f.contact, lastName: e.target.value },
                     }))
                   }
+                  onBlur={() => {
+                    markFieldTouched("lastName");
+                    void validateCheckoutField("lastName", deliveryForm);
+                  }}
                 />
                 <Field
                   label="Email"
@@ -824,15 +973,18 @@ export function CheckoutView() {
                   autoComplete="email"
                   className="sm:col-span-2"
                   value={deliveryForm.contact.email}
+                  error={touchedFields.email ? fieldErrors.email : null}
                   onChange={(e) =>
-                    setDeliveryForm((f) => ({
+                    updateDeliveryField("email", (f) => ({
                       ...f,
                       contact: { ...f.contact, email: e.target.value },
                     }))
                   }
                   onBlur={async (e) => {
+                    markFieldTouched("email");
                     const email = e.currentTarget.value.trim();
-                    if (!email) return;
+                    const ok = await validateCheckoutField("email", deliveryForm);
+                    if (!ok || !email) return;
                     await refreshShippingPreview(email);
                     if (promoCode.trim()) {
                       await refreshPromoPreview(promoCode, email);
@@ -851,12 +1003,17 @@ export function CheckoutView() {
                   autoComplete="tel"
                   className="sm:col-span-2"
                   value={deliveryForm.contact.phone ?? ""}
+                  error={touchedFields.phone ? fieldErrors.phone : null}
                   onChange={(e) =>
-                    setDeliveryForm((f) => ({
+                    updateDeliveryField("phone", (f) => ({
                       ...f,
                       contact: { ...f.contact, phone: e.target.value },
                     }))
                   }
+                  onBlur={() => {
+                    markFieldTouched("phone");
+                    void validateCheckoutField("phone", deliveryForm);
+                  }}
                 />
               </div>
             </section>
@@ -871,12 +1028,17 @@ export function CheckoutView() {
                   autoComplete="address-line1"
                   className="sm:col-span-2"
                   value={deliveryForm.address.address1}
+                  error={touchedFields.address1 ? fieldErrors.address1 : null}
                   onChange={(e) =>
-                    setDeliveryForm((f) => ({
+                    updateDeliveryField("address1", (f) => ({
                       ...f,
                       address: { ...f.address, address1: e.target.value },
                     }))
                   }
+                  onBlur={() => {
+                    markFieldTouched("address1");
+                    void validateCheckoutField("address1", deliveryForm);
+                  }}
                 />
                 <Field
                   label="Complément"
@@ -897,12 +1059,17 @@ export function CheckoutView() {
                   required
                   autoComplete="postal-code"
                   value={deliveryForm.address.postcode}
+                  error={touchedFields.postcode ? fieldErrors.postcode : null}
                   onChange={(e) =>
-                    setDeliveryForm((f) => ({
+                    updateDeliveryField("postcode", (f) => ({
                       ...f,
                       address: { ...f.address, postcode: e.target.value },
                     }))
                   }
+                  onBlur={() => {
+                    markFieldTouched("postcode");
+                    void validateCheckoutField("postcode", deliveryForm);
+                  }}
                 />
                 <Field
                   label="Ville"
@@ -910,12 +1077,17 @@ export function CheckoutView() {
                   required
                   autoComplete="address-level2"
                   value={deliveryForm.address.city}
+                  error={touchedFields.city ? fieldErrors.city : null}
                   onChange={(e) =>
-                    setDeliveryForm((f) => ({
+                    updateDeliveryField("city", (f) => ({
                       ...f,
                       address: { ...f.address, city: e.target.value },
                     }))
                   }
+                  onBlur={() => {
+                    markFieldTouched("city");
+                    void validateCheckoutField("city", deliveryForm);
+                  }}
                 />
                 <Field
                   label="Pays"
@@ -924,12 +1096,20 @@ export function CheckoutView() {
                   autoComplete="country-name"
                   className="sm:col-span-2"
                   value={deliveryForm.address.country}
+                  error={touchedFields.country ? fieldErrors.country : null}
                   onChange={(e) =>
-                    setDeliveryForm((f) => ({
+                    updateDeliveryField("country", (f) => ({
                       ...f,
                       address: { ...f.address, country: e.target.value },
                     }))
                   }
+                  onBlur={() => {
+                    markFieldTouched("country");
+                    void validateCheckoutField("country", deliveryForm);
+                    if (touchedFields.phone || deliveryForm.contact.phone?.trim()) {
+                      void validateCheckoutField("phone", deliveryForm);
+                    }
+                  }}
                 />
               </div>
             </section>
