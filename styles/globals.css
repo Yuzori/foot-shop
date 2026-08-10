@@ -122,28 +122,6 @@
     text-wrap: balance;
   }
 
-  .recent-product-name {
-    color: #0a0a0a;
-    animation: recent-product-name-color 0.75s cubic-bezier(0.16, 1, 0.3, 1)
-      forwards;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .recent-product-name {
-      animation: none;
-      color: var(--product-accent, #0a0a0a);
-    }
-  }
-
-  @keyframes recent-product-name-color {
-    from {
-      color: #0a0a0a;
-    }
-    to {
-      color: var(--product-accent, #0a0a0a);
-    }
-  }
-
   .grain {
     background-image: radial-gradient(
       rgba(0, 0, 0, 0.025) 1px,

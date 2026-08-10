@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { FavoriteButton } from "@/components/product/favorite-button";
 import { ProductImage } from "@/components/product/product-image";
@@ -18,6 +18,7 @@ import { useRecentProductStore } from "@/store/recent-product-store";
 import { useUIStore } from "@/store/ui-store";
 
 const BOTTOM_THRESHOLD_PX = 96;
+const NAME_START_COLOR = "#0a0a0a";
 
 function isCheckoutFlow(pathname: string): boolean {
   return pathname.startsWith("/paiement") || pathname.startsWith("/panier");
@@ -37,6 +38,7 @@ export function RecentProductBar() {
   const hidden = useRecentProductStore((s) => s.hidden);
   const hide = useRecentProductStore((s) => s.hide);
   const [nearBottom, setNearBottom] = useState(false);
+  const [nameColor, setNameColor] = useState(NAME_START_COLOR);
 
   useEffect(() => {
     const update = () => setNearBottom(isNearPageBottom());
@@ -49,17 +51,16 @@ export function RecentProductBar() {
     };
   }, [pathname]);
 
-  const accent = useMemo(
+  const storedAccent = useMemo(
     () => accentFromProductCover(recent?.accent ?? null),
     [recent?.accent],
   );
-  const { accent: imageAccent } = useImageAccentColor(recent?.image, {
-    enabled: Boolean(recent?.image),
-  });
-  const displayAccent = recent?.accent ? accent : imageAccent;
-  const nameStyle = {
-    "--product-accent": displayAccent.rgb,
-  } as CSSProperties;
+  const { accent: imageAccent, ready: imageAccentReady } = useImageAccentColor(
+    recent?.image,
+    { enabled: Boolean(recent?.image) && !recent?.accent },
+  );
+  const displayAccent = recent?.accent ? storedAccent : imageAccent;
+  const accentReady = Boolean(recent?.accent) || imageAccentReady;
 
   const onSameProduct = recent && pathname === routes.product(recent.id);
   const visible =
@@ -69,6 +70,20 @@ export function RecentProductBar() {
     !menuOpen &&
     !nearBottom &&
     !isCheckoutFlow(pathname);
+
+  useEffect(() => {
+    if (!visible || !accentReady || !recent) {
+      setNameColor(NAME_START_COLOR);
+      return;
+    }
+
+    setNameColor(NAME_START_COLOR);
+    const timer = window.setTimeout(() => {
+      setNameColor(displayAccent.rgb);
+    }, 60);
+
+    return () => window.clearTimeout(timer);
+  }, [visible, accentReady, recent?.id, displayAccent.rgb]);
 
   return (
     <AnimatePresence>
@@ -107,9 +122,9 @@ export function RecentProductBar() {
                 className="group inline-block max-w-full truncate text-xs font-semibold transition-opacity duration-300 hover:opacity-80 sm:text-sm"
               >
                 <span
-                  key={`${recent.id}-${displayAccent.rgb}`}
-                  className="recent-product-name block truncate"
-                  style={nameStyle}
+                  key={recent.id}
+                  className="block truncate transition-[color] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none"
+                  style={{ color: nameColor }}
                 >
                   {recent.name}
                 </span>
