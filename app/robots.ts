@@ -10,6 +10,7 @@ export default function robots(): MetadataRoute.Robots {
       allow: "/",
       disallow: [
         "/api/",
+        "/admin/",
         "/compte",
         "/paiement",
         "/connexion",

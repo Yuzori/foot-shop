@@ -10,6 +10,7 @@ import { SiteModalHost } from "@/components/marketing/site-modal-host";
 import { SiteLoader } from "@/components/layout/site-loader";
 import { ProductNameMigration } from "@/components/migrations/product-name-migration";
 import { publicConfig } from "@/config";
+import { buildSiteJsonLd } from "@/lib/seo/site-json-ld";
 import { AppProviders } from "@/providers/app-providers";
 import "@/styles/globals.css";
 
@@ -50,11 +51,36 @@ export const metadata: Metadata = {
     locale: publicConfig.locale,
     siteName: publicConfig.siteName,
     url: publicConfig.siteUrl,
+    title: `${publicConfig.siteName} — Maillots de football premium`,
+    description:
+      "Boutique premium de maillots de football. Sélection soignée, éditions limitées et flocage personnalisé.",
+    images: [
+      {
+        url: "/logo.png",
+        width: 1200,
+        height: 630,
+        alt: publicConfig.siteName,
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${publicConfig.siteName} — Maillots de football premium`,
+    description:
+      "Boutique premium de maillots de football. Sélection soignée, éditions limitées et flocage personnalisé.",
+    images: ["/logo.png"],
   },
   alternates: {
     canonical: publicConfig.siteUrl,
   },
   robots: { index: true, follow: true },
+  ...(process.env.GOOGLE_SITE_VERIFICATION
+    ? {
+        verification: {
+          google: process.env.GOOGLE_SITE_VERIFICATION,
+        },
+      }
+    : {}),
 };
 
 export default function RootLayout({
@@ -92,12 +118,7 @@ export default function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "Organization",
-              name: publicConfig.siteName,
-              url: publicConfig.siteUrl,
-            }),
+            __html: JSON.stringify(buildSiteJsonLd()),
           }}
         />
         <SiteLoader />
