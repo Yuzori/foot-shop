@@ -3,7 +3,20 @@ import type { NextRequest } from "next/server";
 
 import { ADMIN_API_CORS_HEADERS } from "@/lib/admin-api-cors";
 
+function wwwToCanonicalRedirect(request: NextRequest): NextResponse | null {
+  const hostname = request.nextUrl.hostname;
+  if (!hostname.startsWith("www.")) return null;
+
+  const url = request.nextUrl.clone();
+  url.hostname = hostname.slice(4);
+  url.protocol = "https:";
+  return NextResponse.redirect(url, 301);
+}
+
 export function middleware(request: NextRequest) {
+  const wwwRedirect = wwwToCanonicalRedirect(request);
+  if (wwwRedirect) return wwwRedirect;
+
   if (request.nextUrl.pathname.startsWith("/api/admin/")) {
     if (request.method === "OPTIONS") {
       return new NextResponse(null, { status: 204, headers: ADMIN_API_CORS_HEADERS });
