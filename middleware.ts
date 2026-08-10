@@ -4,11 +4,16 @@ import type { NextRequest } from "next/server";
 import { ADMIN_API_CORS_HEADERS } from "@/lib/admin-api-cors";
 
 function wwwToCanonicalRedirect(request: NextRequest): NextResponse | null {
-  const hostname = request.nextUrl.hostname;
+  const host =
+    request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ??
+    request.headers.get("host") ??
+    "";
+  const hostname = host.split(":")[0]?.toLowerCase() ?? "";
   if (!hostname.startsWith("www.")) return null;
 
   const url = request.nextUrl.clone();
   url.hostname = hostname.slice(4);
+  url.port = "";
   url.protocol = "https:";
   return NextResponse.redirect(url, 301);
 }
