@@ -71,6 +71,16 @@ export const api = {
     return data;
   },
 
+  async getProductsByIds(
+    ids: string[],
+  ): Promise<{ items: Product[]; unavailable: string[] }> {
+    const { data } = await http.post<{ items: Product[]; unavailable: string[] }>(
+      "/products/batch",
+      { ids },
+    );
+    return data;
+  },
+
   async getCategories(): Promise<Category[]> {
     const { data } = await http.get<{ items: Category[] }>("/categories");
     return data.items;

@@ -35,6 +35,7 @@ export function getQueryClient(): QueryClient {
 export const queryKeys = {
   products: (params?: unknown) => ["products", params] as const,
   product: (id: string) => ["product", id] as const,
+  favoriteProducts: (idsKey: string) => ["favorite-products", idsKey] as const,
   categories: () => ["categories"] as const,
   category: (id: string) => ["category", id] as const,
   search: (q: string) => ["search", q] as const,
