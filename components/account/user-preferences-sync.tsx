@@ -6,6 +6,11 @@ import { usePathname } from "next/navigation";
 import { useSession } from "@/hooks/use-auth";
 import { api } from "@/lib/api";
 import { clearAccountLocalState } from "@/lib/clear-account-local-state";
+import {
+  mergeFavoriteIds,
+  preferencesSignature,
+  resolveCartLines,
+} from "@/lib/merge-user-preferences";
 import { useCartStore } from "@/store/cart-store";
 import { useFavoritesStore } from "@/store/favorites-store";
 import { usePreferencesSyncStore } from "@/store/preferences-sync-store";
@@ -31,7 +36,7 @@ export function UserPreferencesSync() {
   const favoriteIds = useFavoritesStore((s) => s.ids);
   const cartLines = useCartStore((s) => s.lines);
   const hydrating = useRef(false);
-  const lastSavedCart = useRef("");
+  const lastSavedSig = useRef("");
   const prevUserId = useRef<string | null>(null);
 
   useEffect(() => {
@@ -80,20 +85,21 @@ export function UserPreferencesSync() {
         const localFavs = useFavoritesStore.getState().ids;
         const localCart = useCartStore.getState().lines;
 
-        if (serverCart.length > 0 || serverFavs.length > 0) {
-          useFavoritesStore.getState().setIds(serverFavs);
-          useCartStore.setState({ lines: serverCart });
-          lastSavedCart.current = JSON.stringify(serverCart);
-        } else if (localCart.length > 0 || localFavs.length > 0) {
+        const mergedFavs = mergeFavoriteIds(localFavs, serverFavs);
+        const lines = resolveCartLines(localCart, serverCart);
+
+        useFavoritesStore.getState().setIds(mergedFavs);
+        useCartStore.setState({ lines });
+
+        const sig = preferencesSignature(lines, mergedFavs);
+        lastSavedSig.current = sig;
+
+        const serverSig = preferencesSignature(serverCart, serverFavs);
+        if (sig !== serverSig) {
           await api.savePreferences({
-            cart: localCart,
-            favorites: localFavs,
+            cart: lines,
+            favorites: mergedFavs,
           });
-          lastSavedCart.current = JSON.stringify(localCart);
-        } else {
-          useFavoritesStore.getState().setIds([]);
-          useCartStore.setState({ lines: [] });
-          lastSavedCart.current = "[]";
         }
 
         markLoaded(userId);
@@ -114,11 +120,11 @@ export function UserPreferencesSync() {
       return;
     }
 
-    const timer = window.setTimeout(() => {
-      const cartSig = JSON.stringify(cartLines);
-      if (cartSig === lastSavedCart.current) return;
-      lastSavedCart.current = cartSig;
+    const sig = preferencesSignature(cartLines, favoriteIds);
+    if (sig === lastSavedSig.current) return;
 
+    const timer = window.setTimeout(() => {
+      lastSavedSig.current = sig;
       api
         .savePreferences({ cart: cartLines, favorites: favoriteIds })
         .catch(() => {});
