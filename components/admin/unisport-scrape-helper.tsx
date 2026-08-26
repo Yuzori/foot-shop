@@ -3,27 +3,27 @@
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { publicConfig } from "@/config";
 import {
+  buildUnisportClipboardBookmarklet,
   isUnisportBlockedError,
+  parseUnisportClipboardPayload,
   parseUnisportHtml,
 } from "@/lib/product-import/parse-unisport-html";
 import { isUnisportProductUrl } from "@/lib/product-import/is-unisport-url";
 
-function buildBookmarklet(siteUrl: string, secret: string): string {
-  const api = `${siteUrl.replace(/\/$/, "")}/api/admin/quick-import`;
-  const code = `(async()=>{try{const html=document.documentElement.outerHTML;const sourceUrl=location.href.split("#")[0];const r=await fetch(${JSON.stringify(api)},{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+${JSON.stringify(secret)}},body:JSON.stringify({action:"client_scrape",sourceUrl,html})});const d=await r.json();const p=d.products?.[0];alert(p?.name&&!p.error?"Envoye vers Foot-Shop: "+p.name:"Erreur: "+(p?.error||d.message||"inconnue"));}catch(e){alert("Erreur reseau");}})();`;
-  return `javascript:${encodeURIComponent(code)}`;
-}
-
 export function UnisportScrapeHelper({
-  secret,
   urls,
   onParsed,
+  onClipboardImport,
 }: {
   secret: string;
   urls: readonly string[];
   onParsed: (sourceUrl: string, html: string) => void;
+  onClipboardImport: (payload: {
+    sourceUrl: string;
+    name: string;
+    imageUrls: string[];
+  }) => void;
 }) {
   const unisportUrls = useMemo(
     () => urls.filter((url) => isUnisportProductUrl(url)),
@@ -31,13 +31,42 @@ export function UnisportScrapeHelper({
   );
   const [pasteByUrl, setPasteByUrl] = useState<Record<string, string>>({});
   const [pasteError, setPasteError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
-  const bookmarkletHref = useMemo(
-    () => (secret ? buildBookmarklet(publicConfig.siteUrl, secret) : ""),
-    [secret],
-  );
+  const bookmarkletHref = useMemo(() => buildUnisportClipboardBookmarklet(), []);
 
   if (!unisportUrls.length) return null;
+
+  async function copyBookmarklet() {
+    try {
+      await navigator.clipboard.writeText(bookmarkletHref);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2500);
+    } catch {
+      setPasteError("Impossible de copier — glissez le bouton bleu vers vos favoris.");
+    }
+  }
+
+  async function importFromClipboard() {
+    setPasteError(null);
+    try {
+      const raw = await navigator.clipboard.readText();
+      const payload = parseUnisportClipboardPayload(raw);
+      if (!payload) {
+        setPasteError(
+          "Presse-papier vide ou invalide. Utilisez le favori sur la page Unisport d'abord.",
+        );
+        return;
+      }
+      onClipboardImport({
+        sourceUrl: payload.sourceUrl,
+        name: payload.title,
+        imageUrls: payload.imageUrls,
+      });
+    } catch {
+      setPasteError("Accès presse-papier refusé — autorisez le collage dans le navigateur.");
+    }
+  }
 
   function parsePastedHtml(sourceUrl: string) {
     const html = pasteByUrl[sourceUrl]?.trim() ?? "";
@@ -58,37 +87,58 @@ export function UnisportScrapeHelper({
     <div className="mt-4 space-y-4 rounded-2xl border border-sky-500/30 bg-sky-500/[0.06] p-4">
       <div>
         <h3 className="text-sm font-semibold text-ink">
-          Unisport — scrape via votre navigateur
+          Unisport — via votre navigateur
         </h3>
         <p className="mt-1 text-xs text-ink/55">
-          Unisport bloque le serveur Foot-Shop (erreur 405). Ouvrez chaque lien
-          produit dans votre navigateur, puis utilisez le bookmarklet ou collez
-          le code source de la page.
+          Le serveur est bloqué par Unisport. Utilisez le favori ci-dessous sur la
+          page produit, puis importez ici.
         </p>
       </div>
 
-      {bookmarkletHref ? (
-        <div className="rounded-xl border border-ink/10 bg-white/80 px-3 py-3">
-          <p className="text-xs font-medium text-ink/70">
-            1. Glissez ce bouton dans vos favoris :
-          </p>
+      <div className="rounded-xl border border-ink/10 bg-white/80 px-3 py-3 space-y-3">
+        <p className="text-xs font-medium text-ink/70">
+          <strong>Étape 1 —</strong> Ajoutez le favori (ne cliquez pas le bouton ici,
+          ça ne fait rien) :
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
           <a
             href={bookmarkletHref}
-            className="mt-2 inline-flex rounded-lg bg-sky-600 px-3 py-2 text-xs font-semibold text-white hover:bg-sky-700"
-            onClick={(e) => e.preventDefault()}
+            draggable
+            className="inline-flex cursor-grab rounded-lg bg-sky-600 px-3 py-2 text-xs font-semibold text-white hover:bg-sky-700 active:cursor-grabbing"
+            onClick={(e) => {
+              e.preventDefault();
+              setPasteError(
+                "Glissez ce bouton vers la barre de favoris (Ctrl+Shift+B), ne cliquez pas ici.",
+              );
+            }}
           >
-            Foot-Shop · Collecter Unisport
+            ⬇ Glisser vers favoris · Collecter Unisport
           </a>
-          <p className="mt-2 text-[11px] text-ink/45">
-            2. Sur la page produit Unisport, cliquez le favori. Le produit
-            apparaît ici automatiquement (quelques secondes).
-          </p>
+          <Button type="button" size="sm" variant="outline" onClick={() => void copyBookmarklet()}>
+            {copied ? "Copié !" : "Copier le lien favori"}
+          </Button>
         </div>
-      ) : null}
+        <p className="text-[11px] text-ink/45">
+          Glissez le bouton bleu sur la barre de favoris. Ou : clic droit sur le bouton
+          → « Ajouter aux favoris ».
+        </p>
+
+        <p className="text-xs font-medium text-ink/70 pt-1">
+          <strong>Étape 2 —</strong> Sur unisportstore.fr (page produit), cliquez le
+          favori → alerte « Copie OK ».
+        </p>
+
+        <p className="text-xs font-medium text-ink/70">
+          <strong>Étape 3 —</strong> Revenez ici et cliquez :
+        </p>
+        <Button type="button" size="sm" onClick={() => void importFromClipboard()}>
+          Importer presse-papier
+        </Button>
+      </div>
 
       <div className="space-y-3">
         <p className="text-xs font-medium text-ink/70">
-          Ou collez le code source (Ctrl+U → tout sélectionner → copier) :
+          Alternative : collez le code source (Ctrl+U → tout sélectionner → copier) :
         </p>
         {unisportUrls.map((url) => (
           <div key={url} className="rounded-xl border border-ink/10 bg-white/70 p-3">

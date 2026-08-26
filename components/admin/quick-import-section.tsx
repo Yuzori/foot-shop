@@ -684,6 +684,14 @@ export function QuickImportSection({
         secret={secret}
         urls={parsedUrls}
         onParsed={handleUnisportHtml}
+        onClipboardImport={(payload) => {
+          importParsedScrape({
+            sourceUrl: payload.sourceUrl,
+            name: payload.name,
+            imageUrls: payload.imageUrls,
+          });
+          setError(null);
+        }}
       />
 
       <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-ink/10 bg-paper-soft px-4 py-3">

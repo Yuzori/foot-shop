@@ -98,6 +98,40 @@ export function parseUnisportHtml(html: string, sourceUrl: string): ParsedUnispo
   return { title, imageUrls };
 }
 
+export type UnisportClipboardPayload = {
+  v: 1;
+  sourceUrl: string;
+  title: string;
+  imageUrls: string[];
+};
+
+export function parseUnisportClipboardPayload(
+  raw: string,
+): UnisportClipboardPayload | null {
+  try {
+    const data = JSON.parse(raw) as Partial<UnisportClipboardPayload>;
+    if (data.v !== 1 || !data.sourceUrl || !data.title) return null;
+    const imageUrls = Array.isArray(data.imageUrls)
+      ? data.imageUrls.map((u) => String(u).trim()).filter(Boolean)
+      : [];
+    if (!imageUrls.length) return null;
+    return {
+      v: 1,
+      sourceUrl: data.sourceUrl,
+      title: data.title,
+      imageUrls,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Bookmarklet court : copie JSON dans le presse-papier (contourne CSP Unisport). */
+export function buildUnisportClipboardBookmarklet(): string {
+  const code = `(function(){try{var h=document.documentElement.outerHTML,u=location.href.split("#")[0];if(!/unisportstore/i.test(u))return alert("Ouvrez une page produit Unisport");var t=(document.querySelector('meta[property="og:title"]')||{}).content||document.title;var imgs=[],seen={},re=/thumblr\\.uniid\\.it\\/product\\/\\d+\\/[a-f0-9]+\\.jpg/gi,m;while(m=re.exec(h)){var x="https://"+m[0].split("?")[0];if(!seen[x]){seen[x]=1;imgs.push(x);}}if(!imgs.length)return alert("Aucune image trouvee");var payload=JSON.stringify({v:1,sourceUrl:u,title:t,imageUrls:imgs});var done=function(){alert("Copie OK ! Retournez sur Foot-Shop admin et cliquez Importer presse-papier");};if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(payload).then(done,function(){prompt("Copiez ce texte:",payload);});else prompt("Copiez ce texte:",payload);}catch(e){alert("Erreur: "+(e&&e.message?e.message:e));}})();`;
+  return `javascript:${encodeURIComponent(code)}`;
+}
+
 export function isUnisportBlockedError(message: string | null | undefined): boolean {
   if (!message) return false;
   return /405|403|accès refusé|method not allowed/i.test(message);
