@@ -149,13 +149,20 @@ function mapScrapedProduct(
         })
       : [];
 
+  const readyUrls =
+    selectedUrls.length > 0
+      ? selectedUrls
+      : autoSelectImages && p.imageUrls.length > 0
+        ? p.imageUrls.slice(0, 2)
+        : selectedUrls;
+
   return {
     id: newProductId(),
     sourceUrl: p.sourceUrl,
     name: p.name,
     collectionKind: p.collectionKind ?? "jersey",
     imageUrls: p.imageUrls,
-    selectedUrls,
+    selectedUrls: readyUrls,
     scrapeError:
       p.error ??
       (p.imageUrls.length === 0 ? "Aucune image — lien invalide ou page bloquée." : null),

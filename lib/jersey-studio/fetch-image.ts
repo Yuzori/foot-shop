@@ -131,6 +131,12 @@ export async function fetchImageBuffer(
   imageUrl: string,
   referer?: string,
 ): Promise<{ buffer: Buffer; mimeType: string; width: number; height: number }> {
+  const effectiveReferer =
+    referer?.trim() ||
+    (/ztat\.net|unisportstore/i.test(imageUrl)
+      ? "https://www.unisportstore.fr/"
+      : undefined);
+
   if (imageUrl.startsWith("data:")) {
     const match = imageUrl.match(/^data:([^;]+);base64,(.+)$/);
     if (!match?.[1] || !match[2]) {
@@ -151,7 +157,7 @@ export async function fetchImageBuffer(
   for (const candidate of candidates) {
     for (const relaxed of [false, true]) {
       try {
-        const { buffer, mimeType } = await fetchImageOnce(candidate, referer);
+        const { buffer, mimeType } = await fetchImageOnce(candidate, effectiveReferer);
         const meta = await sharp(buffer).metadata();
         const width = meta.width ?? 0;
         const height = meta.height ?? 0;

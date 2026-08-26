@@ -123,6 +123,7 @@ function getStore(): AnalyticsFile {
     __footshopLiveAnalyticsDirty?: boolean;
     __footshopLiveAnalyticsFlushTimer?: ReturnType<typeof setTimeout>;
     __footshopLiveAnalyticsLoaded?: boolean;
+    __footshopLiveAnalyticsLoadPromise?: Promise<void>;
   };
 
   if (!g.__footshopLiveAnalytics) {
@@ -130,6 +131,50 @@ function getStore(): AnalyticsFile {
   }
   return g.__footshopLiveAnalytics;
 }
+
+function mergeSessionRecord(
+  prev: SessionDayRecord | undefined,
+  next: SessionDayRecord,
+): SessionDayRecord {
+  return {
+    h: prev?.h || next.h,
+    m: Math.max(prev?.m ?? 0, next.m),
+    l: Math.max(prev?.l ?? 0, next.l),
+  };
+}
+
+function mergeAnalyticsFiles(disk: AnalyticsFile, memory: AnalyticsFile): AnalyticsFile {
+  const merged: AnalyticsFile = {
+    v: 1,
+    since:
+      disk.since && memory.since && disk.since < memory.since
+        ? disk.since
+        : (disk.since ?? memory.since),
+    days: { ...disk.days },
+  };
+
+  for (const [day, sessions] of Object.entries(memory.days)) {
+    const existing = { ...(merged.days[day] ?? {}) };
+    for (const [sessionId, record] of Object.entries(sessions)) {
+      existing[sessionId] = mergeSessionRecord(existing[sessionId], record);
+    }
+    merged.days[day] = existing;
+  }
+
+  return merged;
+}
+
+function ensureStoreLoaded(): Promise<void> {
+  const g = globalThis as typeof globalThis & {
+    __footshopLiveAnalyticsLoadPromise?: Promise<void>;
+  };
+  if (!g.__footshopLiveAnalyticsLoadPromise) {
+    g.__footshopLiveAnalyticsLoadPromise = loadStoreFromDisk();
+  }
+  return g.__footshopLiveAnalyticsLoadPromise;
+}
+
+void ensureStoreLoaded();
 
 async function loadStoreFromDisk(): Promise<void> {
   const g = globalThis as typeof globalThis & {
@@ -173,6 +218,29 @@ async function flushStore(): Promise<void> {
   };
   if (!g.__footshopLiveAnalyticsDirty || !g.__footshopLiveAnalytics) return;
 
+  await ensureStoreLoaded();
+
+  let disk: AnalyticsFile | null = null;
+  try {
+    const raw = await fs.readFile(FILE, "utf8");
+    disk = JSON.parse(raw) as AnalyticsFile;
+  } catch {
+    disk = null;
+  }
+
+  const memory = g.__footshopLiveAnalytics;
+  g.__footshopLiveAnalytics =
+    disk && disk.days
+      ? mergeAnalyticsFiles(
+          {
+            v: 1,
+            since: disk.since ?? memory.since,
+            days: disk.days ?? {},
+          },
+          memory,
+        )
+      : memory;
+
   await fs.mkdir(DATA_DIR, { recursive: true });
   await fs.writeFile(
     FILE,
@@ -188,19 +256,21 @@ export function recordAnalyticsPresence(input: {
   cartLines: number;
   cartItems: number;
 }): void {
-  const store = getStore();
-  const day = parisDayKey();
-  const sessions = store.days[day] ?? {};
-  const prev = sessions[input.sessionId];
-  const hadCart = input.cartLines > 0;
+  void ensureStoreLoaded().then(() => {
+    const store = getStore();
+    const day = parisDayKey();
+    const sessions = store.days[day] ?? {};
+    const prev = sessions[input.sessionId];
+    const hadCart = input.cartLines > 0;
 
-  sessions[input.sessionId] = {
-    h: prev?.h || hadCart,
-    m: Math.max(prev?.m ?? 0, input.cartItems),
-    l: Math.max(prev?.l ?? 0, input.cartLines),
-  };
-  store.days[day] = sessions;
-  scheduleFlush();
+    sessions[input.sessionId] = {
+      h: prev?.h || hadCart,
+      m: Math.max(prev?.m ?? 0, input.cartItems),
+      l: Math.max(prev?.l ?? 0, input.cartLines),
+    };
+    store.days[day] = sessions;
+    scheduleFlush();
+  });
 }
 
 function aggregateSessions(
@@ -237,7 +307,7 @@ function aggregateSessions(
 }
 
 export async function getSiteStatsRecap(period: RecapPeriod): Promise<SiteStatsRecap> {
-  await loadStoreFromDisk();
+  await ensureStoreLoaded();
   const store = getStore();
   const range = dayKeysForPeriod(period);
   const stats = aggregateSessions(store, range.keys);
@@ -268,7 +338,7 @@ export function isRecapPeriod(value: string | null): value is RecapPeriod {
 }
 
 export async function resetSiteAnalytics(): Promise<void> {
-  await loadStoreFromDisk();
+  await ensureStoreLoaded();
   const g = globalThis as typeof globalThis & {
     __footshopLiveAnalytics?: AnalyticsFile;
     __footshopLiveAnalyticsDirty?: boolean;
@@ -286,4 +356,27 @@ export async function resetSiteAnalytics(): Promise<void> {
 
   await fs.mkdir(DATA_DIR, { recursive: true });
   await fs.writeFile(FILE, JSON.stringify(fresh, null, 2), "utf8");
+}
+
+let shutdownRegistered = false;
+
+/** Flush disque avant arrêt PM2 (évite de perdre les compteurs au deploy). */
+export function registerLiveAnalyticsShutdown(): void {
+  if (shutdownRegistered || typeof process === "undefined") return;
+  shutdownRegistered = true;
+
+  const flushNow = () => {
+    const g = globalThis as typeof globalThis & {
+      __footshopLiveAnalyticsFlushTimer?: ReturnType<typeof setTimeout>;
+    };
+    if (g.__footshopLiveAnalyticsFlushTimer) {
+      clearTimeout(g.__footshopLiveAnalyticsFlushTimer);
+      g.__footshopLiveAnalyticsFlushTimer = undefined;
+    }
+    void flushStore().catch(() => {});
+  };
+
+  process.on("SIGTERM", flushNow);
+  process.on("SIGINT", flushNow);
+  process.on("beforeExit", flushNow);
 }

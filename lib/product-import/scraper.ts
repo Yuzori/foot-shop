@@ -494,7 +494,11 @@ function pushGalleryCandidate(
 ): void {
   const hq = toHighQualityImageUrl(raw);
   const abs = absolutize(base, hq);
-  if (!abs || !/\.(jpe?g|png|webp)(\?|$)/i.test(abs)) return;
+  if (!abs) return;
+
+  const hasImageExt = /\.(jpe?g|png|webp|avif)(\?|$)/i.test(abs);
+  const isKnownCdn = /ztat\.net|unisportstore|cloudinary|imgix/i.test(abs);
+  if (!hasImageExt && !isKnownCdn) return;
 
   const key = imageDedupeKey(abs);
   if (seen.has(key)) return;
