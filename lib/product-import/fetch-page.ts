@@ -6,6 +6,7 @@ import {
   cookieHeaderForUrl,
   storeResponseCookies,
 } from "@/lib/product-import/fetch-session";
+import { isUnisportProductUrl } from "@/lib/product-import/is-unisport-url";
 import { validateRedirectUrl, validateSourceUrl } from "@/lib/product-import/validate-url";
 
 const USER_AGENTS = [
@@ -17,28 +18,32 @@ const USER_AGENTS = [
 
 const MAX_REDIRECT_HOPS = 12;
 
-type FetchProfile = "minimal" | "referer";
-
-function requestHeaders(url: URL, attempt: number, profile: FetchProfile): HeadersInit {
+function requestHeaders(url: URL, attempt: number): HeadersInit {
   const cookie = cookieHeaderForUrl(url);
-  const headers: Record<string, string> = {
-    "User-Agent": USER_AGENTS[attempt % USER_AGENTS.length]!,
-    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7",
-  };
+  const unisport = isUnisportProductUrl(url.toString());
 
-  if (profile === "referer") {
-    headers.Referer = `${url.origin}/`;
-    headers["Cache-Control"] = "no-cache";
-    headers.Pragma = "no-cache";
+  if (unisport) {
+    return {
+      "User-Agent": USER_AGENTS[attempt % USER_AGENTS.length]!,
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7",
+      Referer: `${url.origin}/`,
+      ...(cookie ? { Cookie: cookie } : {}),
+    };
   }
 
-  if (cookie) headers.Cookie = cookie;
-  return headers;
-}
-
-function profileForAttempt(attempt: number): FetchProfile {
-  return attempt % 2 === 0 ? "minimal" : "referer";
+  const origin = url.origin;
+  return {
+    "User-Agent": USER_AGENTS[attempt % USER_AGENTS.length]!,
+    Accept:
+      "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Cache-Control": "no-cache",
+    Pragma: "no-cache",
+    Referer: `${origin}/`,
+    "Upgrade-Insecure-Requests": "1",
+    ...(cookie ? { Cookie: cookie } : {}),
+  };
 }
 
 function sleep(ms: number): Promise<void> {
@@ -125,7 +130,6 @@ function isRetryableStatus(status: number): boolean {
 async function fetchWithManualRedirects(
   startUrl: URL,
   attempt: number,
-  profile: FetchProfile,
   signal: AbortSignal,
 ): Promise<string> {
   let current = startUrl;
@@ -134,7 +138,7 @@ async function fetchWithManualRedirects(
     const response = await fetch(current.toString(), {
       method: "GET",
       signal,
-      headers: requestHeaders(current, attempt, profile),
+      headers: requestHeaders(current, attempt),
       redirect: "manual",
     });
 
@@ -168,13 +172,12 @@ async function fetchWithManualRedirects(
 async function fetchWithFollowRedirects(
   startUrl: URL,
   attempt: number,
-  profile: FetchProfile,
   signal: AbortSignal,
 ): Promise<string> {
   const response = await fetch(startUrl.toString(), {
     method: "GET",
     signal,
-    headers: requestHeaders(startUrl, attempt, profile),
+    headers: requestHeaders(startUrl, attempt),
     redirect: "follow",
   });
 
@@ -198,13 +201,12 @@ async function fetchWithFollowRedirects(
 async function fetchOnce(
   startUrl: URL,
   attempt: number,
-  profile: FetchProfile,
   signal: AbortSignal,
 ): Promise<string> {
   try {
-    return await fetchWithFollowRedirects(startUrl, attempt, profile, signal);
+    return await fetchWithFollowRedirects(startUrl, attempt, signal);
   } catch {
-    return await fetchWithManualRedirects(startUrl, attempt, profile, signal);
+    return await fetchWithManualRedirects(startUrl, attempt, signal);
   }
 }
 
@@ -222,8 +224,7 @@ export async function fetchProductPageHtml(url: URL): Promise<string> {
 
     try {
       const start = await validateSourceUrl(url.toString());
-      const profile = profileForAttempt(attempt);
-      return await fetchOnce(start, attempt, profile, controller.signal);
+      return await fetchOnce(start, attempt, controller.signal);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         lastError = "Délai dépassé lors de la récupération de la page.";
