@@ -3,15 +3,13 @@ import { NextResponse } from "next/server";
 import {
   buildStudioProductFromUnisportClient,
 } from "@/lib/jersey-studio/scrape-batch";
-import { parseUnisportHtml } from "@/lib/product-import/parse-unisport-html";
+import { isUnisportProductUrl } from "@/lib/product-import/is-unisport-url";
 import { toHighQualityImageUrl } from "@/lib/product-import/image-url-quality";
 import { queueUnisportClientScrape } from "@/lib/pending-unisport-scrapes";
-import { scrapeStudioProductFromHtml } from "@/lib/jersey-studio/scrape-batch";
 import { isValidUnisportCollectToken } from "@/lib/unisport-collect-token";
 import { mailConfig } from "@/config/mail";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
 function successHtml(title: string, detail: string): string {
   return `<!DOCTYPE html>
@@ -25,13 +23,14 @@ function successHtml(title: string, detail: string): string {
     h1{font-size:1.25rem}
     p{color:#444;line-height:1.5}
     .ok{color:#1a7f37;font-weight:600}
+    a{color:#0b5cab}
   </style>
 </head>
 <body>
   <p class="ok">✓ Produit envoyé</p>
   <h1>${title}</h1>
   <p>${detail}</p>
-  <p>Vous pouvez fermer cet onglet et retourner sur <strong>Foot-Shop admin → Import rapide</strong>.</p>
+  <p>Retournez sur <a href="/admin/bbdbuy">Foot-Shop admin → Import rapide</a> : le produit apparaît en quelques secondes.</p>
 </body>
 </html>`;
 }
@@ -41,14 +40,14 @@ function errorHtml(message: string): string {
 <html lang="fr"><head><meta charset="utf-8" /><title>Erreur</title></head>
 <body style="font-family:system-ui,sans-serif;max-width:32rem;margin:4rem auto;padding:0 1rem">
   <h1>Erreur</h1><p>${message}</p>
+  <p><a href="/admin/bbdbuy">Retour admin</a></p>
 </body></html>`;
 }
 
-function parseImageUrlsField(raw: string): string[] {
+function parseImageUrls(raw: string): string[] {
   const seen = new Set<string>();
   const urls: string[] = [];
-  const parts = raw.includes("|") ? raw.split("|") : raw.split(",");
-  for (const part of parts) {
+  for (const part of raw.split("|")) {
     const trimmed = part.trim();
     if (!trimmed) continue;
     try {
@@ -64,19 +63,33 @@ function parseImageUrlsField(raw: string): string[] {
   return urls;
 }
 
-/** Réception formulaire bookmarklet Unisport (secours POST léger ou HTML complet). */
-export async function POST(request: Request) {
+/** Réception GET du bookmarklet Unisport (navigation légère, sans gros POST). */
+export async function GET(request: Request) {
   try {
-    const form = await request.formData();
-    const token = String(form.get("token") ?? form.get("t") ?? "").trim();
-    const sourceUrl = String(form.get("sourceUrl") ?? form.get("url") ?? "").trim();
-    const title = String(form.get("title") ?? "").trim();
-    const imgsRaw = String(form.get("imageUrls") ?? form.get("imgs") ?? "").trim();
-    const html = String(form.get("html") ?? "");
+    const url = new URL(request.url);
+    const token = url.searchParams.get("t")?.trim() ?? "";
+    const sourceUrl = url.searchParams.get("url")?.trim() ?? "";
+    const title = url.searchParams.get("title")?.trim() ?? "";
+    const imgsRaw = url.searchParams.get("imgs")?.trim() ?? "";
 
     if (!(await isValidUnisportCollectToken(token))) {
       return new NextResponse(errorHtml("Token invalide ou expiré. Recréez le favori depuis l'admin."), {
         status: 401,
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      });
+    }
+
+    if (!sourceUrl || !isUnisportProductUrl(sourceUrl)) {
+      return new NextResponse(errorHtml("URL produit Unisport invalide."), {
+        status: 400,
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      });
+    }
+
+    const imageUrls = parseImageUrls(imgsRaw);
+    if (!imageUrls.length) {
+      return new NextResponse(errorHtml("Aucune image transmise."), {
+        status: 400,
         headers: { "Content-Type": "text/html; charset=utf-8" },
       });
     }
@@ -89,39 +102,7 @@ export async function POST(request: Request) {
       });
     }
 
-    let product;
-    if (imgsRaw && sourceUrl) {
-      const imageUrls = parseImageUrlsField(imgsRaw);
-      if (!imageUrls.length) {
-        return new NextResponse(errorHtml("Aucune image transmise."), {
-          status: 400,
-          headers: { "Content-Type": "text/html; charset=utf-8" },
-        });
-      }
-      product = await buildStudioProductFromUnisportClient(sourceUrl, title, imageUrls);
-    } else if (sourceUrl && html.length >= 200) {
-      const parsed = parseUnisportHtml(html, sourceUrl);
-      if (!parsed.imageUrls.length) {
-        return new NextResponse(errorHtml("Aucune image trouvée sur cette page."), {
-          status: 400,
-          headers: { "Content-Type": "text/html; charset=utf-8" },
-        });
-      }
-      product = await scrapeStudioProductFromHtml(sourceUrl, html);
-    } else {
-      return new NextResponse(errorHtml("Données produit invalides ou incomplètes."), {
-        status: 400,
-        headers: { "Content-Type": "text/html; charset=utf-8" },
-      });
-    }
-
-    if (!product.imageUrls.length) {
-      return new NextResponse(errorHtml("Impossible d'extraire les images du produit."), {
-        status: 400,
-        headers: { "Content-Type": "text/html; charset=utf-8" },
-      });
-    }
-
+    const product = await buildStudioProductFromUnisportClient(sourceUrl, title, imageUrls);
     await queueUnisportClientScrape(adminSecret, product);
 
     const safeTitle = product.name.replace(/</g, "&lt;").slice(0, 120);
@@ -130,7 +111,7 @@ export async function POST(request: Request) {
       { headers: { "Content-Type": "text/html; charset=utf-8" } },
     );
   } catch (err) {
-    console.error("[unisport-collect]", err);
+    console.error("[outil/unisport]", err);
     return new NextResponse(errorHtml("Erreur serveur lors de l'import."), {
       status: 500,
       headers: { "Content-Type": "text/html; charset=utf-8" },

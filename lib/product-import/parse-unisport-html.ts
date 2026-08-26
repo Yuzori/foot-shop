@@ -126,16 +126,25 @@ export function parseUnisportClipboardPayload(
   }
 }
 
-/** Bookmarklet : envoie la page vers Foot-Shop via formulaire POST (sans fetch ni presse-papier). */
-export function buildUnisportFormBookmarklet(origin: string, token: string): string {
-  const collectUrl = `${origin.replace(/\/$/, "")}/api/admin/unisport-collect`;
-  const code = `(function(){try{var u=location.href.split("#")[0];if(!/unisportstore/i.test(u)){alert("Ouvrez une page produit sur unisportstore.fr");return}var h=document.documentElement.outerHTML,a=${JSON.stringify(collectUrl)},t=${JSON.stringify(token)},f=document.createElement("form");f.method="POST";f.action=a;f.target="_blank";f.acceptCharset="UTF-8";function field(n,v){var i=document.createElement("input");i.type="hidden";i.name=n;i.value=v;f.appendChild(i)}field("token",t);field("sourceUrl",u);field("html",h);document.body.appendChild(f);f.submit()}catch(e){try{var fd=new FormData();fd.append("token",${JSON.stringify(token)});fd.append("sourceUrl",location.href.split("#")[0]);fd.append("html",document.documentElement.outerHTML);if(navigator.sendBeacon&&navigator.sendBeacon(${JSON.stringify(collectUrl)},fd)){alert("Envoye ! Retournez sur Foot-Shop admin.");return}}catch(e2){}alert("Erreur Foot-Shop : "+(e&&e.message?e.message:e))}})();`;
-  return `javascript:${encodeURIComponent(code)}`;
+/** Code JS brut (pour coller dans la console F12 sur Unisport). */
+export function buildUnisportNavigateScript(origin: string, token: string): string {
+  const toolUrl = `${origin.replace(/\/$/, "")}/outil/unisport`;
+  return `(function(){try{var u=location.href.split("#")[0];if(!/unisportstore/i.test(u)){alert("Ouvrez une page produit sur unisportstore.fr");return}var t=(document.querySelector('meta[property="og:title"]')||{}).content||document.title;var imgs=[],seen={},re=/thumblr\\.uniid\\.it\\/product\\/\\d+\\/[a-f0-9]+\\.jpg/gi,m,h=document.documentElement.outerHTML;while((m=re.exec(h))){var x="https://"+m[0].split("?")[0];if(!seen[x]){seen[x]=1;imgs.push(x)}}if(!imgs.length){alert("Aucune image trouvee sur cette page");return}var q="t="+encodeURIComponent(${JSON.stringify(token)})+"&url="+encodeURIComponent(u)+"&title="+encodeURIComponent(t)+"&imgs="+encodeURIComponent(imgs.slice(0,12).join("|"));location.href=${JSON.stringify(toolUrl)}+"?"+q}catch(e){alert("Foot-Shop : "+(e&&e.message?e.message:e))}})();`;
 }
 
-/** Variante courte : charge le script depuis Foot-Shop (si le POST inline est bloque). */
+/** Bookmarklet principal : extrait images + titre puis redirige vers Foot-Shop (léger, pas de gros POST). */
+export function buildUnisportNavigateBookmarklet(origin: string, token: string): string {
+  return `javascript:${encodeURIComponent(buildUnisportNavigateScript(origin, token))}`;
+}
+
+/** @deprecated Utiliser buildUnisportNavigateBookmarklet */
+export function buildUnisportFormBookmarklet(origin: string, token: string): string {
+  return buildUnisportNavigateBookmarklet(origin, token);
+}
+
+/** Variante courte : charge le script depuis Foot-Shop. */
 export function buildUnisportScriptBookmarklet(origin: string, token: string): string {
-  const scriptUrl = `${origin.replace(/\/$/, "")}/api/admin/unisport-collect?token=${encodeURIComponent(token)}`;
+  const scriptUrl = `${origin.replace(/\/$/, "")}/api/admin/unisport-collect.js?token=${encodeURIComponent(token)}`;
   const code = `(function(){var s=document.createElement("script");s.src=${JSON.stringify(scriptUrl)};document.head.appendChild(s);})();`;
   return `javascript:${encodeURIComponent(code)}`;
 }

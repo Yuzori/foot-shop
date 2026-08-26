@@ -5,7 +5,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   buildUnisportClipboardBookmarklet,
-  buildUnisportFormBookmarklet,
+  buildUnisportNavigateBookmarklet,
+  buildUnisportNavigateScript,
   buildUnisportScriptBookmarklet,
   isUnisportBlockedError,
   parseUnisportClipboardPayload,
@@ -72,9 +73,14 @@ export function UnisportScrapeHelper({
     void issueToken();
   }, [secret, unisportUrls.length, issueToken]);
 
+  const consoleScript = useMemo(() => {
+    if (!token || !origin) return null;
+    return buildUnisportNavigateScript(origin, token);
+  }, [origin, token]);
+
   const bookmarkletHref = useMemo(() => {
     if (!token || !origin) return null;
-    return buildUnisportFormBookmarklet(origin, token);
+    return buildUnisportNavigateBookmarklet(origin, token);
   }, [origin, token]);
 
   const scriptBookmarkletHref = useMemo(() => {
@@ -194,9 +200,24 @@ export function UnisportScrapeHelper({
           bouton bleu dessus. Ou clic droit → « Ajouter aux favoris ».
         </p>
 
+        {bookmarkletHref ? (
+          <div className="space-y-2 rounded-lg border border-ink/10 bg-paper-soft/80 p-2">
+            <p className="text-[11px] font-medium text-ink/60">
+              Si le glisser-déposer ne marche pas : créez un favori manuellement
+              (Ctrl+Shift+O → Ajouter un favori) et collez ce lien dans le champ URL :
+            </p>
+            <input
+              readOnly
+              className="w-full rounded border border-ink/10 bg-white px-2 py-1 font-mono text-[10px] text-ink/70"
+              value={bookmarkletHref}
+              onFocus={(e) => e.target.select()}
+            />
+          </div>
+        ) : null}
+
         <p className="text-xs font-medium text-ink/70 pt-1">
           <strong>Étape 2 —</strong> Ouvrez la page produit sur unisportstore.fr et
-          cliquez le favori. Un onglet Foot-Shop confirme l&apos;envoi.
+          cliquez le favori. Vous êtes redirigé vers Foot-Shop avec « ✓ Produit envoyé ».
         </p>
 
         <p className="text-xs font-medium text-ink/70">
@@ -211,7 +232,20 @@ export function UnisportScrapeHelper({
         </summary>
         <div className="mt-3 space-y-2 text-xs text-ink/55">
           <p>
-            Essayez la variante script (même installation par glisser-déposer) :
+            Sur la page Unisport, ouvrez la console (F12 → Console), collez ce code
+            et appuyez sur Entrée :
+          </p>
+          {consoleScript ? (
+            <textarea
+              readOnly
+              className="w-full rounded border border-ink/10 bg-white px-2 py-1 font-mono text-[10px]"
+              rows={4}
+              value={consoleScript}
+              onFocus={(e) => e.target.select()}
+            />
+          ) : null}
+          <p className="pt-1">
+            Ou essayez la variante script (même installation par glisser-déposer) :
           </p>
           {scriptBookmarkletHref ? (
             <a

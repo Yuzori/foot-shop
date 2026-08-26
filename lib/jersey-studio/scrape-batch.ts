@@ -3,7 +3,9 @@ import "server-only";
 import { buildAdminCategoryOptGroups } from "@/lib/admin/import-category-tree";
 import type { ProductAudience } from "@/lib/product-import/format-product-name";
 import {
+  detectAudienceFromProduct,
   detectProductCollectionKind,
+  formatProductName,
 } from "@/lib/product-import/format-product-name";
 import type { ProductCollectionKind } from "@/lib/product-collection";
 import { STUDIO_MAX_IMAGES } from "@/lib/jersey-studio/constants";
@@ -117,4 +119,39 @@ export async function scrapeStudioProductFromHtml(
     maxImages: MAX_IMAGES_PER_PRODUCT,
   });
   return mapScrapedToStudio(scraped, categories, categoryOptGroups);
+}
+
+/** Produit Unisport collecté côté navigateur (titre + URLs images, sans HTML complet). */
+export async function buildStudioProductFromUnisportClient(
+  sourceUrl: string,
+  title: string,
+  imageUrls: string[],
+): Promise<ScrapedStudioProduct> {
+  const categories = await prestashop.getCategories();
+  const categoryOptGroups = buildAdminCategoryOptGroups(categories);
+  const rawTitle = title.trim() || sourceUrl;
+  const audience = detectAudienceFromProduct(rawTitle);
+  const kind = detectProductCollectionKind(rawTitle);
+  const name = formatProductName(rawTitle, sourceUrl).slice(0, 250);
+  const suggestion = suggestImportCategory({
+    title: rawTitle,
+    sourceUrl,
+    audience,
+    kind,
+    categories,
+    optGroups: categoryOptGroups,
+  });
+
+  return {
+    sourceUrl,
+    name,
+    audience,
+    collectionKind: kind,
+    description: "",
+    imageUrls: imageUrls.slice(0, MAX_IMAGES_PER_PRODUCT),
+    suggestedCategoryId:
+      suggestion?.categoryId != null ? String(suggestion.categoryId) : undefined,
+    suggestedCategoryLabel: suggestion?.label,
+    suggestedCategoryReason: suggestion?.reason,
+  };
 }
