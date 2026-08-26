@@ -7,7 +7,7 @@ import {
 } from "@/lib/product-import/format-product-name";
 import type { ProductCollectionKind } from "@/lib/product-collection";
 import { STUDIO_MAX_IMAGES } from "@/lib/jersey-studio/constants";
-import { scrapeProductPage } from "@/lib/product-import/scraper";
+import { scrapeProductPage, scrapeProductPageFromHtml } from "@/lib/product-import/scraper";
 import { suggestImportCategory } from "@/lib/product-import/suggest-import-category";
 import { prestashop } from "@/services/prestashop";
 
@@ -76,4 +76,45 @@ export async function scrapeStudioProducts(
   }
 
   return results;
+}
+
+async function mapScrapedToStudio(
+  scraped: Awaited<ReturnType<typeof scrapeProductPage>>,
+  categories: Awaited<ReturnType<typeof prestashop.getCategories>>,
+  categoryOptGroups: ReturnType<typeof buildAdminCategoryOptGroups>,
+): Promise<ScrapedStudioProduct> {
+  const kind = detectProductCollectionKind(scraped.rawTitle);
+  const suggestion = suggestImportCategory({
+    title: scraped.rawTitle,
+    sourceUrl: scraped.sourceUrl,
+    audience: scraped.audience,
+    kind,
+    categories,
+    optGroups: categoryOptGroups,
+  });
+
+  return {
+    sourceUrl: scraped.sourceUrl,
+    name: scraped.name,
+    audience: scraped.audience,
+    collectionKind: kind,
+    description: scraped.description,
+    imageUrls: scraped.images.slice(0, MAX_IMAGES_PER_PRODUCT),
+    suggestedCategoryId:
+      suggestion?.categoryId != null ? String(suggestion.categoryId) : undefined,
+    suggestedCategoryLabel: suggestion?.label,
+    suggestedCategoryReason: suggestion?.reason,
+  };
+}
+
+export async function scrapeStudioProductFromHtml(
+  sourceUrl: string,
+  html: string,
+): Promise<ScrapedStudioProduct> {
+  const categories = await prestashop.getCategories();
+  const categoryOptGroups = buildAdminCategoryOptGroups(categories);
+  const scraped = await scrapeProductPageFromHtml(sourceUrl, html, {
+    maxImages: MAX_IMAGES_PER_PRODUCT,
+  });
+  return mapScrapedToStudio(scraped, categories, categoryOptGroups);
 }

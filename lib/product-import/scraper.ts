@@ -7,6 +7,7 @@ import {
   extractUnisportGalleryImages,
   fetchUnisportProductPage,
   isUnisportScrapeUrl,
+  parseUnisportHtml,
 } from "@/lib/product-import/unisport-page";
 import {
   isLikelyThumbnailUrl,
@@ -659,6 +660,67 @@ export async function scrapeProductPage(
       images.push(img);
       if (images.length >= maxImages) break;
     }
+  }
+
+  mergeImages(extractImages(html, url, true, maxImages));
+  if (images.length < maxImages) {
+    mergeImages(extractImages(html, url, false, maxImages));
+  }
+  if (unisport) {
+    mergeImages(extractUnisportGalleryImages(html));
+  }
+  if (images.length === 0) {
+    for (const og of extractAllMeta(html, "og:image")) {
+      const abs = absolutize(url, og);
+      if (abs) {
+        mergeImages([abs]);
+        break;
+      }
+    }
+  }
+
+  const audience = detectAudienceFromProduct(rawName, "");
+  const name = formatProductName(rawName, url.toString()).slice(0, 250);
+
+  return {
+    sourceUrl: url.toString(),
+    name,
+    images,
+    audience,
+    rawTitle: rawName,
+    description: "",
+  };
+}
+
+/** Parse une page déjà récupérée (scrape navigateur / bookmarklet). */
+export async function scrapeProductPageFromHtml(
+  rawUrl: string,
+  html: string,
+  opts?: { maxImages?: number },
+): Promise<ScrapedProduct> {
+  const url = await validateSourceUrl(rawUrl);
+  const unisport = isUnisportScrapeUrl(rawUrl);
+
+  const rawName = unisport
+    ? parseUnisportHtml(html, rawUrl).title
+    : extractProductName(html, url);
+
+  const maxImages = opts?.maxImages ?? productImportConfig.maxImages;
+  const seenKeys = new Set<string>();
+  const images: string[] = [];
+
+  function mergeImages(urls: string[]) {
+    for (const img of urls) {
+      const key = imageDedupeKey(img);
+      if (seenKeys.has(key)) continue;
+      seenKeys.add(key);
+      images.push(img);
+      if (images.length >= maxImages) break;
+    }
+  }
+
+  if (unisport) {
+    mergeImages(parseUnisportHtml(html, rawUrl).imageUrls);
   }
 
   mergeImages(extractImages(html, url, true, maxImages));

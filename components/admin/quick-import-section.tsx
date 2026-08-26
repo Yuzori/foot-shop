@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AdminCategoryPicker } from "@/components/admin/admin-category-picker";
 import { ImportLinkAlerts } from "@/components/admin/import-link-alerts";
+import { UnisportScrapeHelper } from "@/components/admin/unisport-scrape-helper";
 import { PushFailuresAlert } from "@/components/admin/push-failures-alert";
 import { Button } from "@/components/ui/button";
 import { Field, TextareaField } from "@/components/ui/field";
@@ -20,6 +21,8 @@ import {
   writeAutoSelectImagesPreference,
 } from "@/lib/jersey-studio/auto-select-preference";
 import { parseSourceUrls } from "@/lib/product-import/parse-urls";
+import { isUnisportProductUrl } from "@/lib/product-import/is-unisport-url";
+import { parseUnisportHtml } from "@/lib/product-import/parse-unisport-html";
 import {
   loadQuickImportDraft,
   saveQuickImportDraft,
@@ -233,6 +236,68 @@ export function QuickImportSection({
   );
 
   const parsedUrls = useMemo(() => parseSourceUrls(urlsText), [urlsText]);
+  const unisportUrls = useMemo(
+    () => parsedUrls.filter((url) => isUnisportProductUrl(url)),
+    [parsedUrls],
+  );
+
+  const importParsedScrape = useCallback(
+    (scraped: ScrapedApiProduct) => {
+      const flatCategories = flattenAdminCategoryOptGroups(categoryOptGroups);
+      setProducts((prev) => {
+        if (prev.some((item) => item.sourceUrl === scraped.sourceUrl)) return prev;
+        return [
+          ...prev,
+          mapScrapedProduct(scraped, flatCategories, defaultCategoryId, autoSelectImages),
+        ];
+      });
+      setBrokenLinks((prev) => prev.filter((item) => item.url !== scraped.sourceUrl));
+    },
+    [autoSelectImages, categoryOptGroups, defaultCategoryId],
+  );
+
+  const handleUnisportHtml = useCallback(
+    (sourceUrl: string, html: string) => {
+      const parsed = parseUnisportHtml(html, sourceUrl);
+      if (!parsed.imageUrls.length) {
+        setError("Aucune image trouvée dans le HTML collé.");
+        return;
+      }
+      importParsedScrape({
+        sourceUrl,
+        name: parsed.title,
+        imageUrls: parsed.imageUrls,
+      });
+      setError(null);
+    },
+    [importParsedScrape],
+  );
+
+  useEffect(() => {
+    if (!secret || unisportUrls.length === 0) return;
+
+    const pullPending = () => {
+      void fetch("/api/admin/quick-import", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${secret}`,
+        },
+        body: JSON.stringify({ action: "take_pending_scrapes" }),
+      })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: { products?: ScrapedApiProduct[] } | null) => {
+          for (const scraped of data?.products ?? []) {
+            if (!scraped.imageUrls?.length || scraped.error) continue;
+            importParsedScrape(scraped);
+          }
+        });
+    };
+
+    pullPending();
+    const timer = window.setInterval(pullPending, 3000);
+    return () => window.clearInterval(timer);
+  }, [secret, unisportUrls.length, importParsedScrape]);
 
   useEffect(() => {
     const ok = saveQuickImportDraft({
@@ -305,12 +370,20 @@ export function QuickImportSection({
     const flatCategories = flattenAdminCategoryOptGroups(categoryOptGroups);
     const accumulated: QuickProduct[] = [];
     const broken: BrokenLink[] = [];
+    const serverUrls = parsedUrls.filter((url) => !isUnisportProductUrl(url));
+    const browserUrls = parsedUrls.filter((url) => isUnisportProductUrl(url));
+
+    if (browserUrls.length) {
+      setError(
+        `${browserUrls.length} lien(s) Unisport : utilisez le bookmarklet ou collez le code source HTML ci-dessous (le serveur est bloqué).`,
+      );
+    }
 
     try {
-      for (let i = 0; i < parsedUrls.length; i++) {
-        const url = parsedUrls[i]!;
-        setPhase(`Analyse des liens… ${i + 1} / ${parsedUrls.length}`);
-        setScrapeProgress({ done: i, total: parsedUrls.length });
+      for (let i = 0; i < serverUrls.length; i++) {
+        const url = serverUrls[i]!;
+        setPhase(`Analyse des liens… ${i + 1} / ${serverUrls.length}`);
+        setScrapeProgress({ done: i, total: serverUrls.length });
 
         try {
           const res = await fetch("/api/admin/quick-import", {
@@ -354,11 +427,11 @@ export function QuickImportSection({
           });
         }
 
-        setScrapeProgress({ done: i + 1, total: parsedUrls.length });
+        setScrapeProgress({ done: i + 1, total: serverUrls.length });
         setBrokenLinks([...broken]);
       }
 
-      if (!accumulated.length && broken.length) {
+      if (!accumulated.length && broken.length && !browserUrls.length) {
         setError(`${broken.length} lien(s) en échec.`);
       } else if (broken.length) {
         setError(`${accumulated.length} produit(s) OK · ${broken.length} échec(s).`);
@@ -606,6 +679,12 @@ export function QuickImportSection({
       </p>
 
       <ImportLinkAlerts parsedUrls={parsedUrls} brokenLinks={brokenLinks} />
+
+      <UnisportScrapeHelper
+        secret={secret}
+        urls={parsedUrls}
+        onParsed={handleUnisportHtml}
+      />
 
       <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-ink/10 bg-paper-soft px-4 py-3">
         <input

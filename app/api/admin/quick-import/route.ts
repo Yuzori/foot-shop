@@ -5,11 +5,19 @@ import {
   buildAdminCategoryOptGroups,
   type AdminCategoryOptGroup,
 } from "@/lib/admin/import-category-tree";
-import { isAdminAuthorized } from "@/lib/admin-auth";
+import { isAdminAuthorized, readAdminSecret } from "@/lib/admin-auth";
 import { DEFAULT_STOCK } from "@/lib/jersey-studio/constants";
 import { runQuickProductImport } from "@/lib/jersey-studio/run-quick-import";
-import { scrapeStudioProducts } from "@/lib/jersey-studio/scrape-batch";
+import {
+  scrapeStudioProductFromHtml,
+  scrapeStudioProducts,
+} from "@/lib/jersey-studio/scrape-batch";
 import { sendInstantNewProductEmail } from "@/lib/instant-product-email";
+import {
+  drainUnisportClientScrapes,
+  listUnisportClientScrapes,
+  queueUnisportClientScrape,
+} from "@/lib/pending-unisport-scrapes";
 import { parseSourceUrls } from "@/lib/product-import/parse-urls";
 import { normalizeCategoryId } from "@/lib/product-import/normalize-category-id";
 import { pickImportDefaultCategoryId } from "@/lib/product-import/pick-default-category";
@@ -32,6 +40,8 @@ type QuickImportPostBody = {
     description?: string;
     imageUrls?: string[];
   };
+  sourceUrl?: string;
+  html?: string;
 };
 
 export async function GET(request: Request) {
@@ -41,6 +51,13 @@ export async function GET(request: Request) {
 
   if (!prestashop.isConfigured) {
     return NextResponse.json({ message: "prestashop_not_configured" }, { status: 503 });
+  }
+
+  const url = new URL(request.url);
+  if (url.searchParams.get("pending_scrapes") === "1") {
+    const secret = readAdminSecret(request);
+    const pending = await listUnisportClientScrapes(secret);
+    return NextResponse.json({ ok: true, pendingProducts: pending });
   }
 
   const categories = await prestashop.getCategories();
@@ -90,6 +107,55 @@ export async function POST(request: Request) {
       }
 
       const products = await scrapeStudioProducts(urls);
+      return NextResponse.json({ ok: true, products });
+    }
+
+    if (body.action === "scrape_html" || body.action === "client_scrape") {
+      const sourceUrl = body.sourceUrl?.trim();
+      const html = body.html ?? "";
+      if (!sourceUrl || html.length < 200) {
+        return NextResponse.json({ message: "html_required" }, { status: 400 });
+      }
+
+      try {
+        const product = await scrapeStudioProductFromHtml(sourceUrl, html);
+        if (!product.imageUrls.length) {
+          return NextResponse.json({
+            ok: false,
+            message: "no_images",
+            products: [{ ...product, error: "Aucune image dans le HTML fourni." }],
+          });
+        }
+
+        if (body.action === "client_scrape") {
+          const secret = readAdminSecret(request);
+          await queueUnisportClientScrape(secret, product);
+        }
+
+        return NextResponse.json({ ok: true, products: [product] });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "scrape_failed";
+        return NextResponse.json({
+          ok: false,
+          message,
+          products: [
+            {
+              sourceUrl: sourceUrl,
+              name: sourceUrl,
+              audience: "adult" as const,
+              collectionKind: "jersey" as const,
+              description: "",
+              imageUrls: [],
+              error: message,
+            },
+          ],
+        });
+      }
+    }
+
+    if (body.action === "take_pending_scrapes") {
+      const secret = readAdminSecret(request);
+      const products = await drainUnisportClientScrapes(secret);
       return NextResponse.json({ ok: true, products });
     }
 
