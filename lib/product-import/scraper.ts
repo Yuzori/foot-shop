@@ -4,6 +4,11 @@ import { productImportConfig } from "@/config/product-import";
 import { formatProductName, detectAudienceFromProduct, extractTeamFromSlugTokens, type ProductAudience } from "@/lib/product-import/format-product-name";
 import { fetchProductPageHtml } from "@/lib/product-import/fetch-page";
 import {
+  extractUnisportGalleryImages,
+  fetchUnisportProductPage,
+  isUnisportScrapeUrl,
+} from "@/lib/product-import/unisport-page";
+import {
   isLikelyThumbnailUrl,
   normalizeImageDedupeKey,
   toHighQualityImageUrl,
@@ -497,7 +502,7 @@ function pushGalleryCandidate(
   if (!abs) return;
 
   const hasImageExt = /\.(jpe?g|png|webp|avif)(\?|$)/i.test(abs);
-  const isKnownCdn = /ztat\.net|unisportstore|cloudinary|imgix/i.test(abs);
+  const isKnownCdn = /ztat\.net|unisportstore|uniid\.it|cloudinary|imgix/i.test(abs);
   if (!hasImageExt && !isKnownCdn) return;
 
   const key = imageDedupeKey(abs);
@@ -627,8 +632,18 @@ export async function scrapeProductPage(
   rawUrl: string,
   opts?: { maxImages?: number },
 ): Promise<ScrapedProduct> {
-  const url = await validateSourceUrl(rawUrl);
-  const html = await fetchProductPageHtml(url);
+  const unisport = isUnisportScrapeUrl(rawUrl);
+  let url: URL;
+  let html: string;
+
+  if (unisport) {
+    const page = await fetchUnisportProductPage(rawUrl);
+    url = page.url;
+    html = page.html;
+  } else {
+    url = await validateSourceUrl(rawUrl);
+    html = await fetchProductPageHtml(url);
+  }
 
   const rawName = extractProductName(html, url);
 
@@ -649,6 +664,9 @@ export async function scrapeProductPage(
   mergeImages(extractImages(html, url, true, maxImages));
   if (images.length < maxImages) {
     mergeImages(extractImages(html, url, false, maxImages));
+  }
+  if (unisport) {
+    mergeImages(extractUnisportGalleryImages(html));
   }
   if (images.length === 0) {
     for (const og of extractAllMeta(html, "og:image")) {

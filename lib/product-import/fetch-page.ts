@@ -17,24 +17,28 @@ const USER_AGENTS = [
 
 const MAX_REDIRECT_HOPS = 12;
 
-function browserHeaders(url: URL, attempt: number): HeadersInit {
-  const origin = url.origin;
+type FetchProfile = "minimal" | "referer";
+
+function requestHeaders(url: URL, attempt: number, profile: FetchProfile): HeadersInit {
   const cookie = cookieHeaderForUrl(url);
-  return {
+  const headers: Record<string, string> = {
     "User-Agent": USER_AGENTS[attempt % USER_AGENTS.length]!,
-    Accept:
-      "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7",
-    "Cache-Control": "no-cache",
-    Pragma: "no-cache",
-    Referer: `${origin}/`,
-    Origin: origin,
-    "Sec-Fetch-Dest": "document",
-    "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-Site": attempt % 2 === 0 ? "same-origin" : "none",
-    "Upgrade-Insecure-Requests": "1",
-    ...(cookie ? { Cookie: cookie } : {}),
   };
+
+  if (profile === "referer") {
+    headers.Referer = `${url.origin}/`;
+    headers["Cache-Control"] = "no-cache";
+    headers.Pragma = "no-cache";
+  }
+
+  if (cookie) headers.Cookie = cookie;
+  return headers;
+}
+
+function profileForAttempt(attempt: number): FetchProfile {
+  return attempt % 2 === 0 ? "minimal" : "referer";
 }
 
 function sleep(ms: number): Promise<void> {
@@ -65,7 +69,7 @@ function isCookieConsentWall(html: string): boolean {
 function lacksProductSignals(html: string): boolean {
   const hasJsonLd = /application\/ld\+json/i.test(html) && /"@type"\s*:\s*"Product"/i.test(html);
   const hasOg = /property=["']og:(title|image)["']/i.test(html);
-  const hasGallery = /(product|gallery|pdp|maillot|jersey)/i.test(html);
+  const hasGallery = /(product|gallery|pdp|maillot|jersey|uniid\.it)/i.test(html);
   return !hasJsonLd && !hasOg && !hasGallery;
 }
 
@@ -114,17 +118,23 @@ async function readHtmlResponse(response: Response): Promise<string> {
   return new TextDecoder("utf-8", { fatal: false }).decode(Buffer.concat(chunks));
 }
 
+function isRetryableStatus(status: number): boolean {
+  return status === 403 || status === 405 || status === 429 || status >= 500;
+}
+
 async function fetchWithManualRedirects(
   startUrl: URL,
   attempt: number,
+  profile: FetchProfile,
   signal: AbortSignal,
 ): Promise<string> {
   let current = startUrl;
 
   for (let hop = 0; hop < MAX_REDIRECT_HOPS; hop++) {
     const response = await fetch(current.toString(), {
+      method: "GET",
       signal,
-      headers: browserHeaders(current, attempt),
+      headers: requestHeaders(current, attempt, profile),
       redirect: "manual",
     });
 
@@ -137,14 +147,10 @@ async function fetchWithManualRedirects(
       continue;
     }
 
-    if (response.status === 403 || response.status === 429) {
+    if (isRetryableStatus(response.status)) {
       throw new Error(
         `Accès refusé (${response.status}). Réessayez plus tard ou changez de source.`,
       );
-    }
-
-    if (response.status >= 500) {
-      throw new Error(`Erreur serveur (${response.status}).`);
     }
 
     if (!response.ok) {
@@ -162,17 +168,19 @@ async function fetchWithManualRedirects(
 async function fetchWithFollowRedirects(
   startUrl: URL,
   attempt: number,
+  profile: FetchProfile,
   signal: AbortSignal,
 ): Promise<string> {
   const response = await fetch(startUrl.toString(), {
+    method: "GET",
     signal,
-    headers: browserHeaders(startUrl, attempt),
+    headers: requestHeaders(startUrl, attempt, profile),
     redirect: "follow",
   });
 
   storeResponseCookies(startUrl, response);
 
-  if (response.status === 403 || response.status === 429) {
+  if (isRetryableStatus(response.status)) {
     throw new Error(
       `Accès refusé (${response.status}). Réessayez plus tard ou changez de source.`,
     );
@@ -187,7 +195,20 @@ async function fetchWithFollowRedirects(
   return html;
 }
 
-/** Télécharge une page HTML avec retries (403, 429, 5xx) et redirections validées. */
+async function fetchOnce(
+  startUrl: URL,
+  attempt: number,
+  profile: FetchProfile,
+  signal: AbortSignal,
+): Promise<string> {
+  try {
+    return await fetchWithFollowRedirects(startUrl, attempt, profile, signal);
+  } catch {
+    return await fetchWithManualRedirects(startUrl, attempt, profile, signal);
+  }
+}
+
+/** Télécharge une page HTML avec retries (403, 405, 429, 5xx) et redirections validées. */
 export async function fetchProductPageHtml(url: URL): Promise<string> {
   const maxAttempts = 5;
   let lastError = "Impossible d'accéder à l'URL fournie.";
@@ -201,12 +222,8 @@ export async function fetchProductPageHtml(url: URL): Promise<string> {
 
     try {
       const start = await validateSourceUrl(url.toString());
-
-      try {
-        return await fetchWithFollowRedirects(start, attempt, controller.signal);
-      } catch {
-        return await fetchWithManualRedirects(start, attempt, controller.signal);
-      }
+      const profile = profileForAttempt(attempt);
+      return await fetchOnce(start, attempt, profile, controller.signal);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         lastError = "Délai dépassé lors de la récupération de la page.";

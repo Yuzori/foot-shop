@@ -133,7 +133,7 @@ export async function fetchImageBuffer(
 ): Promise<{ buffer: Buffer; mimeType: string; width: number; height: number }> {
   const effectiveReferer =
     referer?.trim() ||
-    (/ztat\.net|unisportstore/i.test(imageUrl)
+    (/ztat\.net|unisportstore|uniid\.it/i.test(imageUrl)
       ? "https://www.unisportstore.fr/"
       : undefined);
 

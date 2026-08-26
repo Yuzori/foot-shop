@@ -32,6 +32,13 @@ export function toHighQualityImageUrl(url: string): string {
       .replace(/\/(\d{2,3})x(\d{2,3})\//gi, "/3000x3000/");
   }
 
+  if (/uniid\.it/i.test(u)) {
+    u = u
+      .replace(/([?&])width=\d+/gi, "$1width=2000")
+      .replace(/([?&])format=[^&]+/gi, "")
+      .replace(/([?&])q=\d+/gi, "");
+  }
+
   if (/bbdbuy\.com/i.test(u)) {
     u = u
       .replace(/\/cache\/\d+x\d+\//gi, "/cache/")
