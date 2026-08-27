@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AdminCategoryPicker } from "@/components/admin/admin-category-picker";
 import { ImportLinkAlerts } from "@/components/admin/import-link-alerts";
+import { ManualQuickImportPanel } from "@/components/admin/manual-quick-import-panel";
 import { PushFailuresAlert } from "@/components/admin/push-failures-alert";
 import { Button } from "@/components/ui/button";
 import { Field, TextareaField } from "@/components/ui/field";
@@ -20,6 +21,7 @@ import {
   writeAutoSelectImagesPreference,
 } from "@/lib/jersey-studio/auto-select-preference";
 import { parseSourceUrls } from "@/lib/product-import/parse-urls";
+import { detectProductCollectionKind } from "@/lib/product-import/format-product-name";
 import {
   loadQuickImportDraft,
   saveQuickImportDraft,
@@ -188,6 +190,32 @@ function toggleImageUrl(product: QuickProduct, url: string): QuickProduct {
 function imageOrder(product: QuickProduct, url: string): number {
   const index = product.selectedUrls.indexOf(url);
   return index >= 0 ? index + 1 : 0;
+}
+
+function createManualProduct(
+  draft: {
+    name: string;
+    categoryId: string;
+    imageUrls: string[];
+    sourceUrl?: string;
+  },
+  defaultCategoryId: string,
+): QuickProduct {
+  const name = draft.name.trim();
+  return {
+    id: newProductId(),
+    sourceUrl: draft.sourceUrl?.trim() ?? "",
+    name,
+    collectionKind: detectProductCollectionKind(name),
+    imageUrls: draft.imageUrls,
+    selectedUrls: draft.imageUrls,
+    scrapeError: draft.imageUrls.length ? null : "Ajoutez au moins une image.",
+    categoryId: draft.categoryId || defaultCategoryId,
+    suggestedCategoryId: null,
+    suggestedCategoryLabel: null,
+    suggestedCategoryReason: null,
+    pushResult: null,
+  };
 }
 
 export function QuickImportSection({
@@ -534,6 +562,23 @@ export function QuickImportSection({
     await pushProducts(failed);
   }
 
+  async function handleManualAdd(
+    draft: {
+      name: string;
+      categoryId: string;
+      imageUrls: string[];
+      sourceUrl?: string;
+    },
+    sendNow: boolean,
+  ) {
+    const product = createManualProduct(draft, defaultCategoryId);
+    setProducts((prev) => [...prev, product]);
+    setError(null);
+    if (sendNow) {
+      await pushProducts([product]);
+    }
+  }
+
   return (
     <section
       className={cn(
@@ -545,8 +590,8 @@ export function QuickImportSection({
         <h2 className="font-display text-xl font-semibold">Import rapide PrestaShop</h2>
       ) : null}
       <p className="mt-1 text-sm text-ink/55">
-        Scrape → images brutes (sans détourage ni rendu) → envoi PrestaShop. Même
-        noms et catégories que le studio, en beaucoup plus rapide.
+        Import manuel (images + nom) ou scrape par lien → envoi PrestaShop. Prix et stock
+        communs à tous les produits de la session.
       </p>
       {restoreNotice ? (
         <p className="mt-3 rounded-xl border border-[#1a7f37]/20 bg-white/80 px-3 py-2 text-xs text-ink/65">
@@ -591,6 +636,18 @@ export function QuickImportSection({
           onChange={setDefaultCategoryId}
         />
       </div>
+
+      <ManualQuickImportPanel
+        defaultCategoryId={defaultCategoryId}
+        categoryOptGroups={categoryOptGroups}
+        loadingCategories={loadingCategories}
+        busy={busy}
+        onAdd={handleManualAdd}
+      />
+
+      <p className="mt-8 text-xs font-semibold uppercase tracking-wide text-ink/45">
+        Ou import par liens (scrape)
+      </p>
 
       <TextareaField
         className="mt-4"
@@ -719,14 +776,18 @@ export function QuickImportSection({
                   className="min-w-0 flex-1 rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm font-medium"
                 />
               </div>
-              <a
-                href={product.sourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-1 block truncate text-xs text-accent underline-offset-2 hover:underline"
-              >
-                {product.sourceUrl}
-              </a>
+              {product.sourceUrl ? (
+                <a
+                  href={product.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 block truncate text-xs text-accent underline-offset-2 hover:underline"
+                >
+                  {product.sourceUrl}
+                </a>
+              ) : (
+                <p className="mt-1 text-xs text-ink/45">Import manuel</p>
+              )}
 
               <div className="mt-3 sm:max-w-md">
                 <label className="mb-1 block text-xs font-medium text-ink/60">

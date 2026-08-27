@@ -13,7 +13,7 @@ import { encodeImageForPrestaShopPreserveOriginal } from "@/lib/product-import/e
 import { fetchImageBuffer } from "@/lib/jersey-studio/fetch-image";
 import { prestashop } from "@/services/prestashop";
 
-const QUICK_PRICE = 24.99;
+const QUICK_PRICE = 25.99;
 const QUICK_STOCK = 20;
 
 export interface QuickImportInput {
