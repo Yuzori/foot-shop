@@ -28,7 +28,7 @@ jobs:
             npm ci
             npm run build
             if pm2 describe foot-shop >/dev/null 2>&1; then
-              pm2 restart foot-shop
+              pm2 restart foot-shop --kill-timeout 10000
             else
               pm2 start npm --name foot-shop -- start
               pm2 save

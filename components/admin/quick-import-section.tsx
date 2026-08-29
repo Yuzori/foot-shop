@@ -27,6 +27,16 @@ import {
   saveQuickImportDraft,
   type QuickImportDraft,
 } from "@/lib/quick-import/quick-import-storage";
+import {
+  dataUrlToBlob,
+  isQuickImportImageRef,
+  persistQuickImportImageUrls,
+  pruneQuickImportImages,
+  putQuickImportImage,
+  quickImportImageIdFromRef,
+  quickImportImageRef,
+  resolveQuickImportImageUrl,
+} from "@/lib/quick-import/quick-import-images";
 import { cn } from "@/lib/utils";
 
 const LEGACY_SESSION_KEY = "maillot-store-quick-import-session-v1";
@@ -104,9 +114,13 @@ async function importPastedImages(
   if (!imageFiles.length) return 0;
 
   const added: string[] = [];
-  for (const file of imageFiles) {
+  const startIndex = product.imageUrls.length;
+  for (let index = 0; index < imageFiles.length; index++) {
+    const file = imageFiles[index]!;
     const dataUrl = await readImageFile(file);
-    added.push(dataUrl);
+    const imageId = `${product.id}-${startIndex + index}`;
+    await putQuickImportImage(imageId, dataUrl);
+    added.push(quickImportImageRef(imageId));
   }
 
   updateProduct(product.id, {
@@ -115,6 +129,35 @@ async function importPastedImages(
     pushResult: null,
   });
   return added.length;
+}
+
+function isLocalQuickImportImage(url: string): boolean {
+  return isQuickImportImageRef(url) || url.startsWith("data:");
+}
+
+function displayImageSrc(url: string, previews: Record<string, string>): string {
+  if (isQuickImportImageRef(url)) return previews[url] ?? "";
+  return url;
+}
+
+async function resolvePushImages(
+  urls: string[],
+): Promise<{ remoteUrls: string[]; localBlobs: Blob[] }> {
+  const remoteUrls: string[] = [];
+  const localBlobs: Blob[] = [];
+
+  for (const url of urls) {
+    if (isLocalQuickImportImage(url)) {
+      const dataUrl = url.startsWith("data:")
+        ? url
+        : await resolveQuickImportImageUrl(url);
+      localBlobs.push(await dataUrlToBlob(dataUrl));
+    } else {
+      remoteUrls.push(url);
+    }
+  }
+
+  return { remoteUrls, localBlobs };
 }
 
 function loadInitialDraft(): QuickImportDraft | null {
@@ -246,7 +289,7 @@ export function QuickImportSection({
     if (!saved) return null;
     const count = saved.products.length;
     if (!count) return null;
-    return `Session restaurée — ${count} produit(s). Statuts d'envoi réinitialisés : vous pouvez renvoyer vers PrestaShop.`;
+    return `Session restaurée — ${count} produit(s).`;
   });
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -259,8 +302,52 @@ export function QuickImportSection({
   const [autoSelectImages, setAutoSelectImages] = useState(
     readAutoSelectImagesPreference,
   );
+  const [imagePreviews, setImagePreviews] = useState<Record<string, string>>({});
+  const [draftSaveWarning, setDraftSaveWarning] = useState<string | null>(null);
 
   const parsedUrls = useMemo(() => parseSourceUrls(urlsText), [urlsText]);
+
+  useEffect(() => {
+    void (async () => {
+      const refs = [
+        ...new Set(
+          products.flatMap((product) => product.imageUrls).filter(isQuickImportImageRef),
+        ),
+      ];
+      if (!refs.length) return;
+
+      const next: Record<string, string> = {};
+      for (const ref of refs) {
+        try {
+          next[ref] = await resolveQuickImportImageUrl(ref);
+        } catch {
+          // ignore missing blob
+        }
+      }
+      if (!Object.keys(next).length) return;
+
+      setImagePreviews((prev) => {
+        let changed = false;
+        const merged = { ...prev };
+        for (const [key, value] of Object.entries(next)) {
+          if (merged[key] !== value) {
+            merged[key] = value;
+            changed = true;
+          }
+        }
+        return changed ? merged : prev;
+      });
+    })();
+  }, [products]);
+
+  useEffect(() => {
+    const keepIds = products.flatMap((product) =>
+      product.imageUrls
+        .map((url) => quickImportImageIdFromRef(url))
+        .filter((id): id is string => Boolean(id)),
+    );
+    void pruneQuickImportImages(keepIds);
+  }, [products]);
 
   useEffect(() => {
     const ok = saveQuickImportDraft({
@@ -273,7 +360,14 @@ export function QuickImportSection({
       products,
       brokenLinks,
     });
-    if (ok) setDraftSavedAt(Date.now());
+    if (ok) {
+      setDraftSavedAt(Date.now());
+      setDraftSaveWarning(null);
+    } else {
+      setDraftSaveWarning(
+        "Sauvegarde locale limitée — gardez cet onglet ouvert jusqu'à l'envoi PrestaShop.",
+      );
+    }
   }, [urlsText, price, stock, defaultCategoryId, products, brokenLinks]);
 
   useEffect(() => {
@@ -440,27 +534,52 @@ export function QuickImportSection({
         const productIndex = products.findIndex((item) => item.id === p.id) + 1;
         setPhase(`Envoi PrestaShop ${i + 1}/${toSend.length} — produit #${productIndex}…`);
 
-        const res = await fetch("/api/admin/quick-import", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${secret}`,
-          },
-          body: JSON.stringify({
-            action: "push",
-            price: numericPrice,
-            stock: numericStock,
-            item: {
-              clientId: p.id,
-              name: p.name.trim(),
-              categoryId: asTrimmedString(p.categoryId) || defaultCategoryId,
-              sourceUrl: p.sourceUrl,
-              imageUrls: p.selectedUrls,
-            },
-          }),
-        });
+        const { remoteUrls, localBlobs } = await resolvePushImages(p.selectedUrls);
+        const itemPayload = {
+          clientId: p.id,
+          name: p.name.trim(),
+          categoryId: asTrimmedString(p.categoryId) || defaultCategoryId,
+          sourceUrl: p.sourceUrl,
+        };
 
-        const data = (await res.json()) as {
+        let res: Response;
+        if (localBlobs.length > 0) {
+          const form = new FormData();
+          form.append("action", "push");
+          form.append("price", String(numericPrice));
+          form.append("stock", String(numericStock));
+          form.append("item", JSON.stringify(itemPayload));
+          if (remoteUrls.length) {
+            form.append("imageUrls", JSON.stringify(remoteUrls));
+          }
+          localBlobs.forEach((blob, index) => {
+            form.append(`image_${index}`, blob, `image-${index}.jpg`);
+          });
+          res = await fetch("/api/admin/quick-import", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${secret}` },
+            body: form,
+          });
+        } else {
+          res = await fetch("/api/admin/quick-import", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${secret}`,
+            },
+            body: JSON.stringify({
+              action: "push",
+              price: numericPrice,
+              stock: numericStock,
+              item: {
+                ...itemPayload,
+                imageUrls: remoteUrls,
+              },
+            }),
+          });
+        }
+
+        let data: {
           ok?: boolean;
           message?: string;
           result?: {
@@ -469,6 +588,22 @@ export function QuickImportSection({
             error?: string;
           };
         };
+
+        try {
+          data = (await res.json()) as typeof data;
+        } catch {
+          updateProduct(p.id, {
+            pushResult: {
+              ok: false,
+              error:
+                res.status === 413
+                  ? "Images trop volumineuses pour le serveur."
+                  : `Réponse serveur invalide (${res.status}).`,
+            },
+          });
+          failCount++;
+          continue;
+        }
 
         if (!res.ok && !data.result) {
           updateProduct(p.id, {
@@ -571,9 +706,34 @@ export function QuickImportSection({
     },
     sendNow: boolean,
   ) {
-    const product = createManualProduct(draft, defaultCategoryId);
+    const base = createManualProduct(
+      { ...draft, imageUrls: [], sourceUrl: draft.sourceUrl },
+      defaultCategoryId,
+    );
+    const refs = await persistQuickImportImageUrls(base.id, draft.imageUrls);
+    const product: QuickProduct = {
+      ...base,
+      imageUrls: refs,
+      selectedUrls: refs,
+      scrapeError: refs.length ? null : "Ajoutez au moins une image.",
+    };
+
+    const previews: Record<string, string> = {};
+    refs.forEach((ref, index) => {
+      previews[ref] = draft.imageUrls[index] ?? "";
+    });
+    setImagePreviews((prev) => ({ ...prev, ...previews }));
+
     setProducts((prev) => [...prev, product]);
     setError(null);
+
+    window.setTimeout(() => {
+      document.getElementById(`quick-product-${product.id}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    }, 50);
+
     if (sendNow) {
       await pushProducts([product]);
     }
@@ -600,8 +760,12 @@ export function QuickImportSection({
       ) : null}
       {draftSavedAt ? (
         <p className="mt-2 text-[11px] text-ink/40">
-          Progression sauvegardée automatiquement dans le navigateur (persiste après fermeture).
+          Progression sauvegardée automatiquement dans le navigateur (persiste après fermeture
+          et mise à jour du site).
         </p>
+      ) : null}
+      {draftSaveWarning ? (
+        <p className="mt-2 text-xs text-accent">{draftSaveWarning}</p>
       ) : null}
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -827,7 +991,7 @@ export function QuickImportSection({
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={url}
+                        src={displayImageSrc(url, imagePreviews)}
                         alt=""
                         className="h-full w-full object-contain p-1"
                         loading="lazy"

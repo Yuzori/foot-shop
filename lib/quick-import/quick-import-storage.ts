@@ -34,6 +34,7 @@ function stripPushResults(products: QuickImportProduct[]): QuickImportProduct[] 
 }
 
 function migrateDraft(parsed: QuickImportDraft & { version?: number }): QuickImportDraft {
+  const isLegacy = parsed.version !== 3;
   return {
     version: 3,
     savedAt: parsed.savedAt ?? Date.now(),
@@ -41,7 +42,9 @@ function migrateDraft(parsed: QuickImportDraft & { version?: number }): QuickImp
     price: parsed.price ?? "25.99",
     stock: parsed.stock ?? "20",
     defaultCategoryId: parsed.defaultCategoryId ?? "",
-    products: stripPushResults(parsed.products ?? []),
+    products: isLegacy
+      ? stripPushResults(parsed.products ?? [])
+      : (parsed.products ?? []),
     brokenLinks: parsed.brokenLinks ?? [],
   };
 }

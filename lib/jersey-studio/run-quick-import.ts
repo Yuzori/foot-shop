@@ -18,7 +18,8 @@ const QUICK_STOCK = 20;
 
 export interface QuickImportInput {
   name: string;
-  imageUrls: string[];
+  imageUrls?: string[];
+  imageBuffers?: { buffer: Buffer; mimeType: string }[];
   sourceUrl?: string;
   categoryId?: string;
   price?: number;
@@ -43,11 +44,12 @@ export async function runQuickProductImport(
   const name = input.name.trim().slice(0, 250);
   if (!name) throw new Error("Nom produit requis.");
 
-  const urls = input.imageUrls.map((u) => u.trim()).filter(Boolean);
-  if (!urls.length) throw new Error("Aucune image à envoyer.");
+  const urls = (input.imageUrls ?? []).map((u) => u.trim()).filter(Boolean);
+  const buffers = input.imageBuffers ?? [];
+  if (!urls.length && !buffers.length) throw new Error("Aucune image à envoyer.");
 
   const referer = input.sourceUrl?.trim();
-  const fetched: { buffer: Buffer; mimeType: string }[] = [];
+  const fetched: { buffer: Buffer; mimeType: string }[] = [...buffers];
 
   for (const imageUrl of urls) {
     const { buffer, mimeType } = await fetchImageBuffer(imageUrl, referer);
@@ -56,6 +58,8 @@ export async function runQuickProductImport(
     }
     fetched.push({ buffer, mimeType });
   }
+
+  if (!fetched.length) throw new Error("Aucune image à envoyer.");
 
   const price = input.price ?? QUICK_PRICE;
   const stock = input.stock ?? QUICK_STOCK;

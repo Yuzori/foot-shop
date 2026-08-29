@@ -1,6 +1,7 @@
 import "server-only";
 
 import { promises as fs } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 const DATA_DIR = path.join(process.cwd(), ".data");
@@ -211,6 +212,27 @@ function scheduleFlush(): void {
   }, FLUSH_MS);
 }
 
+function writeMergedAnalyticsToDisk(memory: AnalyticsFile): AnalyticsFile {
+  let disk: AnalyticsFile | null = null;
+  try {
+    const raw = readFileSync(FILE, "utf8");
+    disk = JSON.parse(raw) as AnalyticsFile;
+  } catch {
+    disk = null;
+  }
+
+  return disk && disk.days
+    ? mergeAnalyticsFiles(
+        {
+          v: 1,
+          since: disk.since ?? memory.since,
+          days: disk.days ?? {},
+        },
+        memory,
+      )
+    : memory;
+}
+
 async function flushStore(): Promise<void> {
   const g = globalThis as typeof globalThis & {
     __footshopLiveAnalytics?: AnalyticsFile;
@@ -220,26 +242,8 @@ async function flushStore(): Promise<void> {
 
   await ensureStoreLoaded();
 
-  let disk: AnalyticsFile | null = null;
-  try {
-    const raw = await fs.readFile(FILE, "utf8");
-    disk = JSON.parse(raw) as AnalyticsFile;
-  } catch {
-    disk = null;
-  }
-
   const memory = g.__footshopLiveAnalytics;
-  g.__footshopLiveAnalytics =
-    disk && disk.days
-      ? mergeAnalyticsFiles(
-          {
-            v: 1,
-            since: disk.since ?? memory.since,
-            days: disk.days ?? {},
-          },
-          memory,
-        )
-      : memory;
+  g.__footshopLiveAnalytics = writeMergedAnalyticsToDisk(memory);
 
   await fs.mkdir(DATA_DIR, { recursive: true });
   await fs.writeFile(
@@ -248,6 +252,29 @@ async function flushStore(): Promise<void> {
     "utf8",
   );
   g.__footshopLiveAnalyticsDirty = false;
+}
+
+/** Flush synchrone avant arrêt PM2 (évite la perte des compteurs au deploy). */
+export function flushLiveAnalyticsSync(): void {
+  const g = globalThis as typeof globalThis & {
+    __footshopLiveAnalytics?: AnalyticsFile;
+    __footshopLiveAnalyticsDirty?: boolean;
+    __footshopLiveAnalyticsFlushTimer?: ReturnType<typeof setTimeout>;
+  };
+  if (g.__footshopLiveAnalyticsFlushTimer) {
+    clearTimeout(g.__footshopLiveAnalyticsFlushTimer);
+    g.__footshopLiveAnalyticsFlushTimer = undefined;
+  }
+  if (!g.__footshopLiveAnalytics) return;
+
+  try {
+    g.__footshopLiveAnalytics = writeMergedAnalyticsToDisk(g.__footshopLiveAnalytics);
+    mkdirSync(DATA_DIR, { recursive: true });
+    writeFileSync(FILE, JSON.stringify(g.__footshopLiveAnalytics, null, 2), "utf8");
+    g.__footshopLiveAnalyticsDirty = false;
+  } catch {
+    // ignore — le flush async reprendra au prochain heartbeat
+  }
 }
 
 /** Met à jour les agrégats journaliers (appelé à chaque heartbeat). */
@@ -366,13 +393,7 @@ export function registerLiveAnalyticsShutdown(): void {
   shutdownRegistered = true;
 
   const flushNow = () => {
-    const g = globalThis as typeof globalThis & {
-      __footshopLiveAnalyticsFlushTimer?: ReturnType<typeof setTimeout>;
-    };
-    if (g.__footshopLiveAnalyticsFlushTimer) {
-      clearTimeout(g.__footshopLiveAnalyticsFlushTimer);
-      g.__footshopLiveAnalyticsFlushTimer = undefined;
-    }
+    flushLiveAnalyticsSync();
     void flushStore().catch(() => {});
   };
 
