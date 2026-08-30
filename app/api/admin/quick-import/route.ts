@@ -10,6 +10,10 @@ import { DEFAULT_STOCK } from "@/lib/jersey-studio/constants";
 import { runQuickProductImport } from "@/lib/jersey-studio/run-quick-import";
 import { scrapeStudioProducts } from "@/lib/jersey-studio/scrape-batch";
 import { sendInstantNewProductEmail } from "@/lib/instant-product-email";
+import {
+  deleteStagedQuickImportImages,
+  loadStagedQuickImportImages,
+} from "@/lib/quick-import/staged-images";
 import { parseSourceUrls } from "@/lib/product-import/parse-urls";
 import { normalizeCategoryId } from "@/lib/product-import/normalize-category-id";
 import { pickImportDefaultCategoryId } from "@/lib/product-import/pick-default-category";
@@ -24,6 +28,7 @@ type QuickImportPostBody = {
   urlsText?: string;
   price?: number;
   stock?: number;
+  stagedImageIds?: string[];
   item?: {
     clientId?: string;
     name: string;
@@ -229,7 +234,30 @@ export async function POST(request: Request) {
       }
 
       const imageUrls = (item.imageUrls ?? []).map((u) => u.trim()).filter(Boolean);
-      if (!imageUrls.length) {
+      const stagedIds = (body.stagedImageIds ?? [])
+        .map((id) => String(id).trim())
+        .filter(Boolean);
+
+      let imageBuffers: { buffer: Buffer; mimeType: string }[] = [];
+      if (stagedIds.length) {
+        try {
+          imageBuffers = await loadStagedQuickImportImages(stagedIds);
+        } catch (err) {
+          return NextResponse.json({
+            ok: false,
+            result: {
+              clientId: item.clientId,
+              name: item.name,
+              ok: false,
+              error: err instanceof Error ? err.message : "staged_images_missing",
+            },
+          });
+        } finally {
+          await deleteStagedQuickImportImages(stagedIds);
+        }
+      }
+
+      if (!imageUrls.length && !imageBuffers.length) {
         return NextResponse.json({ message: "images_required" }, { status: 400 });
       }
 
@@ -242,7 +270,7 @@ export async function POST(request: Request) {
           ? body.stock
           : DEFAULT_STOCK;
 
-      return executePush(item, price, stock, imageUrls, []);
+      return executePush(item, price, stock, imageUrls, imageBuffers);
     }
 
     return NextResponse.json({ message: "unknown_action" }, { status: 400 });

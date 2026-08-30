@@ -120,6 +120,91 @@ export async function persistQuickImportImageUrls(
 }
 
 export async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
-  const response = await fetch(dataUrl);
-  return response.blob();
+  const match = dataUrl.match(/^data:([^;,]+)?(?:;base64)?,(.*)$/s);
+  if (!match?.[2]) {
+    throw new Error("Image locale invalide.");
+  }
+
+  const mimeType = (match[1] || "image/jpeg").trim();
+  const base64 = match[2].replace(/\s/g, "");
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index++) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return new Blob([bytes], { type: mimeType });
+}
+
+export async function compressImageBlob(
+  blob: Blob,
+  maxDimension = 2200,
+  quality = 0.88,
+): Promise<Blob> {
+  if (typeof document === "undefined") return blob;
+
+  const bitmap = await createImageBitmap(blob);
+  const largest = Math.max(bitmap.width, bitmap.height);
+  const scale = largest > maxDimension ? maxDimension / largest : 1;
+  const width = Math.max(1, Math.round(bitmap.width * scale));
+  const height = Math.max(1, Math.round(bitmap.height * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+  if (!context) return blob;
+  context.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+
+  const compressed = await new Promise<Blob | null>((resolve) => {
+    canvas.toBlob((value) => resolve(value), "image/jpeg", quality);
+  });
+  if (!compressed) throw new Error("Compression image impossible.");
+  return compressed;
+}
+
+export async function stageQuickImportImageBlobs(
+  blobs: Blob[],
+  authorization: string,
+): Promise<string[]> {
+  const stagedIds: string[] = [];
+
+  for (let index = 0; index < blobs.length; index++) {
+    const compressed = await compressImageBlob(blobs[index]!);
+    const form = new FormData();
+    form.append("file", compressed, `image-${index}.jpg`);
+
+    let res: Response;
+    try {
+      res = await fetch("/api/admin/quick-import/stage-image", {
+        method: "POST",
+        headers: { Authorization: authorization },
+        body: form,
+      });
+    } catch {
+      throw new Error(
+        `Envoi image ${index + 1}/${blobs.length} impossible (réseau).`,
+      );
+    }
+
+    let data: { imageId?: string; message?: string };
+    try {
+      data = (await res.json()) as typeof data;
+    } catch {
+      throw new Error(
+        `Réponse serveur invalide pour l'image ${index + 1} (${res.status}).`,
+      );
+    }
+
+    if (!res.ok || !data.imageId) {
+      throw new Error(
+        data.message ??
+          `Échec envoi image ${index + 1}/${blobs.length} (${res.status}).`,
+      );
+    }
+
+    stagedIds.push(data.imageId);
+  }
+
+  return stagedIds;
 }

@@ -36,6 +36,7 @@ import {
   quickImportImageIdFromRef,
   quickImportImageRef,
   resolveQuickImportImageUrl,
+  stageQuickImportImageBlobs,
 } from "@/lib/quick-import/quick-import-images";
 import { cn } from "@/lib/utils";
 
@@ -534,99 +535,99 @@ export function QuickImportSection({
         const productIndex = products.findIndex((item) => item.id === p.id) + 1;
         setPhase(`Envoi PrestaShop ${i + 1}/${toSend.length} — produit #${productIndex}…`);
 
-        const { remoteUrls, localBlobs } = await resolvePushImages(p.selectedUrls);
-        const itemPayload = {
-          clientId: p.id,
-          name: p.name.trim(),
-          categoryId: asTrimmedString(p.categoryId) || defaultCategoryId,
-          sourceUrl: p.sourceUrl,
-        };
+        try {
+          const { remoteUrls, localBlobs } = await resolvePushImages(p.selectedUrls);
+          const itemPayload = {
+            clientId: p.id,
+            name: p.name.trim(),
+            categoryId: asTrimmedString(p.categoryId) || defaultCategoryId,
+            sourceUrl: p.sourceUrl,
+          };
 
-        let res: Response;
-        if (localBlobs.length > 0) {
-          const form = new FormData();
-          form.append("action", "push");
-          form.append("price", String(numericPrice));
-          form.append("stock", String(numericStock));
-          form.append("item", JSON.stringify(itemPayload));
-          if (remoteUrls.length) {
-            form.append("imageUrls", JSON.stringify(remoteUrls));
-          }
-          localBlobs.forEach((blob, index) => {
-            form.append(`image_${index}`, blob, `image-${index}.jpg`);
-          });
-          res = await fetch("/api/admin/quick-import", {
-            method: "POST",
-            headers: { Authorization: `Bearer ${secret}` },
-            body: form,
-          });
-        } else {
-          res = await fetch("/api/admin/quick-import", {
+          const authHeader = `Bearer ${secret}`;
+          const stagedImageIds =
+            localBlobs.length > 0
+              ? await stageQuickImportImageBlobs(localBlobs, authHeader)
+              : [];
+
+          const res = await fetch("/api/admin/quick-import", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${secret}`,
+              Authorization: authHeader,
             },
             body: JSON.stringify({
               action: "push",
               price: numericPrice,
               stock: numericStock,
+              stagedImageIds,
               item: {
                 ...itemPayload,
                 imageUrls: remoteUrls,
               },
             }),
           });
-        }
 
-        let data: {
-          ok?: boolean;
-          message?: string;
-          result?: {
-            ok: boolean;
-            productId?: string;
-            error?: string;
+          let data: {
+            ok?: boolean;
+            message?: string;
+            result?: {
+              ok: boolean;
+              productId?: string;
+              error?: string;
+            };
           };
-        };
 
-        try {
-          data = (await res.json()) as typeof data;
-        } catch {
+          try {
+            data = (await res.json()) as typeof data;
+          } catch {
+            updateProduct(p.id, {
+              pushResult: {
+                ok: false,
+                error:
+                  res.status === 413
+                    ? "Images trop volumineuses pour le serveur."
+                    : `Réponse serveur invalide (${res.status}).`,
+              },
+            });
+            failCount++;
+            continue;
+          }
+
+          if (!res.ok && !data.result) {
+            updateProduct(p.id, {
+              pushResult: {
+                ok: false,
+                error: data.message ?? `Erreur serveur (${res.status}).`,
+              },
+            });
+            failCount++;
+            continue;
+          }
+
+          const result = data.result;
+          updateProduct(p.id, {
+            pushResult: {
+              ok: result?.ok ?? false,
+              productId: result?.productId,
+              error: result?.error ?? data.message,
+            },
+          });
+
+          if (result?.ok) okCount++;
+          else failCount++;
+        } catch (productErr) {
           updateProduct(p.id, {
             pushResult: {
               ok: false,
               error:
-                res.status === 413
-                  ? "Images trop volumineuses pour le serveur."
-                  : `Réponse serveur invalide (${res.status}).`,
+                productErr instanceof Error
+                  ? productErr.message
+                  : "Envoi échoué pour ce produit.",
             },
           });
           failCount++;
-          continue;
         }
-
-        if (!res.ok && !data.result) {
-          updateProduct(p.id, {
-            pushResult: {
-              ok: false,
-              error: data.message ?? `Erreur serveur (${res.status}).`,
-            },
-          });
-          failCount++;
-          continue;
-        }
-
-        const result = data.result;
-        updateProduct(p.id, {
-          pushResult: {
-            ok: result?.ok ?? false,
-            productId: result?.productId,
-            error: result?.error ?? data.message,
-          },
-        });
-
-        if (result?.ok) okCount++;
-        else failCount++;
       }
 
       if (failCount > 0) {
