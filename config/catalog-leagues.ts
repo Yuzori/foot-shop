@@ -112,7 +112,9 @@ function buildMaillotSpecialCatalogLeagues(): CatalogLeague[] {
   const retroAdultId =
     importExtraCategories.maillotRetro ||
     envFirst("NEXT_PUBLIC_MAILLOT_RETRO_CATEGORY_ID");
-  const resteDuMondeId = importExtraCategories.resteDuMonde;
+  const resteDuMondeId =
+    importExtraCategories.resteDuMonde ||
+    envFirst("NEXT_PUBLIC_MAILLOT_RESTE_MONDE_CATEGORY_ID");
 
   const conceptKidsId =
     importKidsExtraCategories.maillotConcept ||
@@ -122,6 +124,7 @@ function buildMaillotSpecialCatalogLeagues(): CatalogLeague[] {
     envFirst("NEXT_PUBLIC_ENFANT_MAILLOT_RETRO_CATEGORY_ID");
 
   const resteKidsId =
+    importKidsExtraCategories.resteDuMonde ||
     envFirst("NEXT_PUBLIC_ENFANT_MAILLOT_RESTE_MONDE_CATEGORY_ID");
 
   const leagues: CatalogLeague[] = [
@@ -141,17 +144,14 @@ function buildMaillotSpecialCatalogLeagues(): CatalogLeague[] {
       categoryId: retroAdultId || undefined,
       kidsCategoryId: retroKidsId || undefined,
     },
-  ];
-
-  if (resteDuMondeId) {
-    leagues.push({
+    {
       id: "reste-du-monde",
       label: "Le reste du monde",
       icon: "/leagues/selections.png",
-      categoryId: resteDuMondeId,
+      categoryId: resteDuMondeId || undefined,
       kidsCategoryId: resteKidsId || undefined,
-    });
-  }
+    },
+  ];
 
   return leagues;
 }

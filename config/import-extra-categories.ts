@@ -11,7 +11,10 @@ function envFirst(...keys: string[]): string {
  * Renseignez les IDs après création SQL, ou laissez vide pour détection par nom.
  */
 export const importExtraCategories = {
-  resteDuMonde: envFirst("PRODUCT_IMPORT_RESTE_MONDE_CATEGORY_ID"),
+  resteDuMonde: envFirst(
+    "PRODUCT_IMPORT_RESTE_MONDE_CATEGORY_ID",
+    "NEXT_PUBLIC_MAILLOT_RESTE_MONDE_CATEGORY_ID",
+  ),
   maillotConcept: envFirst(
     "PRODUCT_IMPORT_MAILLOT_CONCEPT_CATEGORY_ID",
     "PRODUCT_IMPORT_MYOCONCEPT_CATEGORY_ID",
