@@ -10,7 +10,6 @@ import { Container } from "@/components/ui/container";
 import {
   buildJerseyLeagueHref,
   buildShortsCatalogHref,
-  catalogLeagues,
   type CatalogKind,
 } from "@/config/catalog-leagues";
 import { routes } from "@/config/site";
@@ -184,7 +183,7 @@ export function CatalogHub() {
               </div>
 
               <ul className="mt-8 space-y-2">
-                {catalogLeagues.map((league, index) => (
+                {catalogNav.leagues.map((league, index) => (
                   <motion.li
                     key={league.id}
                     initial={{ opacity: 0, y: 8 }}
@@ -203,6 +202,7 @@ export function CatalogHub() {
                         src={league.icon}
                         label={league.label}
                         useInitials={league.useInitials}
+                        initials={league.initials}
                       />
                       <span className="flex-1 text-left font-semibold tracking-tight">
                         {league.label}

@@ -9,7 +9,7 @@ import { LeagueIcon } from "@/components/layout/league-icon";
 import {
   buildJerseyLeagueHref,
   buildShortsCatalogHref,
-  catalogLeagues,
+  type CatalogLeague,
   type CatalogNavCategories,
 } from "@/config/catalog-leagues";
 import { CloseIcon, HeartIcon, TrophyIcon } from "@/components/layout/icons";
@@ -155,6 +155,7 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
                   kind="jersey"
                   categories={catalogNav.categories}
                   allCategories={catalogNav.allCategories}
+                  leagues={catalogNav.leagues}
                   onClose={onClose}
                 />
                 <MobileCatalogGroup
@@ -205,15 +206,18 @@ function MobileCatalogGroup({
   kind,
   categories,
   allCategories = [],
+  leagues,
   onClose,
 }: {
   label: string;
   kind: "jersey" | "short";
   categories: CatalogNavCategories;
   allCategories?: import("@/types/domain").Category[];
+  leagues?: CatalogLeague[];
   onClose: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const jerseyLeagues = leagues ?? [];
 
   if (kind === "short") {
     return (
@@ -253,7 +257,7 @@ function MobileCatalogGroup({
             className="overflow-hidden"
           >
             <ul className="space-y-2 pb-4 pl-1">
-              {catalogLeagues.map((league) => (
+              {jerseyLeagues.map((league) => (
                 <li key={league.id}>
                   <Link
                     href={buildJerseyLeagueHref(
@@ -268,6 +272,7 @@ function MobileCatalogGroup({
                       src={league.icon}
                       label={league.label}
                       useInitials={league.useInitials}
+                      initials={league.initials}
                     />
                     {league.label}
                   </Link>

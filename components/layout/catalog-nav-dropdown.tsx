@@ -2,12 +2,12 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { LeagueIcon } from "@/components/layout/league-icon";
 import {
   buildJerseyLeagueHref,
-  catalogLeagues,
+  resolveCatalogLeagues,
   type CatalogNavCategories,
 } from "@/config/catalog-leagues";
 import { cn } from "@/lib/utils";
@@ -46,6 +46,10 @@ export function CatalogNavDropdown({
 }: CatalogNavDropdownProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const leagues = useMemo(
+    () => resolveCatalogLeagues(allCategories, categories),
+    [allCategories, categories],
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -102,7 +106,7 @@ export function CatalogNavDropdown({
             <div className="p-3">
               <motion.div key="leagues" {...listMotion}>
                 <ul className="max-h-72 space-y-1 overflow-y-auto">
-                  {catalogLeagues.map((league, index) => (
+                  {leagues.map((league, index) => (
                     <motion.li
                       key={league.id}
                       initial={{ opacity: 0, x: 10 }}
@@ -126,6 +130,7 @@ export function CatalogNavDropdown({
                           src={league.icon}
                           label={league.label}
                           useInitials={league.useInitials}
+                          initials={league.initials}
                         />
                         <span className="font-medium transition-transform group-hover:translate-x-0.5">
                           {league.label}

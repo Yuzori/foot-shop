@@ -127,12 +127,27 @@ export async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
 
   const mimeType = (match[1] || "image/jpeg").trim();
   const base64 = match[2].replace(/\s/g, "");
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index++) {
-    bytes[index] = binary.charCodeAt(index);
+  const bytes = base64ToUint8Array(base64);
+  return new Blob([bytes as BlobPart], { type: mimeType });
+}
+
+function base64ToUint8Array(base64: string): Uint8Array {
+  const padding = base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0;
+  const byteLength = Math.floor((base64.length * 3) / 4) - padding;
+  const bytes = new Uint8Array(byteLength);
+
+  const chunkChars = 4 * 16_384;
+  let byteOffset = 0;
+
+  for (let index = 0; index < base64.length; index += chunkChars) {
+    const slice = base64.slice(index, index + chunkChars);
+    const binary = atob(slice);
+    for (let charIndex = 0; charIndex < binary.length; charIndex++) {
+      bytes[byteOffset++] = binary.charCodeAt(charIndex);
+    }
   }
-  return new Blob([bytes], { type: mimeType });
+
+  return bytes;
 }
 
 export async function compressImageBlob(
@@ -141,26 +156,38 @@ export async function compressImageBlob(
   quality = 0.88,
 ): Promise<Blob> {
   if (typeof document === "undefined") return blob;
+  if (!blob.type.startsWith("image/")) return blob;
 
-  const bitmap = await createImageBitmap(blob);
-  const largest = Math.max(bitmap.width, bitmap.height);
-  const scale = largest > maxDimension ? maxDimension / largest : 1;
-  const width = Math.max(1, Math.round(bitmap.width * scale));
-  const height = Math.max(1, Math.round(bitmap.height * scale));
+  let bitmap: ImageBitmap | null = null;
+  try {
+    bitmap = await createImageBitmap(blob);
+  } catch {
+    return blob;
+  }
 
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const context = canvas.getContext("2d");
-  if (!context) return blob;
-  context.drawImage(bitmap, 0, 0, width, height);
-  bitmap.close();
+  try {
+    const largest = Math.max(bitmap.width, bitmap.height);
+    const scale = largest > maxDimension ? maxDimension / largest : 1;
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
 
-  const compressed = await new Promise<Blob | null>((resolve) => {
-    canvas.toBlob((value) => resolve(value), "image/jpeg", quality);
-  });
-  if (!compressed) throw new Error("Compression image impossible.");
-  return compressed;
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+    if (!context) return blob;
+    context.drawImage(bitmap, 0, 0, width, height);
+
+    const compressed = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob((value) => resolve(value), "image/jpeg", quality);
+    });
+    if (!compressed || compressed.size >= blob.size) return blob;
+    return compressed;
+  } catch {
+    return blob;
+  } finally {
+    bitmap.close();
+  }
 }
 
 export async function stageQuickImportImageBlobs(

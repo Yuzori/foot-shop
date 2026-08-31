@@ -21,6 +21,8 @@ export interface CatalogLeague {
   icon: string;
   /** Initiales grises à la place du logo (Maillot Concept, Retro…). */
   useInitials?: boolean;
+  /** Initiales affichées (sinon dérivées du label). */
+  initials?: string;
   categoryId?: string;
   /** Sous-catégorie enfant directe (ex. Maillot - Enfant > Maillot Concept). */
   kidsCategoryId?: string;
@@ -147,7 +149,9 @@ function buildMaillotSpecialCatalogLeagues(): CatalogLeague[] {
     {
       id: "reste-du-monde",
       label: "Le reste du monde",
-      icon: "/leagues/selections.png",
+      icon: "",
+      useInitials: true,
+      initials: "RDM",
       categoryId: resteDuMondeId || undefined,
       kidsCategoryId: resteKidsId || undefined,
     },
@@ -177,6 +181,47 @@ export const catalogLeagues: CatalogLeague[] = [
   { id: "selections", label: "Sélections", icon: "/leagues/selections.png", categoryId: DIVISION_CATEGORY_IDS.selections?.adult, kidsCategoryId: DIVISION_CATEGORY_IDS.selections?.kids },
   ...buildMaillotSpecialCatalogLeagues(),
 ];
+
+/** Complète les IDs PrestaShop manquants via détection par nom (navigation fiable). */
+export function resolveCatalogLeagues(
+  allCategories: readonly {
+    id: string;
+    name: string;
+    parentId?: string | null;
+  }[],
+  nav: CatalogNavCategories,
+): CatalogLeague[] {
+  const adultBase = nav.maillotsCategoryId;
+  const kidsBase = nav.kidsMaillotsCategoryId;
+
+  if (!allCategories.length) return catalogLeagues;
+
+  return catalogLeagues.map((league) => {
+    const division = catalogDivisionFromLeague(league);
+    let categoryId = league.categoryId;
+    let kidsCategoryId = league.kidsCategoryId;
+
+    if (!categoryId && adultBase) {
+      categoryId =
+        findAdultDivisionCategoryId(allCategories, adultBase, division) ||
+        undefined;
+    }
+    if (!kidsCategoryId && kidsBase) {
+      kidsCategoryId =
+        findKidsDivisionCategoryId(allCategories, kidsBase, division) ||
+        undefined;
+    }
+
+    if (
+      categoryId === league.categoryId &&
+      kidsCategoryId === league.kidsCategoryId
+    ) {
+      return league;
+    }
+
+    return { ...league, categoryId, kidsCategoryId };
+  });
+}
 
 export function buildCatalogHref(
   kind: CatalogKind,

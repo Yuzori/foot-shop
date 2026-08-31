@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { catalogLeagues } from "@/config/catalog-leagues";
+import { resolveCatalogLeagues } from "@/config/catalog-leagues";
 import {
   catalogDivisionFromLeague,
   findAdultDivisionCategoryId,
@@ -68,7 +68,9 @@ export async function GET(
   }
 
   if (leagueParam) {
-    const league = catalogLeagues.find((item) => item.id === leagueParam);
+    const league = resolveCatalogLeagues(allCategories, nav).find(
+      (item) => item.id === leagueParam,
+    );
     if (league) {
       const division = catalogDivisionFromLeague(league);
       const kidsBase =

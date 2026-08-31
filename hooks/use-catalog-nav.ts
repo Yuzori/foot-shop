@@ -3,7 +3,10 @@
 import { useMemo } from "react";
 
 import { catalogConfig } from "@/config/catalog";
-import { buildShortsCatalogHref } from "@/config/catalog-leagues";
+import {
+  buildShortsCatalogHref,
+  resolveCatalogLeagues,
+} from "@/config/catalog-leagues";
 import { routes } from "@/config/site";
 import { useCategories } from "@/hooks/use-categories";
 import { resolveCatalogNavCategories } from "@/lib/resolve-catalog-nav";
@@ -21,6 +24,7 @@ export function useCatalogNav() {
       isLoading,
       allCategories: categories,
       categories: navCategories,
+      leagues: resolveCatalogLeagues(categories, navCategories),
       maillots: {
         label: catalogConfig.maillots.label,
         categoryId: maillotsId,
