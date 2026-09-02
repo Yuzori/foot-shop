@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { paymentConfig } from "@/config/payment";
+import { cancelUnpaidPrestaShopOrder } from "@/lib/cancel-unpaid-order";
 import { getOrderArchiveByReference } from "@/lib/order-archive-store";
 import { hasOrderBeenFulfilled } from "@/lib/order-fulfillment-store";
 import {
@@ -52,6 +53,10 @@ export async function GET(request: Request) {
 
     const state: CheckoutPaymentState =
       status.state === "paid" || fulfilled ? "paid" : status.state;
+
+    if (state === "failed" && status.orderId && status.reference) {
+      await cancelUnpaidPrestaShopOrder(status.orderId, status.reference);
+    }
 
     return NextResponse.json({
       state,

@@ -2,11 +2,8 @@ import { NextResponse } from "next/server";
 
 import { getCheckoutBaseUrl } from "@/lib/site-url";
 import { paymentConfig } from "@/config/payment";
-import { welcomePromo } from "@/config/promotions";
-import { getSession } from "@/lib/auth";
-import { countPaidOrdersForCheckout } from "@/lib/customer-order-history";
 import { placeOrder, type CheckoutBody } from "@/lib/orders";
-import { isWelcomePromoEligible } from "@/lib/welcome-promo-store";
+import { attachStripeSessionToPending } from "@/lib/checkout-pending-store";
 import { getStripe } from "@/lib/stripe-server";
 import { getOrCreateStripeCustomer } from "@/lib/stripe-customer";
 import { ensureStripePaymentMethodDomains } from "@/lib/stripe-payment-domains";
@@ -18,7 +15,6 @@ import {
   validateStripeSiteUrl,
 } from "@/lib/stripe-keys";
 import { calculateWelcomeBogo } from "@/lib/welcome-bogo";
-import { validatePromoCodeForCheckout } from "@/lib/validate-promo-code";
 
 export const runtime = "nodejs";
 
@@ -92,67 +88,30 @@ async function handleStripeSession(request: Request) {
   const ref = order.reference ?? "";
   const returnUrl = `${base}/paiement/succes?ref=${encodeURIComponent(ref)}&session_id={CHECKOUT_SESSION_ID}`;
 
-  const authSession = await getSession();
-  let bogoApplied = false;
-  let bogoDiscount = 0;
-  let freeUnits = 0;
-  let chargeLines = serverLines.map((line) => ({
+  const chargeLines = serverLines.map((line) => ({
     name: line.name || "Article",
     unitPrice: line.unitPrice,
     quantity: line.quantity,
   }));
-
-  const paidOrders = await countPaidOrdersForCheckout({
-    email: body.contact.email,
-    customerId: order.customerId,
-  });
-
-  const promoEligible =
-    welcomePromo.enabled &&
-    authSession?.id &&
-    order.customerId &&
-    String(authSession.id) === String(order.customerId) &&
-    paidOrders === 0 &&
-    (await isWelcomePromoEligible(String(authSession.id)));
-
-  if (promoEligible) {
-    const bogo = calculateWelcomeBogo(chargeLines);
-    if (bogo.applied) {
-      bogoApplied = true;
-      bogoDiscount = bogo.discountTotal;
-      freeUnits = bogo.freeUnits;
-      chargeLines = bogo.adjustedLines.map((line) => ({
-        ...line,
-        name: `${line.name} (${welcomePromo.shortLabel})`,
-      }));
-    }
-  }
+  const bogoApplied = Boolean(order.bogoApplied);
+  const bogoDiscount = order.bogoDiscount ?? 0;
+  const freeUnits = bogoApplied
+    ? calculateWelcomeBogo(
+        body.items.map((item) => ({
+          name: item.name,
+          unitPrice: item.unitPrice,
+          quantity: item.quantity,
+        })),
+      ).freeUnits
+    : 0;
 
   const shippingFee = order.shippingFee ?? 0;
   const productsSubtotal = chargeLines.reduce(
     (sum, line) => sum + line.unitPrice * line.quantity,
     0,
   );
-  const promoValidation = await validatePromoCodeForCheckout({
-    code: body.promoCode,
-    email: body.contact.email,
-    customerId: order.customerId,
-    subtotal: productsSubtotal,
-  });
-  if (body.promoCode?.trim() && promoValidation && !promoValidation.valid) {
-    return NextResponse.json({ message: promoValidation.message }, { status: 400 });
-  }
-  const promo =
-    promoValidation?.valid === true
-      ? {
-          valid: true as const,
-          code: promoValidation.code,
-          percent: promoValidation.percent,
-          label: promoValidation.label,
-        }
-      : null;
-  const promoDiscount =
-    promoValidation?.valid === true ? promoValidation.discount : 0;
+  const promoDiscount = order.promoDiscount ?? 0;
+  const promoCode = order.promoCode ?? null;
 
   const stripeLineItems = chargeLines.map((it) => ({
     quantity: it.quantity,
@@ -178,7 +137,7 @@ async function handleStripeSession(request: Request) {
     });
   }
 
-  if (promoDiscount > 0) {
+  if (promoDiscount > 0 && promoCode) {
     const subtotal = chargeLines.reduce(
       (sum, line) => sum + line.unitPrice * line.quantity,
       0,
@@ -199,7 +158,7 @@ async function handleStripeSession(request: Request) {
       item.price_data.unit_amount = Math.round(
         (newTotal / line.quantity) * 100,
       );
-      item.price_data.product_data.name = `${line.name} (${promo!.code})`;
+      item.price_data.product_data.name = `${line.name} (${promoCode})`;
     }
   }
 
@@ -210,7 +169,7 @@ async function handleStripeSession(request: Request) {
   await ensureStripePaymentMethodDomains();
   const stripeCustomerId = await getOrCreateStripeCustomer({
     email: body.contact.email,
-    customerId: order.customerId ?? authSession?.id,
+    customerId: order.customerId,
     firstName: body.contact.firstName,
     lastName: body.contact.lastName,
   });
@@ -240,7 +199,7 @@ async function handleStripeSession(request: Request) {
         welcomePromo: bogoApplied ? "1" : "",
         expectedTotalCents: String(expectedTotalCents),
         bogoFreeUnits: bogoApplied ? String(freeUnits) : "",
-        promoCode: promo?.valid ? promo.code : "",
+        promoCode: promoCode ?? "",
         promoDiscountCents: promoDiscount > 0 ? String(Math.round(promoDiscount * 100)) : "",
         shippingCents: String(Math.round(shippingFee * 100)),
       },
@@ -253,6 +212,8 @@ async function handleStripeSession(request: Request) {
         { status: 502 },
       );
     }
+
+    await attachStripeSessionToPending(ref, session.id);
 
     return NextResponse.json({
       clientSecret: session.client_secret,
@@ -267,7 +228,7 @@ async function handleStripeSession(request: Request) {
       shippingFee,
       shippingLabel: order.shippingLabel,
       promoDiscount,
-      promoCode: promo?.valid ? promo.code : null,
+      promoCode: promoCode,
       paymentMethodTypes,
       paymentMethodConfiguration,
     });

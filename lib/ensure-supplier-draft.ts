@@ -1,7 +1,7 @@
 import "server-only";
 
 import { buildBbdBuyOrderDraftFromArchive } from "@/lib/bbdbuy/build-draft";
-import { getOrderArchiveByReference, listOrderArchives } from "@/lib/order-archive-store";
+import { getOrderArchiveByReference, listPaidOrderArchives } from "@/lib/order-archive-store";
 import { notifySupplierOfOrder } from "@/lib/supplier-order";
 import { getSupplierOrderDraft, saveSupplierOrderDraft } from "@/lib/supplier-order-store";
 import { sendBbdBuyOperatorEmail } from "@/lib/supplier-order-email";
@@ -62,7 +62,7 @@ export async function ensureSupplierDraftFromArchiveReference(
 
 /** Répare les commandes payées absentes des commandes récentes (admin). */
 export async function syncMissingSupplierDrafts(limit = 80): Promise<number> {
-  const archives = await listOrderArchives(limit);
+  const archives = await listPaidOrderArchives(limit);
   let created = 0;
 
   for (const record of archives) {

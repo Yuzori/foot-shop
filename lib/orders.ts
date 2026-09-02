@@ -15,11 +15,17 @@ import {
   validateCheckoutPhone,
 } from "@/lib/checkout-contact-validation";
 import { verifyEmailDeliverability } from "@/lib/verify-email-deliverability";
-import { archiveOrder } from "@/lib/order-archive-store";
-import { backupFromArchive } from "@/lib/order-backup-store";
+import {
+  saveCheckoutPending,
+  type CheckoutPendingRecord,
+} from "@/lib/checkout-pending-store";
 import { validatePromoCodeForCheckout } from "@/lib/validate-promo-code";
 import { resolveCartLines } from "@/lib/resolve-cart-lines";
 import { resolveShippingFee } from "@/lib/shipping-fee";
+import { welcomePromo } from "@/config/promotions";
+import { countPaidOrdersForCheckout } from "@/lib/customer-order-history";
+import { isWelcomePromoEligible } from "@/lib/welcome-promo-store";
+import { calculateWelcomeBogo } from "@/lib/welcome-bogo";
 import { prestashop } from "@/services/prestashop";
 
 import type { CreateOrderLine } from "@/services/prestashop";
@@ -74,6 +80,10 @@ export interface PlaceOrderResult {
   promoDiscount?: number;
 
   promoCode?: string | null;
+
+  bogoDiscount?: number;
+
+  bogoApplied?: boolean;
 
   message?: string;
 
@@ -219,6 +229,89 @@ async function validateCheckoutLines(
   return resolveCartLines(lines);
 }
 
+function distributePromoDiscountAcrossLines(
+  lines: CreateOrderLine[],
+  promoDiscount: number,
+): CreateOrderLine[] {
+  if (promoDiscount <= 0) return lines;
+
+  const subtotal = lines.reduce(
+    (sum, line) => sum + line.unitPrice * line.quantity,
+    0,
+  );
+  if (subtotal <= 0) return lines;
+
+  let remaining = promoDiscount;
+  return lines.map((line, index) => {
+    const lineTotal = line.unitPrice * line.quantity;
+    const share =
+      index === lines.length - 1
+        ? remaining
+        : Math.round(((promoDiscount * lineTotal) / subtotal) * 100) / 100;
+    remaining -= share;
+    if (share <= 0) return line;
+
+    const newTotal = Math.max(0.01, lineTotal - share);
+    return {
+      ...line,
+      unitPrice: Math.round((newTotal / line.quantity) * 100) / 100,
+    };
+  });
+}
+
+async function applyWelcomeBogoToLines(
+  lines: CreateOrderLine[],
+  customerId: string,
+  email: string,
+): Promise<{
+  lines: CreateOrderLine[];
+  bogoDiscount: number;
+  bogoApplied: boolean;
+}> {
+  if (!welcomePromo.enabled) {
+    return { lines, bogoDiscount: 0, bogoApplied: false };
+  }
+
+  const session = await getSession();
+  const sessionId = session?.id ? String(session.id) : "";
+  const paidOrders = await countPaidOrdersForCheckout({ email, customerId });
+  const eligible =
+    Boolean(sessionId) &&
+    sessionId === String(customerId) &&
+    paidOrders === 0 &&
+    (await isWelcomePromoEligible(sessionId));
+
+  if (!eligible) {
+    return { lines, bogoDiscount: 0, bogoApplied: false };
+  }
+
+  const bogoInput = lines.map((line) => ({
+    name: line.name ?? `Produit #${line.productId}`,
+    unitPrice: line.unitPrice,
+    quantity: line.quantity,
+  }));
+  const bogo = calculateWelcomeBogo(bogoInput);
+  if (!bogo.applied) {
+    return { lines, bogoDiscount: 0, bogoApplied: false };
+  }
+
+  const adjusted = lines.map((line, index) => {
+    const priced = bogo.adjustedLines[index];
+    if (!priced) return line;
+    return {
+      ...line,
+      unitPrice: priced.unitPrice,
+      name: `${line.name ?? priced.name} (${welcomePromo.shortLabel})`,
+    };
+  });
+
+  return {
+    lines: adjusted,
+    bogoDiscount: bogo.discountTotal,
+    bogoApplied: true,
+  };
+}
+
 
 
 /**
@@ -348,7 +441,12 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
 
   }
 
-
+  const bogoResult = await applyWelcomeBogoToLines(
+    resolvedLines,
+    customerId,
+    contact.email,
+  );
+  let orderLines = bogoResult.lines;
 
   const normalizedAddress = {
     address1: address.address1.trim(),
@@ -358,16 +456,7 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
     country: address.country?.trim() || "France",
   };
 
-  const note = buildOrderNote(resolvedLines);
-
-  const itemCount = resolvedLines.reduce((sum, line) => sum + line.quantity, 0);
-  const shipping = await resolveShippingFee({
-    email: contact.email,
-    customerId,
-    itemCount,
-  });
-
-  const subtotal = resolvedLines.reduce(
+  const subtotal = orderLines.reduce(
     (sum, line) => sum + line.unitPrice * line.quantity,
     0,
   );
@@ -396,6 +485,24 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
   const promoDiscount =
     promoValidation?.valid === true ? promoValidation.discount : 0;
 
+  if (promoDiscount > 0) {
+    orderLines = distributePromoDiscountAcrossLines(orderLines, promoDiscount);
+  }
+
+  const note = buildOrderNote(orderLines);
+
+  const itemCount = orderLines.reduce((sum, line) => sum + line.quantity, 0);
+  const shipping = await resolveShippingFee({
+    email: contact.email,
+    customerId,
+    itemCount,
+  });
+
+  const pricedSubtotal = orderLines.reduce(
+    (sum, line) => sum + line.unitPrice * line.quantity,
+    0,
+  );
+
   const result = await (async () => {
     let lastError: string | null = null;
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -404,7 +511,7 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
         secureKey,
         contact,
         address: normalizedAddress,
-        lines: resolvedLines,
+        lines: orderLines,
         note,
         shippingFee: shipping.fee,
       });
@@ -440,37 +547,32 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
 
 
 
-  const archiveId = `ord-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
-  const total = Math.max(0, subtotal - promoDiscount + shipping.fee);
+  const pendingId = `ord-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
+  const total = Math.max(0, pricedSubtotal + shipping.fee);
 
-  const archiveRecord = {
-    id: archiveId,
-    reference: result.reference ?? archiveId,
-    orderId: result.orderId,
+  const pendingRecord: CheckoutPendingRecord = {
+    id: pendingId,
+    reference: result.reference ?? pendingId,
+    orderId: result.orderId ?? "",
     customerId,
     createdAt: new Date().toISOString(),
-    paidAt: null,
-    status: "created" as const,
     contact,
     address: normalizedAddress,
-    lines: resolvedLines,
-    subtotal,
+    lines: orderLines,
+    subtotal: pricedSubtotal,
     shippingFee: shipping.fee,
     promoCode: promo?.valid ? promo.code : null,
     promoDiscount,
+    bogoDiscount: bogoResult.bogoDiscount,
+    bogoApplied: bogoResult.bogoApplied,
     total,
     currency: "EUR",
     note: note || undefined,
-    source: "checkout" as const,
-    stockReserved: false,
+    stripeSessionId: null,
   };
 
-  await archiveOrder(archiveRecord).catch((err) => {
-    console.error("[placeOrder] archive failed", err);
-  });
-
-  await backupFromArchive("created", archiveRecord).catch((err) => {
-    console.error("[placeOrder] backup failed", err);
+  await saveCheckoutPending(pendingRecord).catch((err) => {
+    console.error("[placeOrder] pending checkout save failed", err);
   });
 
   return {
@@ -485,7 +587,7 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
 
     customerId,
 
-    lines: resolvedLines,
+    lines: orderLines,
 
     shippingFee: shipping.fee,
 
@@ -495,8 +597,11 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
 
     promoCode: promo?.valid ? promo.code : null,
 
-  };
+    bogoDiscount: bogoResult.bogoDiscount,
 
+    bogoApplied: bogoResult.bogoApplied,
+
+  };
 }
 
 

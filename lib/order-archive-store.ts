@@ -97,6 +97,19 @@ export async function listOrderArchives(limit = 500): Promise<OrderArchiveRecord
   return index.slice(0, limit);
 }
 
+/** Historique admin : commandes réellement payées uniquement. */
+export async function listPaidOrderArchives(limit = 500): Promise<OrderArchiveRecord[]> {
+  const index = await readIndex();
+  return index
+    .filter(
+      (record) =>
+        record.status === "paid" ||
+        record.status === "test" ||
+        Boolean(record.paidAt),
+    )
+    .slice(0, limit);
+}
+
 export async function getOrderArchive(id: string): Promise<OrderArchiveRecord | null> {
   try {
     const raw = await fs.readFile(fileFor(id), "utf8");
