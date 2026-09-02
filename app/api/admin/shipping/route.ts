@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
 import { mailConfig } from "@/config/mail";
-import { ensureAdminDataReset } from "@/lib/admin-data-wipe";
 import { backupFromArchive } from "@/lib/order-backup-store";
 import { getOrderArchiveByReference } from "@/lib/order-archive-store";
 import {
@@ -30,7 +29,6 @@ export async function GET(request: Request) {
   if (!isAuthorized(request)) {
     return NextResponse.json({ message: "unauthorized" }, { status: 401 });
   }
-  await ensureAdminDataReset();
   const items = await listOrderShipping();
   return NextResponse.json({ items });
 }

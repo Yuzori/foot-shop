@@ -310,6 +310,7 @@ function OrderArchiveSection({ secret }: { secret: string }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [recoveringRef, setRecoveringRef] = useState<string | null>(null);
+  const [restoring, setRestoring] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -364,14 +365,56 @@ function OrderArchiveSection({ secret }: { secret: string }) {
     }
   }
 
+  async function restoreFromBackup() {
+    if (
+      !window.confirm(
+        "Restaurer toutes les commandes payées depuis le journal de sauvegarde ?",
+      )
+    ) {
+      return;
+    }
+    setRestoring(true);
+    setNotice(null);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/order-backup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${secret}`,
+        },
+        body: JSON.stringify({ action: "restore_archives" }),
+      });
+      const data = (await res.json()) as {
+        restored?: number;
+        references?: string[];
+        message?: string;
+      };
+      if (!res.ok) throw new Error(data.message ?? "Restauration impossible.");
+      setNotice(
+        data.restored
+          ? `${data.restored} commande(s) restaurée(s) : ${(data.references ?? []).join(", ")}`
+          : "Aucune commande à restaurer (déjà présentes ou absentes du journal).",
+      );
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Restauration impossible.");
+    } finally {
+      setRestoring(false);
+    }
+  }
+
   async function removeRow(id: string, reference: string) {
     if (!window.confirm(`Supprimer ${reference} de l'historique ?`)) return;
     setDeletingId(id);
     try {
-      const res = await fetch(`/api/admin/order-archive?id=${encodeURIComponent(id)}`, {
+      const res = await fetch(
+        `/api/admin/order-archive?id=${encodeURIComponent(id)}&reference=${encodeURIComponent(reference)}`,
+        {
         method: "DELETE",
         headers: { Authorization: `Bearer ${secret}` },
-      });
+        },
+      );
       if (!res.ok) throw new Error("Échec");
       await load();
     } catch {
@@ -393,6 +436,15 @@ function OrderArchiveSection({ secret }: { secret: string }) {
         </div>
         <Button type="button" variant="outline" size="sm" onClick={() => void load()}>
           Actualiser
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={restoring}
+          onClick={() => void restoreFromBackup()}
+        >
+          {restoring ? <Spinner className="h-3 w-3" /> : "Restaurer sauvegarde"}
         </Button>
       </div>
 

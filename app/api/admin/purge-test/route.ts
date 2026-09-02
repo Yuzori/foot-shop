@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 
-import { ensureAdminDataReset } from "@/lib/admin-data-wipe";
 import { isAdminAuthorized } from "@/lib/admin-auth";
 import { purgeAllOrderArchives } from "@/lib/order-archive-store";
 import { purgeAllShippingEntries } from "@/lib/order-shipping-store";

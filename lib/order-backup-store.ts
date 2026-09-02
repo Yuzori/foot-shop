@@ -116,13 +116,18 @@ export async function backupFromArchive(
 export async function listRecentOrderBackups(
   limit = 100,
 ): Promise<OrderBackupEntry[]> {
+  const all = await readAllOrderBackups();
+  return all.slice(-limit).reverse();
+}
+
+export async function readAllOrderBackups(): Promise<OrderBackupEntry[]> {
   try {
     const raw = await fs.readFile(LEDGER_FILE, "utf8");
-    const lines = raw.trim().split("\n").filter(Boolean);
-    return lines
-      .slice(-limit)
-      .map((line) => JSON.parse(line) as OrderBackupEntry)
-      .reverse();
+    return raw
+      .trim()
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as OrderBackupEntry);
   } catch {
     return [];
   }

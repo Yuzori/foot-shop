@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
 import { isAdminAuthorized } from "@/lib/admin-auth";
-import { ensureAdminDataReset } from "@/lib/admin-data-wipe";
 import {
   deleteOrderArchive,
   getOrderArchive,
@@ -23,8 +22,6 @@ export async function GET(request: Request) {
     }
     return NextResponse.json({ record });
   }
-
-  await ensureAdminDataReset();
 
   const limit = Math.min(
     1000,
@@ -54,12 +51,14 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ message: "Non autorisé." }, { status: 401 });
   }
 
-  const id = new URL(request.url).searchParams.get("id")?.trim();
+  const url = new URL(request.url);
+  const id = url.searchParams.get("id")?.trim();
+  const reference = url.searchParams.get("reference")?.trim();
   if (!id) {
     return NextResponse.json({ message: "id_required" }, { status: 400 });
   }
 
-  const ok = await deleteOrderArchive(id);
+  const ok = await deleteOrderArchive(id, reference);
   if (!ok) {
     return NextResponse.json({ message: "not_found" }, { status: 404 });
   }

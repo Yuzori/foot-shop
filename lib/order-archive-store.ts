@@ -161,11 +161,18 @@ export async function purgeAllOrderArchives(): Promise<{ removed: number }> {
   return { removed: index.length };
 }
 
-export async function deleteOrderArchive(id: string): Promise<boolean> {
+export async function deleteOrderArchive(
+  id: string,
+  reference?: string,
+): Promise<boolean> {
   const index = await readIndex();
-  const hit = index.find((r) => r.id === id);
+  const hit = index.find((record) => {
+    if (record.id !== id) return false;
+    if (reference && record.reference !== reference) return false;
+    return true;
+  });
   if (!hit) return false;
   await fs.unlink(fileFor(hit.id)).catch(() => {});
-  await writeIndex(index.filter((r) => r.id !== id));
+  await writeIndex(index.filter((record) => record.id !== hit.id));
   return true;
 }

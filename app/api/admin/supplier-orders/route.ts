@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 
-import { ensureAdminDataReset } from "@/lib/admin-data-wipe";
 import {
   ensureSupplierDraftFromArchiveReference,
   syncMissingSupplierDrafts,
@@ -33,8 +32,6 @@ export async function GET(request: Request) {
   if (!isAuthorized(request)) {
     return NextResponse.json({ message: "unauthorized" }, { status: 401 });
   }
-
-  await ensureAdminDataReset();
 
   const recovered = await syncMissingSupplierDrafts(100).catch((err) => {
     console.error("[supplier-orders] sync missing drafts failed", err);
