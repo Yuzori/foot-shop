@@ -24,6 +24,11 @@ import type {
 } from "@/types/domain";
 
 import type { SupplierOrderContext } from "@/lib/bbdbuy/types";
+import {
+  buildSearchApiTerms,
+  expandSearchTerms,
+  productMatchesExpandedSearch,
+} from "@/lib/search-query";
 import { sortProducts } from "@/lib/product-sort";
 import type {
   PsAttributeGroup,
@@ -738,9 +743,36 @@ class PrestaShopService {
   }
 
   async searchProducts(term: string, limit = 24): Promise<Product[]> {
-    if (!term.trim()) return [];
-    const result = await this.getProducts({ search: term, limit, page: 1 });
-    return result.items;
+    const trimmed = term.trim();
+    const terms = expandSearchTerms(trimmed);
+    const apiTerms = buildSearchApiTerms(trimmed);
+    if (!apiTerms.length) return [];
+
+    const perTermLimit = Math.min(
+      48,
+      Math.max(limit, Math.ceil(limit / apiTerms.length) + 6),
+    );
+
+    const batches = await Promise.all(
+      apiTerms.map((searchTerm) =>
+        this.getProducts({ search: searchTerm, limit: perTermLimit, page: 1 }),
+      ),
+    );
+
+    const seen = new Set<string>();
+    const merged: Product[] = [];
+
+    for (const batch of batches) {
+      for (const item of batch.items) {
+        if (seen.has(item.id)) continue;
+        if (!productMatchesExpandedSearch(item.name, trimmed, terms)) continue;
+        seen.add(item.id);
+        merged.push(item);
+        if (merged.length >= limit) return merged;
+      }
+    }
+
+    return merged;
   }
 
   // ─────────────────────────────────────────────
