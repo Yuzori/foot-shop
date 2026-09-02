@@ -1,6 +1,9 @@
 import "server-only";
 
-import { buildBbdBuyOrderDraft } from "@/lib/bbdbuy/build-draft";
+import {
+  buildBbdBuyOrderDraft,
+  buildBbdBuyOrderDraftFromArchive,
+} from "@/lib/bbdbuy/build-draft";
 import { resolveCheckoutNotificationEmail } from "@/lib/checkout-notification-email";
 import { getOrderArchiveByReference } from "@/lib/order-archive-store";
 import { sendBbdBuyOperatorEmail } from "@/lib/supplier-order-email";
@@ -24,12 +27,28 @@ export async function notifySupplierOfOrder(
   if (existing?.status === "submitted" && !options?.force) return;
 
   const context = await prestashop.getSupplierOrderContext(orderId);
+  const archive = await getOrderArchiveByReference(order.reference);
+
   if (!context) {
+    if (archive) {
+      console.warn(
+        "[supplier] context unavailable — brouillon depuis archive",
+        orderId,
+        order.reference,
+      );
+      const draft = await buildBbdBuyOrderDraftFromArchive(archive);
+      await saveSupplierOrderDraft(draft);
+      try {
+        await sendBbdBuyOperatorEmail(draft);
+      } catch (err) {
+        console.error("[supplier] operator email failed", order.reference, err);
+      }
+      return;
+    }
     console.warn("[supplier] context unavailable for order", orderId);
     return;
   }
 
-  const archive = await getOrderArchiveByReference(order.reference);
   if (archive) {
     const checkoutEmail = resolveCheckoutNotificationEmail({
       archive,

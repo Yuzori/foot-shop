@@ -4,6 +4,7 @@ import {
   loadSupplierCatalog,
   resolveSupplierLine,
 } from "@/lib/supplier-catalog";
+import type { OrderArchiveRecord } from "@/lib/order-archive-store";
 import type { BbdBuyOrderDraft, SupplierOrderContext } from "@/lib/bbdbuy/types";
 import { prestashop } from "@/services/prestashop";
 
@@ -40,7 +41,7 @@ export async function buildBbdBuyOrderDraft(
         line.productId,
         line.variantId,
       );
-      const size = mapping.size ?? extractSizeFromName(line.name) ?? null;
+      const size = mapping.size ?? extractSizeFromName(line.name ?? "") ?? null;
 
       let imageUrl = imageCache.get(line.productId);
       if (imageUrl === undefined) {
@@ -51,7 +52,7 @@ export async function buildBbdBuyOrderDraft(
       return {
         productId: line.productId,
         variantId: line.variantId,
-        name: line.name,
+        name: line.name ?? `Produit #${line.productId}`,
         quantity: line.quantity,
         size,
         imageUrl,
@@ -82,6 +83,72 @@ export async function buildBbdBuyOrderDraft(
       country: context.delivery.country,
     },
     flocageNote: context.flocageNote,
+    lines,
+    checklist: [...BBDBUY_CHECKLIST],
+  };
+}
+
+/** Brouillon BBDBuy depuis l'archive locale (secours si l'API PrestaShop échoue). */
+export async function buildBbdBuyOrderDraftFromArchive(
+  archive: OrderArchiveRecord,
+): Promise<BbdBuyOrderDraft> {
+  const catalog = await loadSupplierCatalog();
+  const imageCache = new Map<string, string | null>();
+
+  const lines = await Promise.all(
+    archive.lines.map(async (line) => {
+      const mapping = resolveSupplierLine(
+        catalog,
+        line.productId,
+        line.variantId ?? null,
+      );
+      const size = mapping.size ?? extractSizeFromName(line.name ?? "") ?? null;
+
+      let imageUrl = imageCache.get(line.productId);
+      if (imageUrl === undefined) {
+        imageUrl = await resolveProductImage(line.productId);
+        imageCache.set(line.productId, imageUrl);
+      }
+
+      return {
+        productId: line.productId,
+        variantId: line.variantId ?? null,
+        name: line.name ?? `Produit #${line.productId}`,
+        quantity: line.quantity,
+        size,
+        imageUrl,
+        supplierUrl: mapping.supplierUrl,
+        supplierLabel: mapping.label,
+        supplierNotes: mapping.notes,
+        missingCatalog: !mapping.supplierUrl,
+      };
+    }),
+  );
+
+  const flocageNote =
+    archive.note?.includes("FLOCAGE") || archive.note?.includes("flocage")
+      ? archive.note
+      : null;
+
+  return {
+    orderId: archive.orderId ?? archive.reference,
+    reference: archive.reference,
+    createdAt: archive.paidAt ?? archive.createdAt,
+    status: "pending",
+    customer: {
+      firstName: archive.contact.firstName,
+      lastName: archive.contact.lastName,
+      phone: archive.contact.phone ?? "",
+      email: archive.contact.email,
+    },
+    shipping: {
+      address1: archive.address.address1,
+      address2: archive.address.address2 ?? "",
+      postcode: archive.address.postcode,
+      city: archive.address.city,
+      country: archive.address.country,
+    },
+    flocageNote,
     lines,
     checklist: [...BBDBUY_CHECKLIST],
   };

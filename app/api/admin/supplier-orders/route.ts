@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 
 import { ensureAdminDataReset } from "@/lib/admin-data-wipe";
+import {
+  ensureSupplierDraftFromArchiveReference,
+  syncMissingSupplierDrafts,
+} from "@/lib/ensure-supplier-draft";
 import { mailConfig } from "@/config/mail";
 import {
   archiveSupplierOrderDraft,
@@ -32,11 +36,17 @@ export async function GET(request: Request) {
 
   await ensureAdminDataReset();
 
+  const recovered = await syncMissingSupplierDrafts(100).catch((err) => {
+    console.error("[supplier-orders] sync missing drafts failed", err);
+    return 0;
+  });
+
   const drafts = await listSupplierOrderDrafts();
   return NextResponse.json({
     pending: drafts.filter((d) => d.status === "pending"),
     submitted: drafts.filter((d) => d.status === "submitted"),
     archived: drafts.filter((d) => d.status === "archived"),
+    recovered,
   });
 }
 
@@ -80,6 +90,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "not_found" }, { status: 404 });
     }
     return NextResponse.json({ ok: true });
+  }
+
+  if (body.action === "recover_draft") {
+    let ok = await ensureSupplierDraftFromArchiveReference(reference);
+    if (!ok) {
+      const order = await prestashop.getOrderByReference(reference);
+      if (!order) {
+        return NextResponse.json({ message: "order_not_found" }, { status: 404 });
+      }
+      await notifySupplierOfOrder(order, order.id, { force: true });
+      ok = true;
+    }
+    const draft = await getSupplierOrderDraft(reference);
+    if (!draft) {
+      return NextResponse.json({ message: "recover_failed" }, { status: 502 });
+    }
+    return NextResponse.json({ ok: true, draft });
   }
 
   if (body.action === "resend_email") {

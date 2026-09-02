@@ -25,6 +25,7 @@ type DraftList = {
   pending: BbdBuyOrderDraft[];
   submitted: BbdBuyOrderDraft[];
   archived: BbdBuyOrderDraft[];
+  recovered?: number;
 };
 
 type AdminTab = "pending" | "submitted" | "archived";
@@ -295,12 +296,20 @@ type ArchiveRow = {
   lineCount: number;
 };
 
+function orderStatusLabel(status: string, paidAt: string | null): string {
+  if (status === "paid" || paidAt) return "Payée";
+  if (status === "test") return "Test";
+  return "Paiement non reçu";
+}
+
 function OrderArchiveSection({ secret }: { secret: string }) {
   const [records, setRecords] = useState<ArchiveRow[]>([]);
   const [backupTotal, setBackupTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [recoveringRef, setRecoveringRef] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -332,6 +341,28 @@ function OrderArchiveSection({ secret }: { secret: string }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  async function recoverDraft(reference: string) {
+    setRecoveringRef(reference);
+    setNotice(null);
+    try {
+      const res = await fetch("/api/admin/supplier-orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${secret}`,
+        },
+        body: JSON.stringify({ reference, action: "recover_draft" }),
+      });
+      const data = (await res.json().catch(() => null)) as { message?: string } | null;
+      if (!res.ok) throw new Error(data?.message ?? "Récupération impossible.");
+      setNotice(`Commande ${reference} récupérée dans les commandes récentes.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Récupération impossible.");
+    } finally {
+      setRecoveringRef(null);
+    }
+  }
 
   async function removeRow(id: string, reference: string) {
     if (!window.confirm(`Supprimer ${reference} de l'historique ?`)) return;
@@ -375,6 +406,7 @@ function OrderArchiveSection({ secret }: { secret: string }) {
         <p className="mt-4 text-sm text-ink/50">Aucune commande archivée pour le moment.</p>
       ) : (
         <div className="mt-6 overflow-x-auto rounded-2xl border border-ink/8">
+          {notice ? <p className="border-b border-ink/6 bg-paper-soft/80 px-4 py-3 text-sm text-ink/70">{notice}</p> : null}
           <table className="min-w-full text-left text-sm">
             <thead className="bg-ink/[0.03] text-xs uppercase tracking-wide text-ink/45">
               <tr>
@@ -393,10 +425,28 @@ function OrderArchiveSection({ secret }: { secret: string }) {
                   <td className="px-4 py-3 font-medium">{row.reference}</td>
                   <td className="px-4 py-3 text-ink/65">{row.email}</td>
                   <td className="px-4 py-3 text-ink/55">{formatDate(row.createdAt)}</td>
-                  <td className="px-4 py-3 capitalize text-ink/55">{row.status}</td>
+                  <td className="px-4 py-3 text-ink/55">
+                    {orderStatusLabel(row.status, row.paidAt)}
+                  </td>
                   <td className="px-4 py-3 tabular-nums">{row.total.toFixed(2)} €</td>
                   <td className="px-4 py-3">{row.lineCount}</td>
                   <td className="px-4 py-3 text-right">
+                    {(row.status === "paid" || row.paidAt) ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mr-2"
+                        disabled={recoveringRef === row.reference}
+                        onClick={() => void recoverDraft(row.reference)}
+                      >
+                        {recoveringRef === row.reference ? (
+                          <Spinner className="h-3 w-3" />
+                        ) : (
+                          "Récupérer"
+                        )}
+                      </Button>
+                    ) : null}
                     <AdminTempDeleteButton
                       busy={deletingId === row.id}
                       onClick={() => void removeRow(row.id, row.reference)}
@@ -604,6 +654,7 @@ export function BbdBuyPanel() {
   const [inputSecret, setInputSecret] = useState("");
   const [data, setData] = useState<DraftList | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
@@ -622,7 +673,13 @@ export function BbdBuyPanel() {
         return false;
       }
       if (!res.ok) throw new Error("Impossible de charger les commandes.");
-      setData((await res.json()) as DraftList);
+      const payload = (await res.json()) as DraftList;
+      setData(payload);
+      if (payload.recovered && payload.recovered > 0) {
+        setNotice(
+          `${payload.recovered} commande(s) payée(s) récupérée(s) automatiquement dans les commandes récentes.`,
+        );
+      }
       return true;
     } catch {
       setError("Impossible de charger les commandes.");
@@ -748,6 +805,12 @@ export function BbdBuyPanel() {
         {error ? (
           <p className="mt-8 rounded-xl bg-paper-soft px-4 py-3 text-center text-sm text-ink/60">
             {error}
+          </p>
+        ) : null}
+
+        {notice ? (
+          <p className="mt-4 rounded-xl border border-ink/10 bg-paper-soft px-4 py-3 text-sm text-ink/70">
+            {notice}
           </p>
         ) : null}
 
