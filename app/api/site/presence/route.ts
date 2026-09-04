@@ -7,7 +7,7 @@ import {
 
 export const runtime = "nodejs";
 
-/** Heartbeat visiteur (panier + page) — alimente les stats admin temps réel. */
+/** Heartbeat visiteur (panier + page) - alimente les stats admin temps réel. */
 export async function POST(request: Request) {
   let body: {
     sessionId?: string;

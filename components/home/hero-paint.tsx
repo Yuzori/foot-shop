@@ -12,7 +12,7 @@ import { brandButtonStyle } from "@/lib/brand-button";
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
-/** Hero paint — titre image, fond peinture, boutons classiques. */
+/** Hero paint - titre image, fond peinture, boutons classiques. */
 export function HeroPaint() {
   const catalogNav = useCatalogNav();
   const cfg = heroPaintConfig;

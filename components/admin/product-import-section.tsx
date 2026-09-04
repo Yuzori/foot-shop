@@ -295,7 +295,7 @@ export function ProductImportSection({ secret }: { secret: string }) {
           <div className="rounded-lg bg-paper-soft/80 px-3 py-2 text-xs text-ink/50">
             <p>
               {urlCount} produit{urlCount > 1 ? "s" : ""} détecté
-              {urlCount > 1 ? "s" : ""} — chaque lien sera importé
+              {urlCount > 1 ? "s" : ""} - chaque lien sera importé
               individuellement.
             </p>
             {overLimit ? (

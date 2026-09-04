@@ -29,7 +29,7 @@ function RadarPulse() {
   );
 }
 
-/** Bandeau discret sous les boutons d'achat — messages rotatifs + fine barre. */
+/** Bandeau discret sous les boutons d'achat - messages rotatifs + fine barre. */
 export function PurchaseInfoTicker() {
   const messages = shopConfig.purchaseTicker;
   const interval = shopConfig.tickerIntervalMs;

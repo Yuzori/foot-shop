@@ -1,4 +1,4 @@
-# Migration PrestaShop + MariaDB — Kali Linux → Hostinger
+# Migration PrestaShop + MariaDB - Kali Linux → Hostinger
 
 Guide pas à pas pour déplacer ton back-office PrestaShop (`192.168.1.68/prestashop`) vers `https://bo.foot-shop.fr` sur Hostinger.
 
@@ -20,7 +20,7 @@ Guide pas à pas pour déplacer ton back-office PrestaShop (`192.168.1.68/presta
 
 
 
-## Phase 1 — Préparer Hostinger (15 min)
+## Phase 1 - Préparer Hostinger (15 min)
 
 
 
@@ -65,7 +65,7 @@ Guide pas à pas pour déplacer ton back-office PrestaShop (`192.168.1.68/presta
 
 
 
-## Phase 2 — Exporter depuis Kali (30 min)
+## Phase 2 - Exporter depuis Kali (30 min)
 
 
 
@@ -117,7 +117,7 @@ Le script produit un dossier `~/prestashop-export/YYYYMMDD-HHMMSS/` avec :
 ### 2.4 Transférer vers Windows
 
 ```bash
-# Depuis Kali — remplace par l’IP de ton PC Windows
+# Depuis Kali - remplace par l’IP de ton PC Windows
 scp -r ~/prestashop-export/202* elamm@192.168.1.X:~/Desktop/prestashop-export/
 ```
 
@@ -146,7 +146,7 @@ sudo tar -czf prestashop-files.tar.gz \
 
 
 
-## Phase 3 — Importer sur Hostinger (45 min)
+## Phase 3 - Importer sur Hostinger (45 min)
 
 
 
@@ -155,13 +155,13 @@ sudo tar -czf prestashop-files.tar.gz \
 1. **hPanel → phpMyAdmin** → sélectionner ta nouvelle base
 2. Onglet **Importer**
 3. Choisir `prestashop.sql.gz` (ou décompresser en `.sql` si phpMyAdmin refuse le .gz)
-4. Taille max : si le fichier est trop gros, utilise **BigDump** ou compresse en plusieurs parties, ou importe en SSH (plan VPS) — sur mutualisé, contacte le support Hostinger si > 256 Mo
+4. Taille max : si le fichier est trop gros, utilise **BigDump** ou compresse en plusieurs parties, ou importe en SSH (plan VPS) - sur mutualisé, contacte le support Hostinger si > 256 Mo
 
 **Import lent ?** Désactive temporalement les clés étrangères dans phpMyAdmin avant import si erreurs.
 
 ### 3.2 Uploader les fichiers
 
-**Option A — Gestionnaire de fichiers hPanel**
+**Option A - Gestionnaire de fichiers hPanel**
 
 1. Aller dans `public_html/bo`
 2. Supprimer le contenu par défaut (`index.html` etc.)
@@ -182,7 +182,7 @@ public_html/bo/
 
 Si l’archive a créé un sous-dossier `prestashop/`, déplace tout un niveau au-dessus.
 
-**Option B — FileZilla (FTP)**
+**Option B - FileZilla (FTP)**
 
 - Hôte : voir hPanel → FTP
 - Utilisateur / mot de passe FTP Hostinger
@@ -231,7 +231,7 @@ Supprimer le contenu de :
 
 
 
-## Phase 4 — Vérifications (15 min)
+## Phase 4 - Vérifications (15 min)
 
 
 

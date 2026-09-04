@@ -23,7 +23,7 @@ const searchBubbleShell =
 const searchBubbleCap = "rounded-[2rem]";
 
 /**
- * Recherche plein écran — deux bulles distinctes : champ de saisie + panneau résultats.
+ * Recherche plein écran - deux bulles distinctes : champ de saisie + panneau résultats.
  */
 export function SearchOverlay() {
   const open = useUIStore((s) => s.searchOpen);
@@ -98,7 +98,7 @@ export function SearchOverlay() {
             {...searchPanelMotion}
             className="absolute inset-x-0 top-0 mx-auto w-full max-w-3xl px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5 sm:pt-12"
           >
-            {/* Bulle 1 — champ de recherche */}
+            {/* Bulle 1 - champ de recherche */}
             <div className={cn(searchBubbleShell, "rounded-full")}>
               <SearchIcon className="pointer-events-none absolute left-5 top-1/2 z-10 h-5 w-5 -translate-y-1/2 text-accent-dark" />
               <input
@@ -121,7 +121,7 @@ export function SearchOverlay() {
               </button>
             </div>
 
-            {/* Bulle 2 — même forme, texte ou résultats */}
+            {/* Bulle 2 - même forme, texte ou résultats */}
             <div
               className={cn(
                 searchBubbleShell,

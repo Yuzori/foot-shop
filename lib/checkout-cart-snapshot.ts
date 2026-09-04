@@ -2,7 +2,7 @@ import type { CartLine } from "@/types/domain";
 
 const KEY = "maillot-checkout-cart";
 
-/** Snapshot figé au début du checkout — survit aux vidages intempestifs du store. */
+/** Snapshot figé au début du checkout - survit aux vidages intempestifs du store. */
 export function saveCheckoutCartSnapshot(lines: CartLine[]): void {
   try {
     sessionStorage.setItem(KEY, JSON.stringify(lines));

@@ -8,7 +8,7 @@ import crypto from "node:crypto";
  * Codes are 6 digits, hashed (never stored in clear), single-use and expire
  * after 15 minutes. Stored in memory (persisted on globalThis to survive dev
  * hot-reloads). For a multi-instance production deployment, swap this for Redis
- * or a DB table — the public API (create/verify) stays identical.
+ * or a DB table - the public API (create/verify) stays identical.
  */
 
 interface ResetEntry {

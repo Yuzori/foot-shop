@@ -16,7 +16,7 @@ interface FavoriteButtonProps {
 const BURST = Array.from({ length: 6 });
 const DEFAULT_ACCENT = "rgb(102, 186, 255)";
 
-/** Heart toggle — bouton strictement circulaire. */
+/** Heart toggle - bouton strictement circulaire. */
 export function FavoriteButton({
   productId,
   className,

@@ -11,7 +11,7 @@ interface ProductBadgesProps {
   showLowStock?: boolean;
 }
 
-/** Badges produit — nouveau (configurable), promo, bientôt épuisé, rupture. */
+/** Badges produit - nouveau (configurable), promo, bientôt épuisé, rupture. */
 export function ProductBadges({
   product,
   className,

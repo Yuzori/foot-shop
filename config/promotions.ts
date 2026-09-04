@@ -1,6 +1,6 @@
 /**
  * Offre de bienvenue : 2 achetés, 1 offert (3ᵉ article gratuit au checkout).
- * Modifiez les textes ici — le reste du site s’aligne automatiquement.
+ * Modifiez les textes ici - le reste du site s’aligne automatiquement.
  */
 
 export interface PromoPopup {
@@ -21,13 +21,13 @@ export const promoPopup: PromoPopup = {
   eyebrow: "Offre de bienvenue",
   title: "2 achetés, 1 offert",
   message:
-    "Créez un compte et profitez de 2 achetés, 1 offert sur votre première commande — le 3ᵉ article est offert automatiquement au paiement.",
+    "Créez un compte et profitez de 2 achetés, 1 offert sur votre première commande - le 3ᵉ article est offert automatiquement au paiement.",
   code: "",
   cta: { label: "J'en profite", href: "/creer-compte" },
   delayMs: 3500,
 };
 
-/** Promo de bienvenue — 2+1 sur la première commande (une seule utilisation). */
+/** Promo de bienvenue - 2+1 sur la première commande (une seule utilisation). */
 export const welcomePromo = {
   enabled: true,
   code: "",
@@ -49,10 +49,10 @@ export const firstOrderThankYouPromo = {
 } as const;
 
 export const announcementMessages: string[] = [
-  "2 achetés, 1 offert sur votre 1ʳᵉ commande — créez un compte",
+  "2 achetés, 1 offert sur votre 1ʳᵉ commande - créez un compte",
   "Livraison offerte sur votre 1ʳᵉ commande",
   "Livraison express disponible",
   "Retours gratuits sous 14 jours",
-  "Maillots & shorts — flocage premium",
+  "Maillots & shorts - flocage premium",
   "Paiement 100% sécurisé",
 ];

@@ -97,7 +97,7 @@ export function AccountDrawer() {
                         {welcomePromo.label}
                       </p>
                       <p className="mt-1 text-sm">
-                        {welcomePromo.checkoutLabel} — appliqué au paiement (1ʳᵉ
+                        {welcomePromo.checkoutLabel} - appliqué au paiement (1ʳᵉ
                         commande).
                       </p>
                     </div>

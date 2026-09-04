@@ -20,7 +20,7 @@ const HEART_CY = 12.2;
 /** Centre du cœur dans le viewBox de l'icône (36×30). */
 const CX = 25;
 const CY = 6.5;
-/** Trou du compteur — bas-droite du cœur (coords locales 24×24). */
+/** Trou du compteur - bas-droite du cœur (coords locales 24×24). */
 const BADGE_X = 17.6;
 const BADGE_Y = 18.6;
 const BADGE_R = 7.8;

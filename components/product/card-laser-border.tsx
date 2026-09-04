@@ -17,7 +17,7 @@ interface CardLaserFrameProps {
   children: ReactNode;
 }
 
-/** Contour discret au survol — anneau léger + balayage lent (CSS group-hover, pas de re-render). */
+/** Contour discret au survol - anneau léger + balayage lent (CSS group-hover, pas de re-render). */
 export function CardLaserFrame({ accent, children }: CardLaserFrameProps) {
   return (
     <div className="relative w-full rounded-2xl">

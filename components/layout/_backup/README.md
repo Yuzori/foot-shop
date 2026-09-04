@@ -1,4 +1,4 @@
-# Sauvegarde header — version originale
+# Sauvegarde header - version originale
 
 Sauvegarde du **5 août 2026** avant le redesign « paint » (maquette hero).
 

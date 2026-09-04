@@ -25,7 +25,7 @@ import { useFavoritesStore } from "@/store/favorites-store";
 import { useUIStore } from "@/store/ui-store";
 import { useWorldCupNavStore } from "@/store/world-cup-nav-store";
 
-/** Header sombre — style maquette (brush, peinture, dégradés). */
+/** Header sombre - style maquette (brush, peinture, dégradés). */
 export function HeaderPaint() {
   const pathname = usePathname();
   const hydrated = useHydrated();

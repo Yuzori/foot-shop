@@ -123,7 +123,7 @@ export function buildOrderNote(lines: CreateOrderLine[]): string {
 
         parts.push(
 
-          `${label} (x${line.quantity}) — FLOCAGE NOM="${line.flocage.name ?? floc}" NUM="${line.flocage.number ?? ""}" (+${line.flocage.price.toFixed(2)} EUR/maillot)`,
+          `${label} (x${line.quantity}) - FLOCAGE NOM="${line.flocage.name ?? floc}" NUM="${line.flocage.number ?? ""}" (+${line.flocage.price.toFixed(2)} EUR/maillot)`,
 
         );
 

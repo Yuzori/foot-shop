@@ -12,7 +12,7 @@ import { useRecentProductStore } from "@/store/recent-product-store";
 import { cn } from "@/lib/utils";
 
 /**
- * Rappel passif sur la page produit — apparaît après 10 s, pas au départ.
+ * Rappel passif sur la page produit - apparaît après 10 s, pas au départ.
  */
 export function FavoriteNudge() {
   const pathname = usePathname();

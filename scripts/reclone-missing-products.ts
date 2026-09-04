@@ -53,7 +53,7 @@ function loadEnvFiles(): void {
   loadEnvFile(".env.local", true);
   if (!process.env.PRESTASHOP_API_URL) {
     console.warn(
-      "[reclone] PRESTASHOP_API_URL manquant — vérifiez .env ou .env.local.",
+      "[reclone] PRESTASHOP_API_URL manquant - vérifiez .env ou .env.local.",
     );
   }
 }
@@ -130,7 +130,7 @@ async function main(): Promise<void> {
     scan,
   });
 
-  console.info(`[reclone] Terminé — clonés: ${result.cloned}, échecs: ${result.failed}`);
+  console.info(`[reclone] Terminé - clonés: ${result.cloned}, échecs: ${result.failed}`);
   if (result.errors.length > 0) {
     console.info("[reclone] Erreurs :");
     for (const err of result.errors) {

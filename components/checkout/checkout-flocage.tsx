@@ -21,7 +21,7 @@ function lineKey(line: CartLine): string {
   return `${line.productId}-${line.variantId ?? "base"}`;
 }
 
-/** Flocage au paiement — saisie locale puis validation explicite. */
+/** Flocage au paiement - saisie locale puis validation explicite. */
 export function CheckoutFlocage() {
   const cartLines = useCartStore((s) => s.lines);
   const setFlocage = useCartStore((s) => s.setFlocage);

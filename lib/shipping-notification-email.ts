@@ -23,7 +23,7 @@ export async function sendShippingNotificationEmail(input: {
 
   return sendMail({
     to: input.to,
-    subject: `Votre colis est en route — ${input.reference}`,
+    subject: `Votre colis est en route - ${input.reference}`,
     text: [
       `Bonne nouvelle ! Votre commande ${input.reference} a été expédiée.`,
       "",

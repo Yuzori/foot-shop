@@ -10,7 +10,7 @@ function normalizeCityName(value: string): string {
     .toLowerCase();
 }
 
-/** Vérifie code postal / ville (France) via l'API publique geo.api.gouv.fr — côté navigateur. */
+/** Vérifie code postal / ville (France) via l'API publique geo.api.gouv.fr - côté navigateur. */
 export async function verifyFrenchPostcodeCity(input: {
   postcode: string;
   city: string;

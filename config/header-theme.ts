@@ -1,5 +1,5 @@
 /**
- * Thèmes indépendants — header et hero peuvent diverger.
+ * Thèmes indépendants - header et hero peuvent diverger.
  *
  * • headerTheme `"original"` → navbar claire, logo noir
  * • heroTheme `"paint"`     → hero avec titre.png, effets peinture

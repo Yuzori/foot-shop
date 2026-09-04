@@ -215,7 +215,7 @@ async function runNotifyJobInner() {
     ${emailHeading("Du nouveau en boutique !")}
     ${listHtml("Nouveaux produits", newArrivals)}
     ${listHtml("Retour en stock", backInStock)}
-    ${listHtml("Dernières pièces — rupture imminente", wentOutOfStock)}
+    ${listHtml("Dernières pièces - rupture imminente", wentOutOfStock)}
     ${emailButton(`${base}/catalogue`, "Voir la boutique")}
     ${emailParagraph(`<span style="color:#999;font-size:12px">Vous recevez cet email car vous êtes inscrit à la newsletter ${publicConfig.siteName}.</span>`)}
   `;
@@ -237,7 +237,7 @@ async function runNotifyJobInner() {
   for (const to of subscribers) {
     const mailResult = await sendMail({
       to,
-      subject: `${publicConfig.siteName} — Nouveaux produits & retours en stock`,
+      subject: `${publicConfig.siteName} - Nouveaux produits & retours en stock`,
       html,
       text,
     });

@@ -273,7 +273,7 @@ export function flushLiveAnalyticsSync(): void {
     writeFileSync(FILE, JSON.stringify(g.__footshopLiveAnalytics, null, 2), "utf8");
     g.__footshopLiveAnalyticsDirty = false;
   } catch {
-    // ignore — le flush async reprendra au prochain heartbeat
+    // ignore - le flush async reprendra au prochain heartbeat
   }
 }
 

@@ -42,7 +42,7 @@ export interface PsProduct {
   id_default_image?: string | number | false;
   id_category_default?: string | number;
   reference?: string;
-  /** HT — souvent string, parfois number selon la config webservice. */
+  /** HT - souvent string, parfois number selon la config webservice. */
   price?: string | number;
   name?: PsLangField;
   description?: PsLangField;

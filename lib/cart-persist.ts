@@ -2,7 +2,7 @@
 
 import { useCartStore } from "@/store/cart-store";
 
-/** API persist Zustand — indisponible côté serveur. */
+/** API persist Zustand - indisponible côté serveur. */
 export function getCartPersist() {
   if (typeof window === "undefined") return undefined;
   return useCartStore.persist;

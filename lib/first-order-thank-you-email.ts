@@ -34,7 +34,7 @@ export async function sendFirstOrderThankYouEmail(input: {
 
   const result = await sendMail({
     to: input.to,
-    subject: `Merci pour votre commande — ${code} pour vous`,
+    subject: `Merci pour votre commande - ${code} pour vous`,
     html: emailLayout(body),
     text: [
       `Merci ${name} !`,

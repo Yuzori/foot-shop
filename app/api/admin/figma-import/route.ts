@@ -17,7 +17,7 @@ function isAuthorized(request: Request): boolean {
   return isAdminAuthorized(request);
 }
 
-/** GET — catégories PrestaShop pour le plugin Figma. */
+/** GET - catégories PrestaShop pour le plugin Figma. */
 export async function GET(request: Request) {
   if (!isAuthorized(request)) {
     return NextResponse.json({ message: "unauthorized" }, { status: 401 });
@@ -67,8 +67,8 @@ export async function GET(request: Request) {
 
 /**
  * POST /api/admin/figma-import
- * - action: "preview" → { url } — nom formaté + URL image source
- * - action: "scrape" → { url } — nom + image base64 pour le plugin Figma
+ * - action: "preview" → { url } - nom formaté + URL image source
+ * - action: "scrape" → { url } - nom + image base64 pour le plugin Figma
  * - action: "push" → { name, imageBase64, imageMime?, sourceUrl?, categoryId? }
  */
 export async function POST(request: Request) {

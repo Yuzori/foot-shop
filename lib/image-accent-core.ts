@@ -73,7 +73,7 @@ function classifyFabric(r: number, g: number, b: number): FabricKind {
   if (lum <= 38 && sat < 24) return "neutral";
   if (sat < 14) return "neutral";
 
-  // Bleu marine / bleu nuit — pas du noir.
+  // Bleu marine / bleu nuit - pas du noir.
   if (b >= r && b >= g && b > 36 && sat >= 14) return "chromatic";
 
   if (lum >= 132 && lum <= 238 && sat >= 8 && sat <= 62) {

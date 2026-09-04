@@ -149,7 +149,7 @@ export async function resolveImportCategoryForProduct(
   if (kidsDivisionId) return kidsDivisionId;
 
   console.warn(
-    `[import] sous-catégorie enfant « ${division.label} » introuvable sous ${kidsBaseId} — fallback base enfant`,
+    `[import] sous-catégorie enfant « ${division.label} » introuvable sous ${kidsBaseId} - fallback base enfant`,
   );
   return kidsBaseId;
 }

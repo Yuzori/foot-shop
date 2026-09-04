@@ -22,7 +22,7 @@ type RetroProduct = {
   defaultCategoryId?: string | null;
 };
 
-/** Maillot rétro — pas de flocage disponible. */
+/** Maillot rétro - pas de flocage disponible. */
 export function isRetroJersey(product: RetroProduct): boolean {
   if (!/\bmaillot/i.test(product.name) || /\bshorts?\b/i.test(product.name)) {
     return false;
@@ -39,7 +39,7 @@ export function isRetroJersey(product: RetroProduct): boolean {
   return (product.categoryIds ?? []).some((id) => retroIds.has(String(id).trim()));
 }
 
-/** @deprecated Utiliser isRetroJersey — le flocage n’est jamais obligatoire. */
+/** @deprecated Utiliser isRetroJersey - le flocage n’est jamais obligatoire. */
 export function requiresRetroFlocage(product: RetroProduct): boolean {
   return false;
 }

@@ -15,7 +15,7 @@ interface FavoritesPersisted {
 }
 
 /**
- * Favorites store. Persists only product IDs — the actual product data is always
+ * Favorites store. Persists only product IDs - the actual product data is always
  * (re)fetched from the back office, never stored or invented locally.
  */
 interface FavoritesState {

@@ -112,7 +112,7 @@ export function toMaximumQualityImageUrl(url: string): string {
   return u;
 }
 
-/** Clé de déduplication stable — ignore query string et variantes de taille. */
+/** Clé de déduplication stable - ignore query string et variantes de taille. */
 export function normalizeImageDedupeKey(url: string): string {
   try {
     const u = new URL(toHighQualityImageUrl(url));

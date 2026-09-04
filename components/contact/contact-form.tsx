@@ -10,7 +10,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { routes } from "@/config/site";
 import { http, getErrorMessage } from "@/lib/http";
 
-/** Contact form — sends the message to the shop's pro email via /api/contact. */
+/** Contact form - sends the message to the shop's pro email via /api/contact. */
 export function ContactForm() {
   const [sent, setSent] = useState(false);
   const [pending, setPending] = useState(false);

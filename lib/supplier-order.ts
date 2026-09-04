@@ -15,7 +15,7 @@ import { prestashop } from "@/services/prestashop";
 import type { Order } from "@/types/domain";
 
 /**
- * Prépare et notifie une commande payée pour saisie BBDBuy (agent d'achat —
+ * Prépare et notifie une commande payée pour saisie BBDBuy (agent d'achat -
  * pas d'API publique). Génère un brouillon JSON + email opérateur.
  */
 export async function notifySupplierOfOrder(
@@ -32,7 +32,7 @@ export async function notifySupplierOfOrder(
   if (!context) {
     if (archive) {
       console.warn(
-        "[supplier] context unavailable — brouillon depuis archive",
+        "[supplier] context unavailable - brouillon depuis archive",
         orderId,
         order.reference,
       );
@@ -80,7 +80,7 @@ export async function notifySupplierOfOrder(
   const missing = draft.lines.filter((l) => l.missingCatalog).length;
   if (missing > 0 && process.env.NODE_ENV !== "production") {
     console.info(
-      `[supplier] ${missing} ligne(s) sans lien Taobao — optionnel, nom + taille suffisent pour BBDBuy`,
+      `[supplier] ${missing} ligne(s) sans lien Taobao - optionnel, nom + taille suffisent pour BBDBuy`,
     );
   }
 

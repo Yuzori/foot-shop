@@ -31,7 +31,7 @@ export function CartLinePricing({
         </p>
       ) : null}
       <p className="font-medium text-accent tabular-nums">
-        {freeQuantity} offert{freeQuantity > 1 ? "s" : ""} — 0 €
+        {freeQuantity} offert{freeQuantity > 1 ? "s" : ""} - 0 €
       </p>
       <p className="mt-0.5 font-medium tabular-nums">{formatPrice(total)}</p>
     </div>

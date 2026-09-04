@@ -43,7 +43,7 @@ const CardImage = memo(function CardImage({
   );
 });
 
-/** Generic product card — receives a domain Product via props only. */
+/** Generic product card - receives a domain Product via props only. */
 export const ProductCard = memo(function ProductCard({
   product,
   priority,

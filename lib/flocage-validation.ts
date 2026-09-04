@@ -26,7 +26,7 @@ export function isFlocageComplete(line: CartLine): boolean {
   return isFlocageDraftValid(name, number);
 }
 
-/** Maillot sans flocage complet — affiché au checkout pour saisie. */
+/** Maillot sans flocage complet - affiché au checkout pour saisie. */
 export function lineNeedsCheckoutFlocage(line: CartLine): boolean {
   if (!isJerseyProduct(line.name)) return false;
   return !isFlocageComplete(line);

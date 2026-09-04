@@ -1,6 +1,6 @@
 /**
  * Static site configuration: routes and navigation structure.
- * Contains NO product data — only the storefront's own navigation.
+ * Contains NO product data - only the storefront's own navigation.
  */
 
 export const routes = {

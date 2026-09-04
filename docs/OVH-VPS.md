@@ -3,15 +3,15 @@
 ## Architecture recommandée
 
 ```
-foot-shop.fr      →  VPS OVH (Next.js — ce repo)
-bo.foot-shop.fr   →  Hostinger (PrestaShop — inchangé)
+foot-shop.fr      →  VPS OVH (Next.js - ce repo)
+bo.foot-shop.fr   →  Hostinger (PrestaShop - inchangé)
 ```
 
 Le VPS héberge **uniquement la boutique Next.js**. PrestaShop reste sur Hostinger.
 
 ---
 
-## Étape 0 — Accès SSH (si le mot de passe ne marche pas)
+## Étape 0 - Accès SSH (si le mot de passe ne marche pas)
 
 ### Réinitialiser le mot de passe root
 
@@ -19,7 +19,7 @@ Le VPS héberge **uniquement la boutique Next.js**. PrestaShop reste sur Hosting
 2. **Accueil** → bouton **⋯** ou **Redémarrer en mode rescue** / **Réinitialiser le mot de passe**
 3. Ou : **KVM / Console** (accès direct sans SSH) → login `root` + nouveau mot de passe
 
-### Ubuntu 24 sur OVH — utilisateurs possibles
+### Ubuntu 24 sur OVH - utilisateurs possibles
 
 | Login | Quand l'utiliser |
 |-------|------------------|
@@ -43,7 +43,7 @@ Si « Permission denied » :
 
 ---
 
-## Étape 1 — Setup automatique sur le VPS
+## Étape 1 - Setup automatique sur le VPS
 
 **Via console KVM OVH** (coller ligne par ligne) :
 
@@ -57,7 +57,7 @@ Ou copier-coller le contenu de `scripts/vps/ovh-vps-setup.sh` dans la console.
 
 ---
 
-## Étape 2 — Déployer l'application
+## Étape 2 - Déployer l'application
 
 ```bash
 sudo -u deploy git clone https://github.com/Yuzori/foot-shop.git /var/www/foot-shop
@@ -142,7 +142,7 @@ ssh deploy@137.74.166.133 "cd /var/www/foot-shop && git pull origin main && npm 
 
 ---
 
-## Étape 3 — DNS (chez Hostinger / OVH)
+## Étape 3 - DNS (chez Hostinger / OVH)
 
 | Type | Nom | Valeur |
 |------|-----|--------|
@@ -153,7 +153,7 @@ ssh deploy@137.74.166.133 "cd /var/www/foot-shop && git pull origin main && npm 
 
 ---
 
-## Étape 4 — SSL HTTPS
+## Étape 4 - SSL HTTPS
 
 Quand le DNS pointe vers le VPS :
 
@@ -169,7 +169,7 @@ cd /var/www/foot-shop && npm run build && pm2 restart foot-shop
 
 ---
 
-## Étape 5 — Stripe webhook
+## Étape 5 - Stripe webhook
 
 Dashboard Stripe → Webhooks → `https://foot-shop.fr/api/webhooks/stripe`
 

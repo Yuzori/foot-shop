@@ -31,7 +31,7 @@ function isPaypalUnavailableError(error: unknown): boolean {
 
 /**
  * Crée une Checkout Session Stripe Elements.
- * Utilise la PMC dashboard (pmc_…) si définie — Apple Pay, Link, PayPal, Samsung Pay…
+ * Utilise la PMC dashboard (pmc_…) si définie - Apple Pay, Link, PayPal, Samsung Pay…
  */
 export async function createStripeElementsCheckoutSession(
   stripe: Stripe,
@@ -69,7 +69,7 @@ export async function createStripeElementsCheckoutSession(
     }
 
     console.warn(
-      "[stripe] PayPal indisponible sur ce compte — session sans PayPal.",
+      "[stripe] PayPal indisponible sur ce compte - session sans PayPal.",
     );
     types = types.filter((type) => type !== "paypal");
 

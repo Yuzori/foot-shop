@@ -74,8 +74,8 @@ export async function sendOrderConfirmationEmail(input: {
   `;
 
   const subject = firstOrderPromo
-    ? `Merci pour votre commande — ${order.reference}`
-    : `Commande confirmée — ${order.reference}`;
+    ? `Merci pour votre commande - ${order.reference}`
+    : `Commande confirmée - ${order.reference}`;
 
   const text = [
     subject,

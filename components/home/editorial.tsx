@@ -7,7 +7,7 @@ import { Container } from "@/components/ui/container";
 import { routes } from "@/config/site";
 
 /**
- * Editorial split section — brand storytelling that drives engagement without
+ * Editorial split section - brand storytelling that drives engagement without
  * relying on any product data.
  */
 export function Editorial() {

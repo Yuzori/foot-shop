@@ -1,11 +1,11 @@
 /**
- * Boutique — constantes modifiables (hors données produits PrestaShop).
+ * Boutique - constantes modifiables (hors données produits PrestaShop).
  */
 export const shopConfig = {
   /** Prix du flocage personnalisé (nom / numéro) par maillot. */
   flocagePrice: 3.99,
   /**
-   * Frais de livraison par tranche (€) — offerts sur la 1ʳᵉ commande uniquement.
+   * Frais de livraison par tranche (€) - offerts sur la 1ʳᵉ commande uniquement.
    * Ex. 3 articles → 3,99 € ; 4–6 → 7,98 € ; etc.
    */
   standardShippingPrice: 3.99,

@@ -211,7 +211,7 @@ function mapScrapedProduct(
     selectedUrls: readyUrls,
     scrapeError:
       p.error ??
-      (p.imageUrls.length === 0 ? "Aucune image — lien invalide ou page bloquée." : null),
+      (p.imageUrls.length === 0 ? "Aucune image - lien invalide ou page bloquée." : null),
     categoryId,
     suggestedCategoryId: suggestedId || null,
     suggestedCategoryLabel: asTrimmedString(p.suggestedCategoryLabel) || null,
@@ -290,7 +290,7 @@ export function QuickImportSection({
     if (!saved) return null;
     const count = saved.products.length;
     if (!count) return null;
-    return `Session restaurée — ${count} produit(s).`;
+    return `Session restaurée - ${count} produit(s).`;
   });
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -366,7 +366,7 @@ export function QuickImportSection({
       setDraftSaveWarning(null);
     } else {
       setDraftSaveWarning(
-        "Sauvegarde locale limitée — gardez cet onglet ouvert jusqu'à l'envoi PrestaShop.",
+        "Sauvegarde locale limitée - gardez cet onglet ouvert jusqu'à l'envoi PrestaShop.",
       );
     }
   }, [urlsText, price, stock, defaultCategoryId, products, brokenLinks]);
@@ -509,7 +509,7 @@ export function QuickImportSection({
 
   async function pushProducts(toSend: QuickProduct[]) {
     if (!toSend.length) {
-      setError("Aucun produit prêt — sélectionnez au moins une image par produit.");
+      setError("Aucun produit prêt - sélectionnez au moins une image par produit.");
       return;
     }
 
@@ -533,7 +533,7 @@ export function QuickImportSection({
       for (let i = 0; i < toSend.length; i++) {
         const p = toSend[i]!;
         const productIndex = products.findIndex((item) => item.id === p.id) + 1;
-        setPhase(`Envoi PrestaShop ${i + 1}/${toSend.length} — produit #${productIndex}…`);
+        setPhase(`Envoi PrestaShop ${i + 1}/${toSend.length} - produit #${productIndex}…`);
 
         try {
           const { remoteUrls, localBlobs } = await resolvePushImages(p.selectedUrls);
@@ -655,7 +655,7 @@ export function QuickImportSection({
     const alreadySent = all.filter((p) => p.pushResult?.ok).length;
     const message =
       alreadySent > 0
-        ? `${all.length} produit(s) seront envoyés (images brutes, sans rendu).\n\n${alreadySent} déjà marqués envoyés — doublons possibles sur PrestaShop.\n\nContinuer ?`
+        ? `${all.length} produit(s) seront envoyés (images brutes, sans rendu).\n\n${alreadySent} déjà marqués envoyés - doublons possibles sur PrestaShop.\n\nContinuer ?`
         : `${all.length} produit(s) seront envoyés avec les images scrappées (qualité d'origine).\n\nContinuer ?`;
     if (!window.confirm(message)) return;
     setProducts((prev) =>
@@ -843,7 +843,7 @@ export function QuickImportSection({
         <span className="text-sm text-ink/75">
           <strong className="font-medium text-ink">Sélection auto des images</strong>
           <span className="mt-0.5 block text-xs text-ink/50">
-            Face + dos (classique) ou 6 vues pour eSport — avant le scrape.
+            Face + dos (classique) ou 6 vues pour eSport - avant le scrape.
           </span>
         </span>
       </label>
@@ -968,7 +968,7 @@ export function QuickImportSection({
               </div>
 
               <p className="mt-3 text-xs text-ink/50">
-                Images — cliquez pour sélectionner (#1 = couverture). Envoyées en qualité
+                Images - cliquez pour sélectionner (#1 = couverture). Envoyées en qualité
                 d&apos;origine.
               </p>
               <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-5">

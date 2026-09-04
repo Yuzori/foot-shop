@@ -28,7 +28,7 @@ function getSecret(): string {
     if (process.env.NODE_ENV === "production") {
       throw new Error("AUTH_SECRET is required in production.");
     }
-    // Dev fallback only — set AUTH_SECRET in .env.local.
+    // Dev fallback only - set AUTH_SECRET in .env.local.
     return "dev-insecure-secret-change-me";
   }
   return secret;

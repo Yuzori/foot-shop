@@ -170,9 +170,9 @@ export function assertMailDelivered(
   context: string,
 ): void {
   if (result.devMode) {
-    throw new Error(`Email non configuré — ${context}`);
+    throw new Error(`Email non configuré - ${context}`);
   }
   if (!result.delivered) {
-    throw new Error(result.error ?? `Échec d'envoi — ${context}`);
+    throw new Error(result.error ?? `Échec d'envoi - ${context}`);
   }
 }

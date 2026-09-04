@@ -43,7 +43,7 @@ async function copyText(text: string): Promise<void> {
   await navigator.clipboard.writeText(text);
 }
 
-/** TEMP — retirer après nettoyage des données admin. */
+/** TEMP - retirer après nettoyage des données admin. */
 function AdminTempDeleteButton({
   busy,
   onClick,
@@ -590,7 +590,7 @@ function ShippingForm({ secret }: { secret: string }) {
     } catch (err) {
       const msg =
         err instanceof Error && err.name === "AbortError"
-          ? "Délai dépassé — le suivi est peut-être enregistré, rechargez la page."
+          ? "Délai dépassé - le suivi est peut-être enregistré, rechargez la page."
           : err instanceof Error
             ? err.message
             : "Échec";
@@ -686,7 +686,7 @@ function ShippingForm({ secret }: { secret: string }) {
           {items.slice(0, 8).map((item) => (
             <li key={item.reference} className="flex items-center justify-between gap-3">
               <span>
-                <strong>{item.reference}</strong> — {item.trackingNumber || "sans suivi"}
+                <strong>{item.reference}</strong> - {item.trackingNumber || "sans suivi"}
                 {item.sentAt ? " · email envoyé" : ""}
               </span>
               <AdminTempDeleteButton

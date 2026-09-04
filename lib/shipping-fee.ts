@@ -27,9 +27,9 @@ function paidShippingLabel(fee: number, units: number): string {
     .toFixed(2)
     .replace(".", ",");
   if (units <= 1) {
-    return `${shopConfig.paidShippingLabel} — ${feeLabel} €`;
+    return `${shopConfig.paidShippingLabel} - ${feeLabel} €`;
   }
-  return `${shopConfig.paidShippingLabel} — ${feeLabel} € (${units} × ${unitPrice} € / ${shopConfig.shippingItemsPerUnit} art.)`;
+  return `${shopConfig.paidShippingLabel} - ${feeLabel} € (${units} × ${unitPrice} € / ${shopConfig.shippingItemsPerUnit} art.)`;
 }
 
 /** Livraison offerte si le client n'a encore aucune commande payée. */

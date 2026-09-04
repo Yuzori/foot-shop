@@ -171,7 +171,7 @@ function mapScrapedApiProduct(
     imageUrls: p.imageUrls,
     scrapeError:
       p.error ??
-      (p.imageUrls.length === 0 ? "Aucune image — importez manuellement." : null),
+      (p.imageUrls.length === 0 ? "Aucune image - importez manuellement." : null),
     selections,
     categoryGroupId: "",
     categoryDivisionId: null,
@@ -280,7 +280,7 @@ async function detectRenderModeFromApi(
       return data.mode;
     }
   } catch {
-    // ignore — fallback below
+    // ignore - fallback below
   }
 
   if (opts.imageUrl) return guessRenderModeFromUrl(opts.imageUrl);
@@ -312,7 +312,7 @@ function isPngBuffer(buffer: ArrayBuffer): boolean {
 
 function mapRenderApiMessage(message: string, status: number): string {
   if (message === "invalid_body" || message.includes("Requête illisible")) {
-    return "Image trop lourde pour l'envoi — réduisez-la ou relancez `npm run dev`.";
+    return "Image trop lourde pour l'envoi - réduisez-la ou relancez `npm run dev`.";
   }
   if (message === "unauthorized") {
     return "Mot de passe admin incorrect.";
@@ -321,7 +321,7 @@ function mapRenderApiMessage(message: string, status: number): string {
     return "Aucune image sélectionnée.";
   }
   if (status >= 500 && !message.trim()) {
-    return "Erreur serveur — relancez `npm run dev` (un seul terminal) et réessayez.";
+    return "Erreur serveur - relancez `npm run dev` (un seul terminal) et réessayez.";
   }
   return message;
 }
@@ -344,9 +344,9 @@ async function parseRenderResponse(res: Response): Promise<string> {
       res.status === 413
         ? "Image trop volumineuse pour le serveur."
         : res.status === 502 || res.status === 503 || res.status === 504
-          ? "Serveur indisponible — relancez `npm run dev` et réessayez une image à la fois."
+          ? "Serveur indisponible - relancez `npm run dev` et réessayez une image à la fois."
           : res.status >= 500
-            ? `Erreur serveur (HTTP ${res.status}) — vérifiez le terminal Next.js et relancez \`npm run dev\`.`
+            ? `Erreur serveur (HTTP ${res.status}) - vérifiez le terminal Next.js et relancez \`npm run dev\`.`
             : "Réponse serveur vide.",
     );
   }
@@ -357,7 +357,7 @@ async function parseRenderResponse(res: Response): Promise<string> {
   } catch {
     throw new Error(
       res.status >= 500
-        ? `Erreur serveur (HTTP ${res.status}) — relancez \`npm run dev\`.`
+        ? `Erreur serveur (HTTP ${res.status}) - relancez \`npm run dev\`.`
         : "Réponse serveur invalide.",
     );
   }
@@ -588,8 +588,8 @@ export function JerseyStudioSection({
         if (count > 0) {
           setRestoreNotice(
             manualCount > 0
-              ? `Session restaurée — ${count} produit(s), ${manualCount} import(s) local(aux). Statuts d'envoi réinitialisés.`
-              : `Session restaurée — ${count} produit(s). Statuts d'envoi réinitialisés pour permettre un nouvel envoi.`,
+              ? `Session restaurée - ${count} produit(s), ${manualCount} import(s) local(aux). Statuts d'envoi réinitialisés.`
+              : `Session restaurée - ${count} produit(s). Statuts d'envoi réinitialisés pour permettre un nouvel envoi.`,
           );
         }
       }
@@ -778,7 +778,7 @@ export function JerseyStudioSection({
 
       if (!accumulated.length && broken.length) {
         setError(
-          `${broken.length} lien(s) en échec — consultez la liste ci-dessous.`,
+          `${broken.length} lien(s) en échec - consultez la liste ci-dessous.`,
         );
       } else if (broken.length) {
         setError(
@@ -873,7 +873,7 @@ export function JerseyStudioSection({
 
     if (!jobs.length) {
       setError(null);
-      setRestoreNotice("Tous les rendus sont déjà enregistrés — rien à refaire.");
+      setRestoreNotice("Tous les rendus sont déjà enregistrés - rien à refaire.");
       return;
     }
 
@@ -890,8 +890,8 @@ export function JerseyStudioSection({
           : `${job.productName.slice(0, 24)} (import #${i + 1})`;
       setPhase(
         skipped > 0
-          ? `Rendu ${i + 1}/${jobs.length} (${skipped} déjà OK) — ${label}…`
-          : `Rendu ${i + 1}/${jobs.length} — ${label}…`,
+          ? `Rendu ${i + 1}/${jobs.length} (${skipped} déjà OK) - ${label}…`
+          : `Rendu ${i + 1}/${jobs.length} - ${label}…`,
       );
 
       try {
@@ -933,7 +933,7 @@ export function JerseyStudioSection({
     opts?: { resetPushStatus?: boolean },
   ) {
     if (!toSend.length) {
-      setError("Aucun produit à envoyer — vérifiez que les rendus sont bien enregistrés.");
+      setError("Aucun produit à envoyer - vérifiez que les rendus sont bien enregistrés.");
       return;
     }
 
@@ -966,7 +966,7 @@ export function JerseyStudioSection({
         const p = toSend[i]!;
         const productIndex = products.findIndex((item) => item.id === p.id) + 1;
         setPhase(
-          `Envoi PrestaShop ${i + 1}/${toSend.length} — produit #${productIndex}…`,
+          `Envoi PrestaShop ${i + 1}/${toSend.length} - produit #${productIndex}…`,
         );
 
         const hydratedSelections = await hydrateRenderSelections(p.selections);
@@ -979,7 +979,7 @@ export function JerseyStudioSection({
             pushResult: {
               ok: false,
               error:
-                "Aucune image rendue disponible — relancez le rendu pour ce produit.",
+                "Aucune image rendue disponible - relancez le rendu pour ce produit.",
             },
           });
           failCount++;
@@ -1025,7 +1025,7 @@ export function JerseyStudioSection({
         } catch {
           throw new Error(
             res.status === 413
-              ? "Payload trop volumineux — réessayez avec moins d'images par produit."
+              ? "Payload trop volumineux - réessayez avec moins d'images par produit."
               : "Réponse serveur invalide (invalid_body). Réessayez produit par produit.",
           );
         }
@@ -1088,7 +1088,7 @@ export function JerseyStudioSection({
     const message =
       alreadySent > 0
         ? `${all.length} produit(s) seront envoyés un par un sur PrestaShop.\n\n` +
-          `${alreadySent} sont déjà marqués comme envoyés — cela créera de nouvelles fiches (doublons possibles).\n\n` +
+          `${alreadySent} sont déjà marqués comme envoyés - cela créera de nouvelles fiches (doublons possibles).\n\n` +
           `Les rendus enregistrés ne seront pas supprimés. Continuer ?`
         : `${all.length} produit(s) seront envoyés un par un sur PrestaShop.\n\n` +
           `Les rendus enregistrés ne seront pas supprimés. Continuer ?`;
@@ -1167,7 +1167,7 @@ export function JerseyStudioSection({
 
       {removeBgStatus?.enabled ? (
         <p className="mt-2 text-xs font-medium text-[#1a7f37]">
-          Détourage Remove.bg actif — {removeBgStatus.activeKeys}/{removeBgStatus.totalKeys}{" "}
+          Détourage Remove.bg actif - {removeBgStatus.activeKeys}/{removeBgStatus.totalKeys}{" "}
           compte(s) API disponible(s). Rotation automatique si quota épuisé.
         </p>
       ) : (
@@ -1186,14 +1186,14 @@ export function JerseyStudioSection({
         <p className="mt-2 text-[11px] text-ink/40">
           Progression sauvegardée automatiquement
           {draftLiteSave
-            ? " (aperçus de rendu exclus — relancez « Rendre les images » si besoin)."
+            ? " (aperçus de rendu exclus - relancez « Rendre les images » si besoin)."
             : "."}
         </p>
       ) : null}
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <Field
-          label="Prix (€) — tous les produits"
+          label="Prix (€) - tous les produits"
           name="studioPrice"
           type="number"
           min="0"
@@ -1217,7 +1217,7 @@ export function JerseyStudioSection({
           Catégorie PrestaShop par défaut
         </label>
         <p className="mb-2 text-[11px] text-ink/45">
-          Catégories réelles de votre boutique (IDs PrestaShop) — pas les filtres du site.
+          Catégories réelles de votre boutique (IDs PrestaShop) - pas les filtres du site.
         </p>
         <AdminCategoryPicker
           optGroups={categoryOptGroups}
@@ -1260,7 +1260,7 @@ export function JerseyStudioSection({
         <span className="text-sm text-ink/75">
           <strong className="font-medium text-ink">Sélection auto des images</strong>
           <span className="mt-0.5 block text-xs text-ink/50">
-            Face, dos, détails, certificat et manche (eSport) — activable avant l&apos;analyse.
+            Face, dos, détails, certificat et manche (eSport) - activable avant l&apos;analyse.
           </span>
         </span>
       </label>
@@ -1430,7 +1430,7 @@ export function JerseyStudioSection({
                   </a>
                   {product.scrapeError ? (
                     <p className="mt-2 text-xs text-accent">
-                      Scrape : {product.scrapeError} — importez une image manuellement.
+                      Scrape : {product.scrapeError} - importez une image manuellement.
                     </p>
                   ) : null}
                 </div>
@@ -1476,7 +1476,7 @@ export function JerseyStudioSection({
               {product.imageUrls.length > 0 ? (
                 <div className="mt-4">
                   <p className="text-xs font-medium text-ink/50">
-                    Images scrappées — cliquez pour sélectionner / désélectionner. Le numéro
+                    Images scrappées - cliquez pour sélectionner / désélectionner. Le numéro
                     indique l&apos;ordre d&apos;envoi (#1 = image principale).
                   </p>
                   <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
@@ -1599,14 +1599,14 @@ export function JerseyStudioSection({
                           !selection.manualPreview &&
                           !selection.manualBase64 ? (
                             <span className="absolute inset-0 flex items-center justify-center bg-ink/5 px-1 text-center text-[10px] text-ink/45">
-                              Image locale introuvable — réimportez
+                              Image locale introuvable - réimportez
                             </span>
                           ) : null}
                         </div>
 
                         <div className="min-w-0 flex-1">
                           <p className="text-xs text-ink/55">
-                            Image #{order} —{" "}
+                            Image #{order} -{" "}
                             {selection.kind === "manual" ? "Import local" : "Image scrappée"}
                             {order === 1 ? " · couverture PrestaShop" : " · galerie"}
                           </p>
@@ -1762,7 +1762,7 @@ export function JerseyStudioSection({
             className="pointer-events-auto shadow-lg"
             onClick={scrollToTop}
           >
-            ↑ Haut — analyser les liens
+            ↑ Haut - analyser les liens
           </Button>
           <Button
             type="button"

@@ -68,7 +68,7 @@ export async function POST(request: Request) {
 
   await sendMail({
     to: email,
-    subject: `${publicConfig.siteName} — Code de vérification`,
+    subject: `${publicConfig.siteName} - Code de vérification`,
     text: `Votre code de vérification : ${code}\nCe code expire dans 15 minutes.`,
     html: emailLayout(`
       ${emailHeading("Vérifiez votre email")}

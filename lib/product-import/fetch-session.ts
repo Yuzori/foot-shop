@@ -1,6 +1,6 @@
 import "server-only";
 
-/** Cookie jar par hôte — persiste entre requêtes d'une même importation. */
+/** Cookie jar par hôte - persiste entre requêtes d'une même importation. */
 const jars = new Map<string, Map<string, string>>();
 
 function jarForHost(host: string): Map<string, string> {

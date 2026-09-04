@@ -73,7 +73,7 @@ export function resolveKitTypeFromName(name: string): KitType {
   return detectKitTypeFromName(name) ?? "domicile";
 }
 
-/** Clé de regroupement : même équipe, année, audience — sans le type de maillot. */
+/** Clé de regroupement : même équipe, année, audience - sans le type de maillot. */
 export function getKitSiblingKey(name: string): string | null {
   if (!/\bmaillot\b/i.test(name)) return null;
 

@@ -47,12 +47,12 @@ export async function sendShippingPendingEmail(input: {
     "",
     orderSupportNoticeText(contactUrl),
     "",
-    `— ${publicConfig.siteName}`,
+    `- ${publicConfig.siteName}`,
   ].join("\n");
 
   const result = await sendMail({
     to: input.to,
-    subject: `Suivi colis bientôt disponible — ${input.reference}`,
+    subject: `Suivi colis bientôt disponible - ${input.reference}`,
     html: emailLayout(body),
     text,
   });

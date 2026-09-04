@@ -2,7 +2,7 @@ import "server-only";
 
 import sharp from "sharp";
 
-/** PrestaShop : max 2000 Ko — marge de sécurité. */
+/** PrestaShop : max 2000 Ko - marge de sécurité. */
 export const PRESTASHOP_MAX_IMAGE_BYTES = 2000 * 1024 - 48_000;
 
 function detectImageMime(buffer: Buffer): string {

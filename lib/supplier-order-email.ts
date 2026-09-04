@@ -45,10 +45,10 @@ export async function sendBbdBuyOperatorEmail(
     .join("");
 
   const body = `
-    ${emailHeading(`Commande BBDBuy — ${draft.reference}`)}
+    ${emailHeading(`Commande BBDBuy - ${draft.reference}`)}
     ${emailParagraph("Nouvelle commande payée sur Foot Shop. Brouillon prêt pour saisie sur <strong>bbdbuy.com</strong>.")}
     ${emailParagraph(`<strong>Référence boutique :</strong> ${escapeHtml(draft.reference)}`)}
-    ${emailParagraph(`<strong>Client :</strong> ${escapeHtml(draft.customer.firstName)} ${escapeHtml(draft.customer.lastName)}${draft.customer.phone ? ` — ${escapeHtml(draft.customer.phone)}` : ""}`)}
+    ${emailParagraph(`<strong>Client :</strong> ${escapeHtml(draft.customer.firstName)} ${escapeHtml(draft.customer.lastName)}${draft.customer.phone ? ` - ${escapeHtml(draft.customer.phone)}` : ""}`)}
     ${emailParagraph(`<strong>Livraison :</strong><br/>
       ${escapeHtml(draft.shipping.address1)}<br/>
       ${draft.shipping.address2 ? `${escapeHtml(draft.shipping.address2)}<br/>` : ""}
@@ -70,7 +70,7 @@ export async function sendBbdBuyOperatorEmail(
     .join("\n\n");
 
   const text = [
-    `Commande BBDBuy — ${draft.reference}`,
+    `Commande BBDBuy - ${draft.reference}`,
     "",
     `Client: ${draft.customer.firstName} ${draft.customer.lastName}`,
     `Adresse: ${draft.shipping.address1}, ${draft.shipping.postcode} ${draft.shipping.city}, ${draft.shipping.country}`,
@@ -89,7 +89,7 @@ export async function sendBbdBuyOperatorEmail(
 
   const result = await sendMail({
     to,
-    subject: `[BBDBuy] Commande ${draft.reference} — ${publicConfig.siteName}`,
+    subject: `[BBDBuy] Commande ${draft.reference} - ${publicConfig.siteName}`,
     html: emailLayout(body),
     text,
   });

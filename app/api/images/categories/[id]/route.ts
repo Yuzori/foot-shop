@@ -1,7 +1,7 @@
 import { serverConfig } from "@/config";
 import { processImageToWebp } from "@/lib/image-proxy-process";
 
-/** Category image proxy — WebP optimisé. */
+/** Category image proxy - WebP optimisé. */
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },

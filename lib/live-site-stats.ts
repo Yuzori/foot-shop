@@ -1,7 +1,7 @@
 import { recordAnalyticsPresence } from "@/lib/live-site-analytics";
 import type { LiveSiteStats } from "@/lib/live-site-stats-types";
 
-/** Sessions visiteurs actives (heartbeat client). Mémoire process — suffisant pour le VPS mono-instance. */
+/** Sessions visiteurs actives (heartbeat client). Mémoire process - suffisant pour le VPS mono-instance. */
 
 export type LiveVisitorSession = {
   id: string;

@@ -18,7 +18,7 @@ export default function LegalPage() {
     >
       <section>
         <h2>Éditeur du site</h2>
-        <p>{legalInfo.companyName} — {legalInfo.legalForm}</p>
+        <p>{legalInfo.companyName} - {legalInfo.legalForm}</p>
         <p>Capital social : {legalInfo.shareCapital}</p>
         <p>Siège social : {legalInfo.address}</p>
         <p>SIRET : {legalInfo.siret}</p>

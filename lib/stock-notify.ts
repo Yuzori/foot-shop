@@ -5,7 +5,7 @@ import { processStockAlertEmails } from "@/lib/stock-alerts";
 
 const STOCK_THROTTLE_MS = 60 * 1000;
 
-/** Traite les alertes cloche — appelé à chaque visite produit / catalogue (max 1×/min). */
+/** Traite les alertes cloche - appelé à chaque visite produit / catalogue (max 1×/min). */
 export async function maybeProcessStockAlerts(): Promise<number> {
   const snapshot = await readSnapshot();
   const last = snapshot.lastStockCheckAt

@@ -25,7 +25,7 @@ interface KitTypeSwitcherProps {
   options: KitSwitcherOption[];
 }
 
-/** Carré actif — emplacement fixe pour éviter les sauts. */
+/** Carré actif - emplacement fixe pour éviter les sauts. */
 const ACTIVE_SIZE = "h-[4.75rem] w-[4.75rem]";
 const INACTIVE_SIZE = "h-[4rem] w-[4rem]";
 const SLOT_CLASS = "w-[4.75rem]";
@@ -145,7 +145,7 @@ function KitTypeTile({
   );
 }
 
-/** Domicile / extérieur / third — carrés blancs, ordre fixe, contour couleur maillot. */
+/** Domicile / extérieur / third - carrés blancs, ordre fixe, contour couleur maillot. */
 export function KitTypeSwitcher({
   currentProductId,
   options,
@@ -178,7 +178,7 @@ export function KitTypeSwitcher({
       {hasOutOfStock && user?.email ? (
         <p className="mt-3 max-w-md text-[11px] leading-relaxed text-ink/45">
           Connecté avec{" "}
-          <span className="font-medium text-ink/65">{user.email}</span> — la
+          <span className="font-medium text-ink/65">{user.email}</span> - la
           cloche active une alerte retour en stock à cette adresse.
         </p>
       ) : hasOutOfStock ? (

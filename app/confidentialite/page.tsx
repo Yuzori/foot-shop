@@ -17,7 +17,7 @@ export default function PrivacyPage() {
       <section>
         <h2>Responsable du traitement</h2>
         <p>
-          {legalInfo.companyName} — {legalInfo.address}. Pour toute question
+          {legalInfo.companyName} - {legalInfo.address}. Pour toute question
           relative à vos données : {legalInfo.email}.
         </p>
       </section>
@@ -37,7 +37,7 @@ export default function PrivacyPage() {
         <p>
           Vos données servent à exécuter le contrat de vente (traitement et
           livraison des commandes), à assurer le service client, à respecter nos
-          obligations légales et comptables, et — avec votre consentement — à
+          obligations légales et comptables, et - avec votre consentement - à
           vous adresser nos communications commerciales.
         </p>
       </section>

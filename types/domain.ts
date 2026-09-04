@@ -1,7 +1,7 @@
 /**
  * Clean domain models consumed by the UI.
  *
- * Components ONLY ever know about these types — never the raw PrestaShop shapes.
+ * Components ONLY ever know about these types - never the raw PrestaShop shapes.
  * This is what keeps the front decoupled: swap the back office and only the
  * mappers in `services/` change.
  */
@@ -70,13 +70,13 @@ export interface Category {
   slug: string;
   description: string;
   parentId: string | null;
-  /** True for PrestaShop technical roots (Root / Home) — never shown to users. */
+  /** True for PrestaShop technical roots (Root / Home) - never shown to users. */
   isRoot: boolean;
   image: ProductImage | null;
   productCount: number | null;
 }
 
-/** Flocage personnalisé (nom / numéro séparés) — transmis au fournisseur. */
+/** Flocage personnalisé (nom / numéro séparés) - transmis au fournisseur. */
 export interface FlocageOption {
   enabled: boolean;
   /** Nom floqué (ex. MESSI). */
@@ -84,7 +84,7 @@ export interface FlocageOption {
   /** Numéro floqué (ex. 10). */
   number: string;
   price: number;
-  /** @deprecated Ancien format — conservé pour compatibilité panier persisté. */
+  /** @deprecated Ancien format - conservé pour compatibilité panier persisté. */
   text?: string;
 }
 

@@ -22,7 +22,7 @@ export function emailLayout(body: string): string {
         <tr><td style="padding:8px 28px 32px">${body}</td></tr>
         <tr><td style="padding:20px 28px;background:#0a0a0a;color:#999;font-size:11px;line-height:1.6">
           <a href="${base}" style="color:#fff;text-decoration:none">${site}</a>
-          <p style="margin:12px 0 0;color:#777;font-size:11px;line-height:1.5">Ce message est une notification légitime de notre boutique — ce n'est pas du spam.</p>
+          <p style="margin:12px 0 0;color:#777;font-size:11px;line-height:1.5">Ce message est une notification légitime de notre boutique - ce n'est pas du spam.</p>
         </td></tr>
       </table>
     </td></tr>
@@ -46,7 +46,7 @@ export function emailProductImage(imageUrl: string, alt: string): string {
 
 export function emailAntiSpamNote(): string {
   return emailParagraph(
-    "Ce message est une notification légitime de votre demande sur notre boutique — ce n'est pas du spam.",
+    "Ce message est une notification légitime de votre demande sur notre boutique - ce n'est pas du spam.",
   );
 }
 

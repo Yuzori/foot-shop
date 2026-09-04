@@ -17,7 +17,7 @@ export default function TermsPage() {
       intro="Les présentes CGV régissent les ventes conclues sur le site et sont conformes au Code de la consommation. Elles peuvent être modifiées ; la version applicable est celle en vigueur à la date de la commande."
     >
       <section>
-        <h2>Article 1 — Objet et acceptation</h2>
+        <h2>Article 1 - Objet et acceptation</h2>
         <p>
           Toute commande passée sur le site implique l&apos;acceptation pleine
           et entière des présentes conditions générales de vente. Le client
@@ -26,7 +26,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>Article 2 — Produits</h2>
+        <h2>Article 2 - Produits</h2>
         <p>
           Les produits proposés sont décrits et présentés avec la plus grande
           exactitude possible. Les photographies n&apos;ont pas de valeur
@@ -36,7 +36,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>Article 3 — Prix</h2>
+        <h2>Article 3 - Prix</h2>
         <p>
           Les prix sont indiqués en euros toutes taxes comprises (TTC), hors
           frais de livraison précisés avant la validation de la commande.
@@ -47,7 +47,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>Article 4 — Commande</h2>
+        <h2>Article 4 - Commande</h2>
         <p>
           Le contrat de vente est conclu lorsque le client valide sa commande
           après en avoir vérifié le détail et le prix total. Une confirmation
@@ -56,7 +56,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>Article 5 — Paiement</h2>
+        <h2>Article 5 - Paiement</h2>
         <p>
           Le paiement s&apos;effectue de manière sécurisée au moment de la
           commande par carte bancaire via le prestataire Stripe. Les données
@@ -66,7 +66,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>Article 5 bis — Codes promotionnels</h2>
+        <h2>Article 5 bis - Codes promotionnels</h2>
         <p>
           Les codes promotionnels sont personnels, non cumulables sauf mention
           contraire, et utilisables dans la limite de leur validité.{" "}
@@ -76,7 +76,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>Article 6 — Livraison</h2>
+        <h2>Article 6 - Livraison</h2>
         <p>
           Les produits sont livrés à l&apos;adresse indiquée par le client lors
           de la commande. Les délais indicatifs sont de{" "}
@@ -106,7 +106,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>Article 7 — Droit de rétractation</h2>
+        <h2>Article 7 - Droit de rétractation</h2>
         <p>
           Conformément aux articles L.221-18 et suivants du Code de la
           consommation, le client dispose d&apos;un délai de{" "}
@@ -124,7 +124,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>Article 8 — Remboursement</h2>
+        <h2>Article 8 - Remboursement</h2>
         <p>
           En cas de rétractation, le remboursement intervient dans un délai de 14
           jours après récupération des produits ou preuve de leur expédition, par
@@ -133,7 +133,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>Article 9 — Garanties légales</h2>
+        <h2>Article 9 - Garanties légales</h2>
         <p>
           Tous les produits bénéficient de la garantie légale de conformité
           (articles L.217-3 et suivants du Code de la consommation) et de la
@@ -143,7 +143,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>Article 10 — Médiation</h2>
+        <h2>Article 10 - Médiation</h2>
         <p>
           Conformément aux articles L.612-1 et suivants du Code de la
           consommation, le client peut recourir gratuitement à un médiateur de la

@@ -19,12 +19,12 @@ async function sendWelcomeNewsletterEmail(email: string): Promise<void> {
   const base = getSiteUrl();
   await sendMail({
     to: email,
-    subject: `${publicConfig.siteName} — Bienvenue dans la newsletter`,
+    subject: `${publicConfig.siteName} - Bienvenue dans la newsletter`,
     text: `Merci pour votre inscription à la newsletter ${publicConfig.siteName}.\n${base}`,
     html: emailLayout(`
       ${emailHeading("Bienvenue !")}
       ${emailParagraph(`Vous êtes inscrit à la newsletter <strong>${publicConfig.siteName}</strong>.`)}
-      ${emailParagraph("Nouveautés, éditions limitées et retours en stock — directement dans votre boîte mail.")}
+      ${emailParagraph("Nouveautés, éditions limitées et retours en stock - directement dans votre boîte mail.")}
       ${emailButton(`${base}/catalogue`, "Découvrir la boutique")}
     `),
   });

@@ -28,7 +28,7 @@ export function PushFailuresAlert({
         {failures.length} envoi{failures.length > 1 ? "s" : ""} en échec
       </h3>
       <p className="mt-1 text-xs text-ink/55">
-        Produits non envoyés sur PrestaShop — détail ci-dessous. Les cartes concernées sont
+        Produits non envoyés sur PrestaShop - détail ci-dessous. Les cartes concernées sont
         surlignées en rouge dans la liste.
       </p>
       <ul className="mt-3 max-h-48 space-y-2 overflow-y-auto">
@@ -49,7 +49,7 @@ export function PushFailuresAlert({
                   })
                 }
               >
-                #{item.index} — {item.name}
+                #{item.index} - {item.name}
               </button>
               {item.error ? (
                 <p className="mt-1 text-accent">{item.error}</p>

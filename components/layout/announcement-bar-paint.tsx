@@ -4,7 +4,7 @@ const paintMessages = announcementMessages.filter(
   (message) => !/express/i.test(message),
 );
 
-/** Bandeau supérieur paint — défilement marquee comme l’original. */
+/** Bandeau supérieur paint - défilement marquee comme l’original. */
 export function AnnouncementBarPaint() {
   const messages = paintMessages;
 

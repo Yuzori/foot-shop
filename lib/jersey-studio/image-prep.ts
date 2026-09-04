@@ -61,7 +61,7 @@ export async function rgbaToPng(
     .toBuffer();
 }
 
-/** Upscale uniquement les sources vraiment petites — évite upscale puis downscale. */
+/** Upscale uniquement les sources vraiment petites - évite upscale puis downscale. */
 export async function prepareInput(input: Buffer): Promise<Buffer> {
   const rotated = await sharp(input).rotate().png(LOSSLESS_PNG).toBuffer();
   const meta = await sharp(rotated).metadata();
@@ -126,7 +126,7 @@ export async function removeBackgroundForDetail(input: Buffer): Promise<Buffer> 
   return removeBackgroundInternal(input, { aggressiveFringe: false }).then(polishCutoutDetail);
 }
 
-/** Finition légère après Remove.bg — on fait confiance à l'API, pas de double nettoyage agressif. */
+/** Finition légère après Remove.bg - on fait confiance à l'API, pas de double nettoyage agressif. */
 async function polishRemoveBgCutout(png: Buffer): Promise<Buffer> {
   const { data, width, height } = await rawRgba(png);
   stripNeutralOutlineFringe(data, width, height);
@@ -252,7 +252,7 @@ export async function polishCutoutJersey(png: Buffer): Promise<Buffer> {
   return rgbaToPng(data, width, height);
 }
 
-/** Finition détail — pipeline local uniquement (Remove.bg a sa propre finition légère). */
+/** Finition détail - pipeline local uniquement (Remove.bg a sa propre finition légère). */
 export async function polishCutoutDetail(png: Buffer): Promise<Buffer> {
   const { data, width, height } = await rawRgba(png);
   removeOutlineStudioBleed(data, width, height);

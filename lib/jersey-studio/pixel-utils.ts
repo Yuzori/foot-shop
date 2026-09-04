@@ -78,7 +78,7 @@ export function matchesBackground(
   return false;
 }
 
-/** Fond studio neutre (#EEE, gris photo) — pas le blanc du maillot. */
+/** Fond studio neutre (#EEE, gris photo) - pas le blanc du maillot. */
 export function isStudioBackgroundPixel(r: number, g: number, b: number): boolean {
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
@@ -92,7 +92,7 @@ export function isStudioBackgroundPixel(r: number, g: number, b: number): boolea
 }
 
 /**
- * Tissu du maillot (rouge, bleu, jaune, blanc…) — ne jamais confondre avec le fond.
+ * Tissu du maillot (rouge, bleu, jaune, blanc…) - ne jamais confondre avec le fond.
  */
 export function isJerseyFabricPixel(r: number, g: number, b: number): boolean {
   const max = Math.max(r, g, b);
@@ -688,7 +688,7 @@ export function defringeAgainstBackground(
   }
 }
 
-/** Rouge / couleurs vives du tissu — ne pas dé-saturer via defringe ou nettoyage de fond. */
+/** Rouge / couleurs vives du tissu - ne pas dé-saturer via defringe ou nettoyage de fond. */
 export function isProtectedJerseyPixel(r: number, g: number, b: number): boolean {
   return isJerseyFabricPixel(r, g, b);
 }
@@ -782,7 +782,7 @@ export function pruneOutlineHalos(
 }
 
 /**
- * Mode maillot : alpha strictement 0 ou 255 — pas d'anti-aliasing.
+ * Mode maillot : alpha strictement 0 ou 255 - pas d'anti-aliasing.
  */
 export function binarySilhouetteAlpha(
   data: Uint8Array,
@@ -836,7 +836,7 @@ export function stripNeutralOutlineFringe(
 }
 
 /**
- * Retire les franges claires visibles sur fond sombre (#161616) — contour uniquement.
+ * Retire les franges claires visibles sur fond sombre (#161616) - contour uniquement.
  * Ne touche pas l'intérieur opaque du maillot (y compris blanc).
  */
 export function removeExteriorLightFringe(

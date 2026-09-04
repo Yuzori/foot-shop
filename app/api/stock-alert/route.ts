@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     }
 
     const label = variantLabel
-      ? `${product.name || productName} — ${variantLabel}`
+      ? `${product.name || productName} - ${variantLabel}`
       : product.name || productName;
 
     const imageUrl = product.cover?.url ?? null;
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
 
     const smtpHint = mailConfig.enabled
       ? ""
-      : " (SMTP non configuré — configurez .env.local pour recevoir les emails.)";
+      : " (SMTP non configuré - configurez .env.local pour recevoir les emails.)";
 
     return NextResponse.json({
       message: `Alerte enregistrée. Vous recevrez un email dès que l'article sera disponible.${smtpHint}`,

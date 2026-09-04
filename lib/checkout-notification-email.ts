@@ -5,7 +5,7 @@ import type { OrderArchiveRecord } from "@/lib/order-archive-store";
 
 type CheckoutContact = Pick<OrderArchiveRecord, "contact"> | Pick<CheckoutPendingRecord, "contact">;
 
-/** Email saisi au checkout — prioritaire sur le compte PrestaShop / Stripe. */
+/** Email saisi au checkout - prioritaire sur le compte PrestaShop / Stripe. */
 export function resolveCheckoutNotificationEmail(input: {
   archive?: CheckoutContact | null;
   checkoutEmail?: string | null;

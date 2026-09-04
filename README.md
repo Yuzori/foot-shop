@@ -1,4 +1,4 @@
-# MAILLOT — Storefront premium (Next.js 15)
+# MAILLOT - Storefront premium (Next.js 15)
 
 Front-end e-commerce **haut de gamme** pour une boutique de maillots de football.
 Le front est **totalement découplé** : **PrestaShop sert uniquement de Back Office**.
@@ -6,7 +6,7 @@ Le front est **totalement découplé** : **PrestaShop sert uniquement de Back Of
 > **Règle d'or du projet : aucune donnée fictive.**
 > Aucun produit, prix, club, joueur ou catégorie n'est codé en dur. Toutes les
 > données proviennent de l'API. Si l'API est vide ou non connectée, les pages
-> affichent des **Empty States élégants** — jamais de démo.
+> affichent des **Empty States élégants** - jamais de démo.
 
 ---
 
@@ -29,17 +29,17 @@ cp .env.example .env.local   # puis renseignez vos variables
 npm run dev
 ```
 
-- `npm run dev` — serveur de développement
-- `npm run build` — build de production
-- `npm run start` — serveur de production
-- `npm run lint` — ESLint
-- `npm run type-check` — vérification TypeScript
+- `npm run dev` - serveur de développement
+- `npm run build` - build de production
+- `npm run start` - serveur de production
+- `npm run lint` - ESLint
+- `npm run type-check` - vérification TypeScript
 
 ## Déploiement production
 
 | Guide | Contenu |
 |-------|---------|
-| **[prestashop-kali-to-hostinger.md](docs/prestashop-kali-to-hostinger.md)** | **Commencer ici** — migrer PrestaShop + MariaDB depuis Kali |
+| **[prestashop-kali-to-hostinger.md](docs/prestashop-kali-to-hostinger.md)** | **Commencer ici** - migrer PrestaShop + MariaDB depuis Kali |
 | [DEPLOYMENT.md](docs/DEPLOYMENT.md) | Boutique Next.js (Hostinger Node.js ou Render) |
 
 ## Connexion au Back Office PrestaShop
@@ -53,7 +53,7 @@ Composant → hook (React Query) → lib/api.ts (axios → /api/*)
 ```
 
 La clé Webservice reste **secrète côté serveur**. Pour connecter une instance,
-il suffit de renseigner `.env.local` — **aucun composant n'est à modifier** :
+il suffit de renseigner `.env.local` - **aucun composant n'est à modifier** :
 
 | Variable                  | Description                                           |
 | ------------------------- | ----------------------------------------------------- |
@@ -113,7 +113,7 @@ Confidentialité, CGV, 404.
 
 Les flux nécessitant l'**écriture** ou une **session client** (création de
 commande, comptes, messagerie) affichent un état honnête tant que les API
-correspondantes ne sont pas branchées — **aucune confirmation ni compte fictif
+correspondantes ne sont pas branchées - **aucune confirmation ni compte fictif
 n'est fabriqué**. Le **panier** et les **favoris** sont locaux (standard
 e-commerce) et toujours construits à partir de produits réels du back office.
 Le **suivi de commande** est, lui, pleinement fonctionnel via l'API `orders`.

@@ -2,7 +2,7 @@ import { serverConfig } from "@/config";
 import { processImageToWebp } from "@/lib/image-proxy-process";
 
 /**
- * Image proxy — fetch PrestaShop, convert to WebP, cache accent color.
+ * Image proxy - fetch PrestaShop, convert to WebP, cache accent color.
  */
 export async function GET(
   _request: Request,

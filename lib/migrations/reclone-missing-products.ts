@@ -267,7 +267,7 @@ export async function scanProductsToReclone(): Promise<RecloneScanResult> {
 }
 
 export interface RecloneRunOptions extends RecloneOptions {
-  /** Scan déjà effectué — évite un second passage sur tout le catalogue. */
+  /** Scan déjà effectué - évite un second passage sur tout le catalogue. */
   scan?: RecloneScanResult;
 }
 
@@ -312,7 +312,7 @@ export async function recloneMissingProducts(
       failed += 1;
       const message = error instanceof Error ? error.message : String(error);
       errors.push({ sourceId: target.id, name: target.name, error: message });
-      console.error(`[reclone] FAIL source=#${target.id} "${target.name}" — ${message}`);
+      console.error(`[reclone] FAIL source=#${target.id} "${target.name}" - ${message}`);
     }
 
     if (options.delayMs && options.delayMs > 0) {

@@ -17,7 +17,7 @@ async function fulfillSessionIfPaid(
 ): Promise<void> {
   if (!isCheckoutSessionPaidOnStripe(session)) {
     console.info(
-      "[stripe] webhook ignoré — session non payée",
+      "[stripe] webhook ignoré - session non payée",
       session.id,
       session.payment_status,
       session.status,

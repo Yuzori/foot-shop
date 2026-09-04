@@ -50,13 +50,13 @@ export async function processStockAlertEmails(): Promise<number> {
 
     const url = productPageUrl(sub.productId);
     const label = sub.variantLabel
-      ? `${sub.productName} — ${sub.variantLabel}`
+      ? `${sub.productName} - ${sub.variantLabel}`
       : sub.productName;
     const image = productCoverEmailImageUrl(product);
 
     const result = await sendMail({
       to: sub.email,
-      subject: `${publicConfig.siteName} — ${label} est de retour en stock`,
+      subject: `${publicConfig.siteName} - ${label} est de retour en stock`,
       text: `Bonne nouvelle ! ${label} est disponible.\n${url}`,
       html: emailLayout(`
         ${emailHeading("De retour en stock")}
@@ -98,7 +98,7 @@ export async function sendStockAlertConfirmation(input: {
 
   return sendMail({
     to: input.email,
-    subject: `${publicConfig.siteName} — Alerte stock enregistrée`,
+    subject: `${publicConfig.siteName} - Alerte stock enregistrée`,
     text: `Nous vous préviendrons dès que ${input.label} sera disponible.\n${base}`,
     html: emailLayout(`
       ${emailHeading("Alerte enregistrée")}

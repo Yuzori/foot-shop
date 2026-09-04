@@ -42,7 +42,7 @@ const EXPRESS_OPTIONS = {
   },
 };
 
-/** Formulaire carte seul — wallets déjà dans le bandeau express au-dessus. */
+/** Formulaire carte seul - wallets déjà dans le bandeau express au-dessus. */
 const PAYMENT_ELEMENT_OPTIONS = {
   paymentMethodOrder: ["card"],
   wallets: {

@@ -43,7 +43,7 @@ export function WelcomePromoGuestNudge({
             {missing > 1 ? "s" : ""}, puis{" "}
           </>
         ) : (
-          <>Vous avez assez d&apos;articles — </>
+          <>Vous avez assez d&apos;articles - </>
         )}
         <strong>créez un compte</strong> pour profiter du{" "}
         {welcomePromo.checkoutLabel.toLowerCase()} sur votre première commande.

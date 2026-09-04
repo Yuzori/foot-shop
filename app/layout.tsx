@@ -14,7 +14,7 @@ import { buildSiteJsonLd } from "@/lib/seo/site-json-ld";
 import { AppProviders } from "@/providers/app-providers";
 import "@/styles/globals.css";
 
-/** Corps de texte — Poppins, propre et lisible. */
+/** Corps de texte - Poppins, propre et lisible. */
 const poppins = Poppins({
   subsets: ["latin"],
   variable: "--font-sans",
@@ -22,7 +22,7 @@ const poppins = Poppins({
   display: "swap",
 });
 
-/** Titres — Kanit, impact sport sans polices système. */
+/** Titres - Kanit, impact sport sans polices système. */
 const kanit = Kanit({
   subsets: ["latin"],
   variable: "--font-display",
@@ -30,7 +30,7 @@ const kanit = Kanit({
   display: "swap",
 });
 
-/** Brush / peinture — logo & accents header paint. */
+/** Brush / peinture - logo & accents header paint. */
 const permanentMarker = Permanent_Marker({
   subsets: ["latin"],
   variable: "--font-brush",
@@ -41,7 +41,7 @@ const permanentMarker = Permanent_Marker({
 export const metadata: Metadata = {
   metadataBase: new URL(publicConfig.siteUrl),
   title: {
-    default: `${publicConfig.siteName} — Maillots de football premium`,
+    default: `${publicConfig.siteName} - Maillots de football premium`,
     template: `%s · ${publicConfig.siteName}`,
   },
   description:
@@ -51,7 +51,7 @@ export const metadata: Metadata = {
     locale: publicConfig.locale,
     siteName: publicConfig.siteName,
     url: publicConfig.siteUrl,
-    title: `${publicConfig.siteName} — Maillots de football premium`,
+    title: `${publicConfig.siteName} - Maillots de football premium`,
     description:
       "Boutique premium de maillots de football. Sélection soignée, éditions limitées et flocage personnalisé.",
     images: [
@@ -65,7 +65,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: `${publicConfig.siteName} — Maillots de football premium`,
+    title: `${publicConfig.siteName} - Maillots de football premium`,
     description:
       "Boutique premium de maillots de football. Sélection soignée, éditions limitées et flocage personnalisé.",
     images: ["/logo.png"],

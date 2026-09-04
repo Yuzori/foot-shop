@@ -7,7 +7,7 @@ export type BrandButtonTone = "brand" | "light" | "subtle";
 export const BRAND_BUTTON_BASE =
   "inline-flex items-center justify-center gap-2 rounded-full border font-bold uppercase tracking-wide text-white shadow-lg backdrop-blur-md transition-all duration-300 ease-premium select-none hover:scale-105 hover:-translate-y-px active:scale-[0.96] disabled:pointer-events-none disabled:opacity-40";
 
-/** Style verre dégradé — identique au bouton « Choisir options ». */
+/** Style verre dégradé - identique au bouton « Choisir options ». */
 export function brandButtonStyle(
   accent?: ImageAccent,
   tone: BrandButtonTone = "brand",
@@ -51,7 +51,7 @@ export function brandButtonStyle(
   };
 }
 
-/** Halo focus subtil (ligne claire en haut — comme « Choisir options »). */
+/** Halo focus subtil (ligne claire en haut - comme « Choisir options »). */
 export function brandFocusRingStyle(accent?: ImageAccent): CSSProperties {
   const a = accent ?? toImageAccent();
   return {

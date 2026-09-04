@@ -128,7 +128,7 @@ async function parsePostBody(request: Request): Promise<JerseyStudioPostBody> {
   return (await request.json()) as JerseyStudioPostBody;
 }
 
-/** GET — catégories PrestaShop pour le studio maillot. */
+/** GET - catégories PrestaShop pour le studio maillot. */
 export async function GET(request: Request) {
   if (!isAuthorized(request)) {
     return NextResponse.json({ message: "unauthorized" }, { status: 401 });
@@ -383,7 +383,7 @@ export async function POST(request: Request) {
         message:
           err instanceof Error
             ? err.message
-            : "Erreur serveur interne — relancez `npm run dev` et réessayez.",
+            : "Erreur serveur interne - relancez `npm run dev` et réessayez.",
       },
       { status: 500 },
     );

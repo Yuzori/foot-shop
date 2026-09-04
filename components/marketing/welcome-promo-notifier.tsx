@@ -19,7 +19,7 @@ export function setWelcomePromoPending(): void {
   }
 }
 
-/** Bannière après création de compte — offre 2+1. */
+/** Bannière après création de compte - offre 2+1. */
 export function WelcomePromoNotifier() {
   const { data: user } = useSession();
   const [visible, setVisible] = useState(false);
@@ -52,7 +52,7 @@ export function WelcomePromoNotifier() {
               Compte créé
             </p>
             <p className="mt-1 text-sm text-ink/80">
-              {welcomePromo.label} sur votre première commande —{" "}
+              {welcomePromo.label} sur votre première commande -{" "}
               {welcomePromo.checkoutLabel.toLowerCase()} au paiement.
             </p>
           </div>

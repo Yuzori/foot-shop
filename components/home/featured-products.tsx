@@ -58,7 +58,7 @@ function FeaturedGrid({ products }: { products: Product[] }) {
   );
 }
 
-/** Derniers arrivages — layout éditorial avec onglets (évite la succession de titres). */
+/** Derniers arrivages - layout éditorial avec onglets (évite la succession de titres). */
 export function FeaturedProducts() {
   const catalogNav = useCatalogNav();
   const [tab, setTab] = useState<DropTab>("jersey");

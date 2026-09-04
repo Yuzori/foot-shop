@@ -85,7 +85,7 @@ function formatCategoryLabel(
   const parent = parentId
     ? categories.find((item) => item.id === parentId)
     : undefined;
-  return parent ? `${parent.name} — ${category.name}` : category.name;
+  return parent ? `${parent.name} - ${category.name}` : category.name;
 }
 
 /**

@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 
-/** Écran de chargement initial — disparaît dès que le DOM est prêt. */
+/** Écran de chargement initial - disparaît dès que le DOM est prêt. */
 export function SiteLoader() {
   const [ready, setReady] = useState(false);
 

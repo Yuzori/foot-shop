@@ -15,7 +15,7 @@ interface ProductImageProps {
 
 /**
  * Image wrapper with a graceful fallback. When the back office provides no
- * image (or it fails to load) we render a neutral placeholder — never a fake
+ * image (or it fails to load) we render a neutral placeholder - never a fake
  * product photo.
  */
 export function ProductImage({

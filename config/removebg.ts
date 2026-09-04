@@ -1,5 +1,5 @@
 /**
- * Remove.bg — détourage via API (rotation multi-comptes).
+ * Remove.bg - détourage via API (rotation multi-comptes).
  *
  * REMOVEBG_API_KEYS : clés séparées par virgule, point-virgule ou saut de ligne.
  * Ex. REMOVEBG_API_KEYS=abc123,def456,ghi789
@@ -43,6 +43,6 @@ export const removeBgConfig = {
     Number(process.env.REMOVEBG_TIMEOUT_MS) || (onRender ? 15_000 : 90_000),
   /** Marge sous la limite Remove.bg (22 Mo). */
   maxUploadBytes: 20 * 1024 * 1024,
-  /** Résolution max envoyée à l'API — suffisant pour un maillot, fichier léger. */
+  /** Résolution max envoyée à l'API - suffisant pour un maillot, fichier léger. */
   maxUploadDimension: Number(process.env.REMOVEBG_MAX_DIMENSION) || 2048,
 } as const;

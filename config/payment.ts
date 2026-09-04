@@ -31,7 +31,7 @@ export const paymentConfig = {
   /** Identifiant interne pour vérifier le déploiement (GET /api/checkout/stripe/config). */
   checkoutStripeVersion: "checkout-ux-v15",
   /**
-   * Configuration Stripe Dashboard (pmc_…) — Apple Pay, PayPal, Link, etc.
+   * Configuration Stripe Dashboard (pmc_…) - Apple Pay, PayPal, Link, etc.
    * https://dashboard.stripe.com/settings/payment_methods
    */
   stripePaymentMethodConfigurationId:

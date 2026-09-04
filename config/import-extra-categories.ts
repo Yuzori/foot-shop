@@ -41,7 +41,7 @@ export const importKidsExtraCategories = {
   ),
 } as const;
 
-/** Sous-catégories enfant sous Enfant - Short (optionnel — sinon détection par nom + parent). */
+/** Sous-catégories enfant sous Enfant - Short (optionnel - sinon détection par nom + parent). */
 export const importKidsShortsExtraCategories = {
   resteDuMonde: envFirst("PRODUCT_IMPORT_ENFANT_SHORT_RESTE_MONDE_CATEGORY_ID"),
   maillotConcept: envFirst("PRODUCT_IMPORT_ENFANT_SHORT_MAILLOT_CONCEPT_CATEGORY_ID"),

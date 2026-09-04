@@ -101,7 +101,7 @@ export async function resolveQuickImportImageUrl(refOrUrl: string): Promise<stri
   const id = quickImportImageIdFromRef(refOrUrl);
   if (!id) return refOrUrl;
   const stored = await getQuickImportImage(id);
-  if (!stored) throw new Error("Image locale introuvable — réimportez-la.");
+  if (!stored) throw new Error("Image locale introuvable - réimportez-la.");
   return stored;
 }
 

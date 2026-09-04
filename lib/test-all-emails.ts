@@ -105,11 +105,11 @@ export async function runAllEmailTests(
     [
       {
         id: "register-verify",
-        label: "Inscription — code de vérification",
+        label: "Inscription - code de vérification",
         fn: () =>
           sendMail({
             to,
-            subject: `[TEST] ${publicConfig.siteName} — Code de vérification`,
+            subject: `[TEST] ${publicConfig.siteName} - Code de vérification`,
             text: `Votre code de vérification : ${TEST_CODE}`,
             html: emailLayout(`
               ${emailHeading("Vérifiez votre email")}
@@ -129,7 +129,7 @@ export async function runAllEmailTests(
         fn: () =>
           sendMail({
             to,
-            subject: `[TEST] ${publicConfig.siteName} — Code de réinitialisation`,
+            subject: `[TEST] ${publicConfig.siteName} - Code de réinitialisation`,
             text: `Code : ${TEST_CODE}`,
             html: emailLayout(`
               ${emailHeading("Réinitialisation du mot de passe")}
@@ -143,11 +143,11 @@ export async function runAllEmailTests(
         fn: () =>
           sendMail({
             to,
-            subject: `[TEST] ${publicConfig.siteName} — Mot de passe modifié`,
+            subject: `[TEST] ${publicConfig.siteName} - Mot de passe modifié`,
             text: "Votre mot de passe a été modifié (test).",
             html: emailLayout(`
               ${emailHeading("Mot de passe modifié")}
-              ${emailParagraph("Test — votre mot de passe a bien été mis à jour.")}
+              ${emailParagraph("Test - votre mot de passe a bien été mis à jour.")}
             `),
           }),
       },
@@ -161,7 +161,7 @@ export async function runAllEmailTests(
             text: "Message de test depuis runAllEmailTests",
             html: emailLayout(`
               ${emailHeading("Nouveau message contact")}
-              ${emailParagraph("Test — message simulé.")}
+              ${emailParagraph("Test - message simulé.")}
             `),
           }),
       },
@@ -171,11 +171,11 @@ export async function runAllEmailTests(
         fn: () =>
           sendMail({
             to,
-            subject: `[TEST] ${publicConfig.siteName} — Bienvenue dans la newsletter`,
+            subject: `[TEST] ${publicConfig.siteName} - Bienvenue dans la newsletter`,
             text: "Test newsletter",
             html: emailLayout(`
               ${emailHeading("Bienvenue !")}
-              ${emailParagraph("Test — inscription newsletter.")}
+              ${emailParagraph("Test - inscription newsletter.")}
               ${emailButton(`${base}/catalogue`, "Découvrir la boutique")}
             `),
           }),
@@ -211,12 +211,12 @@ export async function runAllEmailTests(
         fn: () =>
           sendMail({
             to,
-            subject: `[TEST] [BBDBuy] Commande ${TEST_REF} — Foot Shop`,
+            subject: `[TEST] [BBDBuy] Commande ${TEST_REF} - Foot Shop`,
             text: `Test commande fournisseur ${TEST_REF}`,
             html: emailLayout(`
-              ${emailHeading(`Commande BBDBuy — ${TEST_REF}`)}
-              ${emailParagraph("Test — brouillon fournisseur simulé.")}
-              ${emailParagraph("<strong>Article :</strong> Maillot Brésil × 1 — Taille M")}
+              ${emailHeading(`Commande BBDBuy - ${TEST_REF}`)}
+              ${emailParagraph("Test - brouillon fournisseur simulé.")}
+              ${emailParagraph("<strong>Article :</strong> Maillot Brésil × 1 - Taille M")}
             `),
           }),
       },
@@ -237,7 +237,7 @@ export async function runAllEmailTests(
         fn: () =>
           sendStockAlertConfirmation({
             email: to,
-            label: "Maillot Brésil — M",
+            label: "Maillot Brésil - M",
           }),
       },
       {
@@ -246,11 +246,11 @@ export async function runAllEmailTests(
         fn: () =>
           sendMail({
             to,
-            subject: `[TEST] ${publicConfig.siteName} — Maillot Brésil est de retour`,
+            subject: `[TEST] ${publicConfig.siteName} - Maillot Brésil est de retour`,
             text: "Test retour en stock",
             html: emailLayout(`
               ${emailHeading("De retour en stock")}
-              ${emailParagraph(`<strong>Maillot Brésil — M</strong> est disponible (test).`)}
+              ${emailParagraph(`<strong>Maillot Brésil - M</strong> est disponible (test).`)}
               ${emailButton(`${base}${routes.product("1")}`, "Voir le maillot")}
             `),
           }),
@@ -261,7 +261,7 @@ export async function runAllEmailTests(
         fn: () =>
           sendMail({
             to,
-            subject: `[TEST] ${publicConfig.siteName} — Nouveau : Maillot Test`,
+            subject: `[TEST] ${publicConfig.siteName} - Nouveau : Maillot Test`,
             html: emailLayout(`
               ${emailHeading("Nouveau maillot disponible")}
               ${emailParagraph(`<strong>Maillot Test</strong> vient d'arriver (test).`)}
@@ -276,10 +276,10 @@ export async function runAllEmailTests(
         fn: () =>
           sendMail({
             to,
-            subject: `[TEST] ${publicConfig.siteName} — Nouveaux maillots & retours en stock`,
+            subject: `[TEST] ${publicConfig.siteName} - Nouveaux maillots & retours en stock`,
             html: emailLayout(`
               ${emailHeading("Du nouveau en boutique !")}
-              ${emailParagraph("Test — digest newsletter.")}
+              ${emailParagraph("Test - digest newsletter.")}
               ${emailProductImage("", "Maillot exemple")}
               ${emailButton(`${base}/catalogue`, "Voir la boutique")}
             `),

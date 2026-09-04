@@ -274,7 +274,7 @@ class PrestaShopService {
     };
 
     // Active filter is ON by default (objective: show active products) but can
-    // be disabled globally via env or per-call for testing — see includeInactive.
+    // be disabled globally via env or per-call for testing - see includeInactive.
     const includeInactive =
       query.includeInactive ?? process.env.PRESTASHOP_INCLUDE_INACTIVE === "1";
     if (!includeInactive) {
@@ -323,7 +323,7 @@ class PrestaShopService {
   /**
    * Diagnostics for `/api/products?debug=1`. Runs the request WITH and WITHOUT
    * the active filter so you can instantly see whether emptiness comes from the
-   * filter, the connection, or genuinely empty data — without changing the
+   * filter, the connection, or genuinely empty data - without changing the
    * normal code path.
    */
   async getProductsDiagnostics(query: GetProductsOptions = {}) {
@@ -568,7 +568,7 @@ class PrestaShopService {
     let stillMissing = products.filter((p) => p.price <= 0);
     if (stillMissing.length === 0) return;
 
-    // 2) XML avec id_shop (source la plus fiable en multiboutique) — parallèle borné
+    // 2) XML avec id_shop (source la plus fiable en multiboutique) - parallèle borné
     const xmlConcurrency = 8;
     for (let i = 0; i < stillMissing.length; i += xmlConcurrency) {
       const batch = stillMissing.slice(i, i + xmlConcurrency);
@@ -590,7 +590,7 @@ class PrestaShopService {
     stillMissing = products.filter((p) => p.price <= 0);
     if (stillMissing.length === 0) return;
 
-    // 3) Prix via déclinaisons (batch) — impact positif ou prix absolu stocké
+    // 3) Prix via déclinaisons (batch) - impact positif ou prix absolu stocké
     await this.applyBatchCombinationPrices(stillMissing);
 
     // 4) Dernier recours affiché : prix d'import par défaut (évite 0,00 € vitrine)
@@ -1005,7 +1005,7 @@ class PrestaShopService {
 
   /**
    * Tous les produits d'une arborescence de catégories (racine + enfants),
-   * en une passe d'IDs puis fetch batché — évite N× getCategoryProducts.
+   * en une passe d'IDs puis fetch batché - évite N× getCategoryProducts.
    */
   async getProductsInCategoryTree(
     rootCategoryId: string,
@@ -1416,7 +1416,7 @@ class PrestaShopService {
     );
   }
 
-  /** Met à jour le mot de passe (texte clair — PrestaShop hash via le webservice). */
+  /** Met à jour le mot de passe (texte clair - PrestaShop hash via le webservice). */
   async updateCustomerPassword(
     id: string,
     plainPassword: string,
@@ -1574,7 +1574,7 @@ class PrestaShopService {
     return data?.customer ? mapCustomer(data.customer) : null;
   }
 
-  /** Lookup client avec statut HTTP — évite de confondre erreur réseau et 404. */
+  /** Lookup client avec statut HTTP - évite de confondre erreur réseau et 404. */
   async fetchCustomerById(id: string): Promise<{
     customer: Customer | null;
     notFound: boolean;
@@ -1594,7 +1594,7 @@ class PrestaShopService {
   }
 
   /**
-   * Create a customer. Mot de passe en clair — PrestaShop hash via le webservice.
+   * Create a customer. Mot de passe en clair - PrestaShop hash via le webservice.
    */
   async createCustomer(input: {
     firstName: string;
@@ -1638,14 +1638,14 @@ class PrestaShopService {
   }
 
   // ─────────────────────────────────────────────
-  // CHECKOUT (write) — best-effort order creation
+  // CHECKOUT (write) - best-effort order creation
   // ─────────────────────────────────────────────
   //
   // ⚠️ IMPORTANT : créer une commande via le Webservice PrestaShop dépend
   // fortement de la configuration de votre boutique (transporteur, devise,
   // pays, états de commande, module de paiement). Ce flux crée la commande en
   // "En attente de paiement". L'encaissement réel d'une carte nécessite un
-  // prestataire de paiement (Stripe/PayPal) — voir le guide fourni.
+  // prestataire de paiement (Stripe/PayPal) - voir le guide fourni.
 
   /** Resolve the id of the first row of a resource (optionally filtered). */
   private async resolveFirstId(
@@ -1927,7 +1927,7 @@ class PrestaShopService {
         };
       }
 
-      // Note fournisseur (flocage, etc.) — non bloquant si l'API messages échoue.
+      // Note fournisseur (flocage, etc.) - non bloquant si l'API messages échoue.
       if (input.note?.trim()) {
         await this.addOrderMessage(orderId, input.note.trim());
       }
@@ -2004,7 +2004,7 @@ class PrestaShopService {
 
     const raw = await this.getProductRawXml(productId);
 
-    // Ne JAMAIS écraser un prix existant avec 0 — c'était la cause des 0 € en boutique.
+    // Ne JAMAIS écraser un prix existant avec 0 - c'était la cause des 0 € en boutique.
     let price: string | undefined;
     if (
       options?.price !== undefined &&
@@ -2109,7 +2109,7 @@ class PrestaShopService {
     }
 
     throw new Error(
-      `Produit #${productId} introuvable — vérifiez PRESTASHOP_API_URL et PRESTASHOP_SHOP_ID (actuel : ${shopId}).`,
+      `Produit #${productId} introuvable - vérifiez PRESTASHOP_API_URL et PRESTASHOP_SHOP_ID (actuel : ${shopId}).`,
     );
   }
 
@@ -2319,7 +2319,7 @@ ${ids
     );
   }
 
-  /** Liste une page de produits (sans filtre boutique — couvre tout le catalogue actif). */
+  /** Liste une page de produits (sans filtre boutique - couvre tout le catalogue actif). */
   async listProductNamesPage(options: {
     page: number;
     pageSize?: number;
@@ -3539,7 +3539,7 @@ function buildOptionGroups(variants: ProductVariant[]) {
     }
   }
 
-  // Import sortSizeValues dynamically would break server bundle — sort inline for size groups
+  // Import sortSizeValues dynamically would break server bundle - sort inline for size groups
   const SIZE_ORDER = ["XS", "S", "M", "L", "XL", "XXL"];
   const sizeRank = (label: string) => {
     const n = label.trim().toUpperCase();

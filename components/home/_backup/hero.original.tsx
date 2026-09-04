@@ -15,7 +15,7 @@ import { useCatalogNav } from "@/hooks/use-catalog-nav";
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
-/** Hero d'accueil — fond image pleine hauteur, sans fondu bas. */
+/** Hero d'accueil - fond image pleine hauteur, sans fondu bas. */
 export function Hero() {
   const catalogNav = useCatalogNav();
 

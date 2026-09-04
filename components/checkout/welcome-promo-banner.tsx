@@ -65,7 +65,7 @@ export function WelcomePromoCheckoutBanner({
           Offre de bienvenue appliquée
         </p>
         <p className="mt-2 text-sm text-ink/80">
-          {welcomePromo.checkoutLabel} — {freeUnits} article
+          {welcomePromo.checkoutLabel} - {freeUnits} article
           {freeUnits > 1 ? "s" : ""} offert{freeUnits > 1 ? "s" : ""} (une seule
           utilisation).
         </p>
@@ -87,7 +87,7 @@ export function WelcomePromoCheckoutBanner({
         Offre de bienvenue
       </p>
       <p className="mt-2 text-sm text-ink/80">
-        {welcomePromo.label} sur votre première commande — ajoutez encore{" "}
+        {welcomePromo.label} sur votre première commande - ajoutez encore{" "}
         <strong>{missing}</strong> article{missing > 1 ? "s" : ""} pour le{" "}
         {welcomePromo.checkoutLabel.toLowerCase()}.
       </p>

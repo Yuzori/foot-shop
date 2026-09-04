@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { validateCartLinesDetailed } from "@/lib/cart-validation";
 
-/** POST — vérifie le panier côté serveur (stock + produits actifs). */
+/** POST - vérifie le panier côté serveur (stock + produits actifs). */
 export async function POST(request: Request) {
   let body: {
     lines?: {

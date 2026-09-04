@@ -8,7 +8,7 @@ import { ResponsiveBackground } from "@/components/ui/responsive-background";
 import { worldCupConfig } from "@/config/world-cup";
 import { cn } from "@/lib/utils";
 
-/** Bannière World Cup pleine largeur — le visuel porte le texte, pas d’overlay rouge. */
+/** Bannière World Cup pleine largeur - le visuel porte le texte, pas d’overlay rouge. */
 export function WorldCupSection() {
   if (!worldCupConfig.enabled) return null;
 

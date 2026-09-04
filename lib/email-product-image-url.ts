@@ -25,7 +25,7 @@ function resolvePrestaShopPublicOrigin(): string | null {
   }
 }
 
-/** URL publique PrestaShop (/img/p/…) — fiable dans les clients mail. */
+/** URL publique PrestaShop (/img/p/…) - fiable dans les clients mail. */
 export function prestashopPublicImageUrl(
   imageId: string,
   size: "large_default" | "home_default" = "large_default",

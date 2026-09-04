@@ -37,6 +37,6 @@ export async function GET() {
     return NextResponse.json({ user: null });
   }
 
-  // PrestaShop injoignable — conserver la session, renvoyer l'identité du cookie.
+  // PrestaShop injoignable - conserver la session, renvoyer l'identité du cookie.
   return NextResponse.json({ user: sessionAsUser(session) });
 }

@@ -350,7 +350,7 @@ export function ProductPurchase({ product }: ProductPurchaseProps) {
           ? "Choisissez une taille pour commander"
           : sizeSelected && !inStock
             ? "Taille indisponible"
-            : `Acheter maintenant — ${formatPrice(lineTotal, product.currency)}`}
+            : `Acheter maintenant - ${formatPrice(lineTotal, product.currency)}`}
       </Button>
 
       <PurchaseInfoTicker />

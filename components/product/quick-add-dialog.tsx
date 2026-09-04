@@ -52,7 +52,7 @@ interface QuickAddDialogProps {
   onClose: () => void;
 }
 
-/** Taille obligatoire + flocage optionnel — modal plein écran via portail. */
+/** Taille obligatoire + flocage optionnel - modal plein écran via portail. */
 export function QuickAddDialog({ product, open, onClose }: QuickAddDialogProps) {
   const addLine = useCartStore((s) => s.addLine);
   const { data: fullProduct, isLoading } = useProduct(open ? product.id : "");

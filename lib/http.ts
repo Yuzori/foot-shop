@@ -4,7 +4,7 @@ import { INTERNAL_API_BASE } from "@/config";
 
 /**
  * HTTP client used by the BROWSER to talk to our own Next.js route handlers
- * (under /api). It NEVER talks to PrestaShop directly — that keeps the
+ * (under /api). It NEVER talks to PrestaShop directly - that keeps the
  * Webservice key secret on the server and the front fully decoupled.
  *
  * All PrestaShop requests live in `services/prestashop.ts` (server-side).

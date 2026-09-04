@@ -6,7 +6,7 @@ export function formatPrice(
   currency: string = publicConfig.currency,
 ): string {
   if (amount === null || amount === undefined || Number.isNaN(amount)) {
-    return "—";
+    return "-";
   }
   try {
     return new Intl.NumberFormat(publicConfig.locale, {
@@ -21,9 +21,9 @@ export function formatPrice(
 
 /** Format an ISO date string into a readable localized date. */
 export function formatDate(iso: string | null | undefined): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const date = new Date(iso.replace(" ", "T"));
-  if (Number.isNaN(date.getTime())) return "—";
+  if (Number.isNaN(date.getTime())) return "-";
   return new Intl.DateTimeFormat(publicConfig.locale, {
     day: "2-digit",
     month: "long",

@@ -35,7 +35,7 @@ export function Footer() {
                 <Logo variant="footer" className="h-11 w-auto sm:h-14 lg:h-[4.25rem]" />
               </Link>
               <p className="mt-4 text-sm leading-relaxed text-paper/55 sm:mt-5">
-                La référence du maillot de football. Sélection premium —
+                La référence du maillot de football. Sélection premium -
                 livraison offerte sur votre 1ʳᵉ commande.
               </p>
             </div>

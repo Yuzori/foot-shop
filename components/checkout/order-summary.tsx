@@ -35,7 +35,7 @@ interface OrderSummaryProps {
   promoError?: string | null;
   promoPending?: boolean;
   showEditCart?: boolean;
-  /** Coller le récap seul au scroll — false si le parent englobe récap + boutons. */
+  /** Coller le récap seul au scroll - false si le parent englobe récap + boutons. */
   pinSummary?: boolean;
   /** `mobile` = récap compact en haut sur petit écran ; `sidebar` = panneau latéral desktop */
   variant?: "mobile" | "sidebar";
@@ -331,7 +331,7 @@ export function CheckoutMobileStickyBar({
                 Préparation…
               </span>
             ) : (
-              `Continuer — ${formatPrice(orderTotal)}`
+              `Continuer - ${formatPrice(orderTotal)}`
             )}
           </Button>
         </div>

@@ -38,7 +38,7 @@ export async function sendInstantNewProductEmail(input: {
     ${emailHeading("Nouveau maillot disponible")}
     ${emailProductImage(image, input.name)}
     ${emailParagraph(`<strong>${escapeHtml(input.name)}</strong> vient d'arriver sur ${escapeHtml(publicConfig.siteName)}.`)}
-    ${emailParagraph("Stock limité — ne ratez pas ce drop.")}
+    ${emailParagraph("Stock limité - ne ratez pas ce drop.")}
     ${emailButton(url, "Voir le maillot")}
   `;
 
@@ -46,7 +46,7 @@ export async function sendInstantNewProductEmail(input: {
   for (const to of subscribers) {
     const result = await sendMail({
       to,
-      subject: `${publicConfig.siteName} — Nouveau : ${input.name}`,
+      subject: `${publicConfig.siteName} - Nouveau : ${input.name}`,
       html: emailLayout(body),
       text: `Nouveau maillot : ${input.name}\n${url}`,
     });

@@ -2,7 +2,7 @@
  * Browser-side API client.
  *
  * Talks ONLY to our own Next.js route handlers (/api/*), which in turn call the
- * PrestaShop service. Components/hooks import from here — they never know that
+ * PrestaShop service. Components/hooks import from here - they never know that
  * PrestaShop exists. Swap the back office later and this file stays untouched.
  */
 import { http } from "@/lib/http";

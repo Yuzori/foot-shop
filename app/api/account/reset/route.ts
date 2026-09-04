@@ -57,7 +57,7 @@ export async function POST(request: Request) {
 
   await sendMail({
     to: email,
-    subject: `${publicConfig.siteName} — Mot de passe modifié`,
+    subject: `${publicConfig.siteName} - Mot de passe modifié`,
     text: `Votre mot de passe ${publicConfig.siteName} a bien été modifié. Si vous n'êtes pas à l'origine de ce changement, contactez-nous immédiatement.`,
     html: emailLayout(`
       ${emailHeading("Mot de passe modifié")}

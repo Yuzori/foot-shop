@@ -220,7 +220,7 @@ export function CartView() {
               "hidden w-full bg-accent text-ink hover:bg-accent-dark hover:shadow-glow-sm lg:inline-flex",
             )}
           >
-            Passer au paiement — {formatPrice(total)}
+            Passer au paiement - {formatPrice(total)}
           </Link>
           <Link
             href={routes.catalogue}

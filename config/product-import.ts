@@ -3,7 +3,7 @@ import { worldCupConfig } from "@/config/world-cup";
 import { shopConfig } from "@/config/shop";
 
 /**
- * Import produit depuis une URL — configuration.
+ * Import produit depuis une URL - configuration.
  *
  * PRESTASHOP_SIZE_GROUP_ID : ID du groupe d'attributs « Taille » dans PrestaShop.
  * PRODUCT_IMPORT_CATEGORY_ID : catégorie par défaut (sinon maillots).
@@ -20,7 +20,7 @@ export const productImportConfig = {
   parentCategoryId:
     process.env.PRODUCT_IMPORT_PARENT_CATEGORY_ID?.trim() || "2",
   sizeAttributeGroupId: process.env.PRESTASHOP_SIZE_GROUP_ID?.trim() ?? "",
-  /** ID attribut XXL (ex. 27) — secours si l'API ne le trouve pas par libellé. */
+  /** ID attribut XXL (ex. 27) - secours si l'API ne le trouve pas par libellé. */
   xxlAttributeId: process.env.PRESTASHOP_XXL_ATTRIBUTE_ID?.trim() ?? "",
   sizes: shopConfig.sizeOrder,
   maxImages: 24,

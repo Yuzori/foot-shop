@@ -1,16 +1,16 @@
-# Déploiement Foot Shop — Hostinger et/ou Render
+# Déploiement Foot Shop - Hostinger et/ou Render
 
 ## Quelle option choisir ?
 
 | Hébergement | Possible ? | Plan Hostinger |
 |-------------|------------|----------------|
 | **PrestaShop** (PHP) | Oui | Tous (Premium, Business, Cloud…) |
-| **Next.js** (ce repo) | Oui | **Business** ou **Cloud** — « Node.js Web App » |
+| **Next.js** (ce repo) | Oui | **Business** ou **Cloud** - « Node.js Web App » |
 | **Next.js** | Non | Hébergement **Web** basique (PHP seulement) |
 
-**Non, ce n’est pas impossible sur Hostinger** — mais il faut l’offre avec **applications Node.js** (Business / Cloud), pas l’hébergement PHP classique seul.
+**Non, ce n’est pas impossible sur Hostinger** - mais il faut l’offre avec **applications Node.js** (Business / Cloud), pas l’hébergement PHP classique seul.
 
-### Option A — Tout sur Hostinger (recommandé si tu as déjà l’offre)
+### Option A - Tout sur Hostinger (recommandé si tu as déjà l’offre)
 
 ```
 foot-shop.fr      →  Node.js Web App (boutique Next.js)
@@ -20,7 +20,7 @@ contact@...       →  Email Hostinger (déjà OK)
 
 Avantages : un seul fournisseur, PrestaShop et boutique sur le même réseau (API plus rapide), pas de Render.
 
-### Option B — Render + Hostinger (guide original)
+### Option B - Render + Hostinger (guide original)
 
 ```
 foot-shop.fr      →  Render (Next.js)
@@ -31,7 +31,7 @@ Avantages : plan Render gratuit possible pour la boutique ; Hostinger garde seul
 
 ---
 
-## Option A — Boutique Next.js sur Hostinger (Node.js Web App)
+## Option A - Boutique Next.js sur Hostinger (Node.js Web App)
 
 Documentation Hostinger : [Déployer une app Node.js](https://www.hostinger.com/support/how-to-deploy-a-nodejs-website-in-hostinger/)
 
@@ -53,7 +53,7 @@ Documentation Hostinger : [Déployer une app Node.js](https://www.hostinger.com/
    | Start | `npm run start -- -p $PORT` |
    | Node.js | **20** |
 
-4. **Variables d’environnement** — copier depuis `.env.local` en adaptant :
+4. **Variables d’environnement** - copier depuis `.env.local` en adaptant :
 
    ```
    PRESTASHOP_API_URL=https://bo.foot-shop.fr/api
@@ -87,13 +87,13 @@ Sur Hostinger Node.js, le disque est **plus persistant** qu’on Render gratuit,
 
 ---
 
-## Option B — Render + Hostinger
+## Option B - Render + Hostinger
 
 Architecture cible :
 
 ```
-foot-shop.fr          →  Render (boutique Next.js — ce repo)
-bo.foot-shop.fr       →  Hostinger (PrestaShop — back-office uniquement)
+foot-shop.fr          →  Render (boutique Next.js - ce repo)
+bo.foot-shop.fr       →  Hostinger (PrestaShop - back-office uniquement)
 contact@foot-shop.fr  →  Hostinger Email (SMTP, déjà configuré)
 ```
 
@@ -101,7 +101,7 @@ Le navigateur **ne parle jamais** à PrestaShop directement. Render appelle l’
 
 ---
 
-## Partie 1 — PrestaShop sur Hostinger
+## Partie 1 - PrestaShop sur Hostinger
 
 ### 1.1 Créer le sous-domaine back-office
 
@@ -117,11 +117,11 @@ Dans **hPanel → Domaines → Sous-domaines** :
 
 **Sur l’ancienne VM :**
 
-1. **Base de données** — export phpMyAdmin ou :
+1. **Base de données** - export phpMyAdmin ou :
    ```bash
    mysqldump -u USER -p NOM_BDD > prestashop.sql
    ```
-2. **Fichiers** — zip du dossier PrestaShop (`/prestashop` ou équivalent), **sans** le cache volumineux si possible :
+2. **Fichiers** - zip du dossier PrestaShop (`/prestashop` ou équivalent), **sans** le cache volumineux si possible :
    - exclure `var/cache/*`, `img/tmp/*`
 
 **Sur Hostinger :**
@@ -170,11 +170,11 @@ curl -u "VOTRE_CLE:" https://bo.foot-shop.fr/api/
 
 - Mot de passe admin fort.
 - Limiter l’accès au BO via **mot de passe répertoire** hPanel sur `/bo/admin` (optionnel).
-- Ne pas utiliser `bo.foot-shop.fr` comme vitrine publique — la boutique vitrine est sur Render.
+- Ne pas utiliser `bo.foot-shop.fr` comme vitrine publique - la boutique vitrine est sur Render.
 
 ---
 
-## Partie 2 — Boutique Next.js sur Render
+## Partie 2 - Boutique Next.js sur Render
 
 ### 2.1 Pousser le code sur GitHub
 
@@ -185,16 +185,16 @@ git remote add origin https://github.com/VOTRE_USER/maillot-store.git
 git push -u origin main
 ```
 
-`.env.local` est **ignoré par git** — les secrets iront dans le dashboard Render.
+`.env.local` est **ignoré par git** - les secrets iront dans le dashboard Render.
 
 ### 2.2 Créer le service Web
 
-**Option A — Blueprint** (fichier `render.yaml` à la racine) :
+**Option A - Blueprint** (fichier `render.yaml` à la racine) :
 
 1. [dashboard.render.com](https://dashboard.render.com) → **New → Blueprint**
 2. Connecter le repo → Render crée `foot-shop` + le cron.
 
-**Option B — Manuel** :
+**Option B - Manuel** :
 
 1. **New → Web Service** → repo GitHub
 2. Runtime : **Node**
@@ -291,7 +291,7 @@ curl -H "Authorization: Bearer VOTRE_CRON_SECRET" https://foot-shop.fr/api/cron/
 
 ---
 
-## Partie 3 — Limitations importantes
+## Partie 3 - Limitations importantes
 
 ### Fichiers éphémères sur Render (plan gratuit)
 

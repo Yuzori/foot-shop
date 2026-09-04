@@ -7,7 +7,7 @@ import { placeOrder, type CheckoutBody } from "@/lib/orders";
  *
  * Card capture itself is handled by Stripe (see /api/checkout/stripe). This
  * endpoint registers the order so it appears in the Back Office, in the
- * customer's order history and in order tracking — used as the fallback when
+ * customer's order history and in order tracking - used as the fallback when
  * Stripe is not configured.
  */
 export async function POST(request: Request) {

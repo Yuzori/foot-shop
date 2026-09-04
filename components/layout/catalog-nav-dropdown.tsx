@@ -36,7 +36,7 @@ const listMotion = {
   transition: { duration: 0.24, ease: [0.16, 1, 0.3, 1] },
 } as const;
 
-/** Menu déroulant maillots — divisions directement (adulte uniquement). */
+/** Menu déroulant maillots - divisions directement (adulte uniquement). */
 export function CatalogNavDropdown({
   label,
   categories,

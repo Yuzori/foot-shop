@@ -20,7 +20,7 @@ const trophyClipClass =
   "right-[12%] w-[min(54%,13.5rem)] sm:right-[10%] sm:w-[min(52%,12.5rem)]";
 
 /**
- * Moitié haute ou basse du trophée — même image, même taille, décalée pour que
+ * Moitié haute ou basse du trophée - même image, même taille, décalée pour que
  * la coupe entre les deux cartes donne l’illusion d’un seul objet continu.
  */
 function TrophyClipSegment({
@@ -247,7 +247,7 @@ function CollectionPanel({
   );
 }
 
-/** Accueil — entrées collections, layout éditorial bento. */
+/** Accueil - entrées collections, layout éditorial bento. */
 export function CategoryShowcase() {
   const catalogNav = useCatalogNav();
 
@@ -271,7 +271,7 @@ export function CategoryShowcase() {
               <span className="block text-paper/90">collection</span>
             </h2>
             <p className="mt-4 max-w-md text-sm leading-relaxed text-paper/60">
-              Maillots par division, shorts en un clic — entrez directement dans
+              Maillots par division, shorts en un clic - entrez directement dans
               le bon catalogue.
             </p>
           </div>
@@ -291,7 +291,7 @@ export function CategoryShowcase() {
               href={routes.catalogHub({ kind: "jersey" })}
               label="Collection phare"
               title="Maillots"
-              description="Domicile, extérieur, third — par championnat."
+              description="Domicile, extérieur, third - par championnat."
               index="01"
               variant="dark"
               backgroundSrc={collectionShowcaseImages.jersey}
@@ -321,7 +321,7 @@ export function CategoryShowcase() {
                   href={`${routes.category(worldCupConfig.categoryId)}?kind=jersey&audience=adult`}
                   label="Édition spéciale"
                   title="Coupe du monde"
-                  description="La collection CDM — sélection adulte, prête à explorer."
+                  description="La collection CDM - sélection adulte, prête à explorer."
                   index="03"
                   variant="wc"
                   backgroundSrc={collectionShowcaseImages.worldCup}

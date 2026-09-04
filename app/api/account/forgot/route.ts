@@ -46,7 +46,7 @@ export async function POST(request: Request) {
 
   const mailResult = await sendMail({
     to: email,
-    subject: `${publicConfig.siteName} — Code de réinitialisation`,
+    subject: `${publicConfig.siteName} - Code de réinitialisation`,
     text: `Votre code de réinitialisation est : ${code}\nCe code expire dans 15 minutes.\nSi vous n'êtes pas à l'origine de cette demande, ignorez cet email.`,
     html: emailLayout(`
       ${emailHeading("Réinitialisation du mot de passe")}

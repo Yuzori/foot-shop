@@ -73,7 +73,7 @@ export async function claimOrderFulfillment(orderId: string): Promise<boolean> {
   const finalStore = await readStore();
   if (finalStore.orderIds.includes(key)) return false;
 
-  console.error("[fulfillment] claim lock timeout — tentative sans verrou", key);
+  console.error("[fulfillment] claim lock timeout - tentative sans verrou", key);
   finalStore.orderIds.push(key);
   await writeStore(finalStore);
   return true;

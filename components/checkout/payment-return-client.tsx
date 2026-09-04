@@ -17,7 +17,7 @@ const PENDING_POLLS = 20;
 const PENDING_INTERVAL_MS = 2_000;
 
 /**
- * Retour paiement (PayPal, 3DS, etc.) — n'affiche le succès qu'après
+ * Retour paiement (PayPal, 3DS, etc.) - n'affiche le succès qu'après
  * vérification serveur du paiement.
  */
 export function PaymentReturnClient({
@@ -231,7 +231,7 @@ export function PaymentReturnClient({
       <EmptyState
         title={
           reference
-            ? `Paiement confirmé — Référence ${reference}`
+            ? `Paiement confirmé - Référence ${reference}`
             : "Paiement confirmé"
         }
         description="Votre paiement a bien été reçu. Conservez votre référence : vous pouvez suivre votre commande sans créer de compte."

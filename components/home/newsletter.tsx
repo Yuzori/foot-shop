@@ -9,7 +9,7 @@ import { Container } from "@/components/ui/container";
 import { useSession } from "@/hooks/use-auth";
 import { http, getErrorMessage } from "@/lib/http";
 
-/** Inscription newsletter — compte PrestaShop ou invité + email de bienvenue. */
+/** Inscription newsletter - compte PrestaShop ou invité + email de bienvenue. */
 export function Newsletter() {
   const { data: user } = useSession();
   const [mounted, setMounted] = useState(false);

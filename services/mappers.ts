@@ -98,7 +98,7 @@ function asAssocList<T extends { id?: string | number }>(
  *
  * Points to OUR same-origin proxy (`/api/images/...`) rather than the raw
  * PrestaShop Webservice URL, because the latter requires the secret API key as
- * Basic Auth — which the browser can't send. The proxy adds the auth server-side.
+ * Basic Auth - which the browser can't send. The proxy adds the auth server-side.
  */
 export function buildImageUrl(productId: string, imageId: string): string {
   return `/api/images/products/${productId}/${imageId}`;
@@ -153,13 +153,13 @@ export function mapProduct(ps: PsProduct): Product {
    * Stock resolution (robust):
    *  - In `/products?display=full`, PrestaShop usually exposes a top-level
    *    computed `quantity`. The nested `associations.stock_availables` entries
-   *    often DON'T carry a `quantity`, only ids — so relying on them alone made
+   *    often DON'T carry a `quantity`, only ids - so relying on them alone made
    *    every product look out of stock.
    *  - We read the top-level quantity first, fall back to a nested quantity if
    *    present, and treat UNKNOWN stock as available (`inStock = true`) so a
    *    missing field never hides a product or shows a wrong "Épuisé" badge.
    *
-   * Note: stock NEVER affects whether a product appears in a list — it only
+   * Note: stock NEVER affects whether a product appears in a list - it only
    * controls the in-stock flag used for the badge / add-to-cart.
    */
   const nestedQuantity = ps.associations?.stock_availables?.find(
@@ -168,7 +168,7 @@ export function mapProduct(ps: PsProduct): Product {
   const rawQuantity = ps.quantity ?? nestedQuantity;
   const hasQuantity = rawQuantity !== undefined && rawQuantity !== "";
   const quantity = hasQuantity ? toNumber(rawQuantity) : 0;
-  /** Corrigé par `applyStock()` — évite « Épuisé » si PrestaShop renvoie quantity=0. */
+  /** Corrigé par `applyStock()` - évite « Épuisé » si PrestaShop renvoie quantity=0. */
   const inStock = true;
 
   const createdAt = ps.date_add ?? null;

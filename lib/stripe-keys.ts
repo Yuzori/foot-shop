@@ -46,7 +46,7 @@ export function validateStripeKeyPair(
   return { ok: true };
 }
 
-/** Le mode live Stripe refuse localhost — forcer le mode test en local. */
+/** Le mode live Stripe refuse localhost - forcer le mode test en local. */
 export function validateStripeSiteUrl(
   secretKey: string,
   siteUrl: string,

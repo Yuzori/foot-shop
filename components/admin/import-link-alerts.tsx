@@ -105,7 +105,7 @@ export function NonUnisportLinksNotice({ urls }: { urls: readonly string[] }) {
             Liens hors Unisport ({otherUrls.length})
           </h3>
           <p className="mt-1 text-xs text-ink/55">
-            Ces URLs ne viennent pas de unisportstore.fr — elles sont quand même analysées
+            Ces URLs ne viennent pas de unisportstore.fr - elles sont quand même analysées
             normalement.
           </p>
         </div>

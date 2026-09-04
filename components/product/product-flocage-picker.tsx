@@ -13,7 +13,7 @@ interface ProductFlocagePickerProps {
   onEnabledChange: (enabled: boolean) => void;
   onNameChange: (name: string) => void;
   onNumberChange: (number: string) => void;
-  /** Flocage imposé (ex. maillots rétro) — pas de case à cocher. */
+  /** Flocage imposé (ex. maillots rétro) - pas de case à cocher. */
   required?: boolean;
 }
 

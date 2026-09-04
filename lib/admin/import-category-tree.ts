@@ -1,4 +1,4 @@
-/** Arbre de catégories pour l’admin import / studio (libellés « Parent — Division »). */
+/** Arbre de catégories pour l’admin import / studio (libellés « Parent - Division »). */
 
 export interface AdminCategoryDivision {
   id: string;
@@ -30,7 +30,7 @@ function normId(id: string | null | undefined): string {
   return String(id ?? "").trim();
 }
 
-/** Sélecteur unique avec optgroups — une option = catégorie PrestaShop destination. */
+/** Sélecteur unique avec optgroups - une option = catégorie PrestaShop destination. */
 export function buildAdminCategoryOptGroups(
   categories: readonly CategoryRow[],
 ): AdminCategoryOptGroup[] {
@@ -74,7 +74,7 @@ export function buildAdminCategoryOptGroups(
       label: parent.name,
       options: children.map((child) => ({
         id: normId(child.id),
-        label: `${parent.name} — ${child.name}`,
+        label: `${parent.name} - ${child.name}`,
       })),
     });
   }
@@ -86,7 +86,7 @@ export function buildAdminCategoryOptGroups(
         const parent = byId.get(normId(c.parentId));
         return {
           id: normId(c.id),
-          label: parent ? `${parent.name} — ${c.name}` : c.name,
+          label: parent ? `${parent.name} - ${c.name}` : c.name,
         };
       })
       .sort((a, b) => a.label.localeCompare(b.label, "fr"));
@@ -126,7 +126,7 @@ export function buildAdminCategoryGroups(
       divisions: g.options.map((o) => ({
         id: o.id,
         label: o.label,
-        shortLabel: o.label.split(" — ").pop() ?? o.label,
+        shortLabel: o.label.split(" - ").pop() ?? o.label,
       })),
     };
   });

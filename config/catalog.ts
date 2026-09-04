@@ -1,7 +1,7 @@
 import { routes } from "@/config/site";
 
 /**
- * Collections principales — renseignez les IDs PrestaShop si besoin.
+ * Collections principales - renseignez les IDs PrestaShop si besoin.
  * Sinon, le hook useCatalogNav les détecte par nom (maillot / short).
  */
 export const catalogConfig = {

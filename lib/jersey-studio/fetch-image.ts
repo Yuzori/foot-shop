@@ -114,14 +114,14 @@ function validateImageBuffer(
 
   if (maxDim < minDim) {
     throw new Error(
-      `Résolution insuffisante (${width}×${height}px) — miniature détectée.`,
+      `Résolution insuffisante (${width}×${height}px) - miniature détectée.`,
     );
   }
 
   if (buffer.byteLength < minBytes) {
     if (!relaxed || maxDim < MIN_MAX_DIMENSION_STRICT) {
       throw new Error(
-        `Image trop petite (${Math.round(buffer.byteLength / 1024)} Ko) — probablement une miniature.`,
+        `Image trop petite (${Math.round(buffer.byteLength / 1024)} Ko) - probablement une miniature.`,
       );
     }
   }

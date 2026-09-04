@@ -89,7 +89,7 @@ function useCarouselSwipe(
   return { onTouchStart, onTouchEnd };
 }
 
-/** Modale nouveautés — centrée, fond flouté. */
+/** Modale nouveautés - centrée, fond flouté. */
 export function SiteModal() {
   const pathname = usePathname();
   const onProductPage = pathname.startsWith("/produit/");

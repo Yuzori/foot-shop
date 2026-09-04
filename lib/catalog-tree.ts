@@ -33,7 +33,7 @@ export function isStorefrontSubcategory(
   return !roots.has(category.parentId);
 }
 
-/** Catégories de premier niveau — pas les sous-catégories (ex. CDM). */
+/** Catégories de premier niveau - pas les sous-catégories (ex. CDM). */
 export function filterShowcaseCategories(
   categories: readonly Category[],
   kidsMaillotsId = "",

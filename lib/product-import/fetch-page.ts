@@ -87,12 +87,12 @@ function validateFetchedHtml(html: string, headers: Headers): void {
 
   if (isCookieConsentWall(html) && lacksProductSignals(html)) {
     throw new Error(
-      "Page bloquée par un bandeau cookies — le contenu produit n'est pas accessible sans navigateur.",
+      "Page bloquée par un bandeau cookies - le contenu produit n'est pas accessible sans navigateur.",
     );
   }
 
   if (html.length < 400 && lacksProductSignals(html)) {
-    throw new Error("Page trop courte ou vide — redirection sécurisée non résolue.");
+    throw new Error("Page trop courte ou vide - redirection sécurisée non résolue.");
   }
 }
 

@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 const ACTIVE_GROUP_KEY = "footshop-admin-category-active-group";
 
 function shortLabel(fullLabel: string, groupLabel: string): string {
-  const prefix = `${groupLabel} — `;
+  const prefix = `${groupLabel} - `;
   return fullLabel.startsWith(prefix)
     ? fullLabel.slice(prefix.length)
     : fullLabel;
@@ -80,7 +80,7 @@ export function AdminCategoryPicker({
   if (!flat.length) {
     return (
       <p className="rounded-lg border border-dashed border-ink/15 px-3 py-2 text-xs text-ink/50">
-        Aucune catégorie — vérifiez PrestaShop ou rechargez la page.
+        Aucune catégorie - vérifiez PrestaShop ou rechargez la page.
       </p>
     );
   }

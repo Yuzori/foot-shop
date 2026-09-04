@@ -13,7 +13,7 @@ export async function assertStripePaymentForOrder(input: {
   checkoutSessionId?: string | null;
 }): Promise<Stripe.Checkout.Session> {
   if (!paymentConfig.stripeEnabled) {
-    throw new Error("Stripe désactivé — vérification paiement impossible.");
+    throw new Error("Stripe désactivé - vérification paiement impossible.");
   }
 
   const stripe = getStripe();

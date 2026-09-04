@@ -1,4 +1,4 @@
-/** Courbe fluide — démarrage doux, fin progressive (drawers / overlays). */
+/** Courbe fluide - démarrage doux, fin progressive (drawers / overlays). */
 export const SMOOTH_EASE = [0.32, 0.72, 0, 1] as const;
 
 export const overlayMotion = {

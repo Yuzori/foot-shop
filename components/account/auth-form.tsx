@@ -95,7 +95,7 @@ export function AuthForm({ mode }: AuthFormProps) {
                 {welcomePromo.label}
               </p>
               <p className="mt-2 text-sm text-ink/60">
-                Sur votre première commande — le {welcomePromo.checkoutLabel.toLowerCase()}{" "}
+                Sur votre première commande - le {welcomePromo.checkoutLabel.toLowerCase()}{" "}
                 s&apos;applique automatiquement au paiement (3 articles minimum).
               </p>
             </div>

@@ -10,7 +10,7 @@ interface LogoProps {
   className?: string;
   /** Render the wordmark in light color (for dark backgrounds). */
   light?: boolean;
-  /** Footer variant — uses /logo-footer.png without color filters. */
+  /** Footer variant - uses /logo-footer.png without color filters. */
   variant?: "default" | "footer";
   priority?: boolean;
 }

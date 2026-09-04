@@ -11,7 +11,7 @@ import { normalizeCategoryId } from "@/lib/product-import/normalize-category-id"
 
 
 
-/** Division catalogue (ligue, CDM, etc.) — partagée import + navigation. */
+/** Division catalogue (ligue, CDM, etc.) - partagée import + navigation. */
 
 export interface CatalogDivision {
 

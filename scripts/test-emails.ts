@@ -65,7 +65,7 @@ async function main(): Promise<void> {
       ? "DEV (non configuré)"
       : row.delivered
         ? "OK"
-        : `ÉCHEC${row.error ? ` — ${row.error}` : ""}`;
+        : `ÉCHEC${row.error ? ` - ${row.error}` : ""}`;
     console.log(`[${status}] ${row.label}`);
   }
 

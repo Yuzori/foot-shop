@@ -6,7 +6,7 @@ import type { Product, SortOption } from "@/types/domain";
 
 const NEWEST_FIRST: SortOption = "newest";
 
-/** Score de tri — plus élevé = saison plus récente (ex. 26-27 > 25-26). */
+/** Score de tri - plus élevé = saison plus récente (ex. 26-27 > 25-26). */
 function seasonSortScore(season: ParsedSeason): number {
   if (season.kind === "range") {
     return season.end * 100 + (season.start % 100);
@@ -39,7 +39,7 @@ function compareNewestProducts(a: Product, b: Product): number {
   return Number(b.id) - Number(a.id);
 }
 
-/** Tri côté app — par défaut : saison la plus récente (26-27, 26/27…) puis alphabétique. */
+/** Tri côté app - par défaut : saison la plus récente (26-27, 26/27…) puis alphabétique. */
 export function sortProducts(items: Product[], sort?: SortOption): Product[] {
   const effectiveSort =
     !sort || sort === "relevance" ? NEWEST_FIRST : sort;

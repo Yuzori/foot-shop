@@ -109,7 +109,7 @@ export async function POST(request: Request) {
 
     message: result.devMode
 
-      ? "Message enregistré (SMTP non configuré — voir console serveur)."
+      ? "Message enregistré (SMTP non configuré - voir console serveur)."
 
       : "Message envoyé.",
 

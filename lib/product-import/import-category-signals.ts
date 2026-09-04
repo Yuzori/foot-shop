@@ -175,7 +175,7 @@ export function detectImportCategorySignal(
     return {
       type: "extra",
       key: "resteDuMonde",
-      reason: `Hors catégorie — ${hint}`,
+      reason: `Hors catégorie - ${hint}`,
     };
   }
 

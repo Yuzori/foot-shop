@@ -33,7 +33,7 @@ function collectCandidates(
   }
 }
 
-/** Autres maillots de la même équipe / saison (domicile, extérieur, third) — matching par nom. */
+/** Autres maillots de la même équipe / saison (domicile, extérieur, third) - matching par nom. */
 export async function findKitSiblings(product: {
   id: string;
   name: string;
