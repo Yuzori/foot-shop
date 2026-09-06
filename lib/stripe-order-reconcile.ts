@@ -11,50 +11,55 @@ async function findPaidStripeSession(input: {
   orderId: string;
   reference: string;
 }): Promise<boolean> {
-  const orderId = input.orderId.trim();
-  const reference = input.reference.trim();
-  if (!orderId || !reference || !paymentConfig.stripeEnabled) return false;
+  try {
+    const orderId = input.orderId.trim();
+    const reference = input.reference.trim();
+    if (!orderId || !reference || !paymentConfig.stripeEnabled) return false;
 
-  const archive = await getOrderArchiveByReference(reference);
-  const pending = await getCheckoutPendingByReference(reference);
-  const sessionId =
-    pending?.stripeSessionId?.trim() ?? archive?.stripeSessionId?.trim() ?? "";
-  const stripe = getStripe();
+    const archive = await getOrderArchiveByReference(reference);
+    const pending = await getCheckoutPendingByReference(reference);
+    const sessionId =
+      pending?.stripeSessionId?.trim() ?? archive?.stripeSessionId?.trim() ?? "";
+    const stripe = getStripe();
 
-  if (sessionId) {
-    try {
-      const session = await stripe.checkout.sessions.retrieve(sessionId, {
-        expand: ["payment_intent"],
-      });
-      if (isCheckoutSessionPaidOnStripe(session)) return true;
-    } catch {
-      // session introuvable ou expirée
-    }
-  }
-
-  let startingAfter: string | undefined;
-  for (let page = 0; page < 8; page++) {
-    const batch = await stripe.checkout.sessions.list({
-      limit: 100,
-      ...(startingAfter ? { starting_after: startingAfter } : {}),
-    });
-
-    for (const session of batch.data) {
-      const metaOrderId = session.metadata?.orderId?.trim() ?? "";
-      const metaReference = session.metadata?.reference?.trim() ?? "";
-      if (
-        (metaOrderId && metaOrderId === orderId) ||
-        (metaReference && metaReference === reference)
-      ) {
+    if (sessionId) {
+      try {
+        const session = await stripe.checkout.sessions.retrieve(sessionId, {
+          expand: ["payment_intent"],
+        });
         if (isCheckoutSessionPaidOnStripe(session)) return true;
+      } catch {
+        // session introuvable ou expirée
       }
     }
 
-    if (!batch.has_more || batch.data.length === 0) break;
-    startingAfter = batch.data[batch.data.length - 1]?.id;
-  }
+    let startingAfter: string | undefined;
+    for (let page = 0; page < 8; page++) {
+      const batch = await stripe.checkout.sessions.list({
+        limit: 100,
+        ...(startingAfter ? { starting_after: startingAfter } : {}),
+      });
 
-  return false;
+      for (const session of batch.data) {
+        const metaOrderId = session.metadata?.orderId?.trim() ?? "";
+        const metaReference = session.metadata?.reference?.trim() ?? "";
+        if (
+          (metaOrderId && metaOrderId === orderId) ||
+          (metaReference && metaReference === reference)
+        ) {
+          if (isCheckoutSessionPaidOnStripe(session)) return true;
+        }
+      }
+
+      if (!batch.has_more || batch.data.length === 0) break;
+      startingAfter = batch.data[batch.data.length - 1]?.id;
+    }
+
+    return false;
+  } catch (error) {
+    console.error("[stripe-reconcile] lookup failed", input.reference, error);
+    return false;
+  }
 }
 
 /** Vérifie qu'une commande PrestaShop a un paiement Stripe confirmé. */
