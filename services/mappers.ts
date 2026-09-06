@@ -311,8 +311,8 @@ export function mapOrder(ps: PsOrder, trackingNumber: string | null = null): Ord
   const state = stateKey ? PS_STATE_MAP[stateKey] : undefined;
 
   return {
-    id: ps.id,
-    reference: ps.reference || ps.id,
+    id: String(ps.id),
+    reference: ps.reference || String(ps.id),
     status: state?.status ?? "unknown",
     statusLabel: state?.label ?? "Statut inconnu",
     total: toNumber(ps.total_paid),
