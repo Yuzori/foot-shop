@@ -1,6 +1,7 @@
 import "server-only";
 
 import { cancelUnpaidPrestaShopOrder } from "@/lib/cancel-unpaid-order";
+import { hasOrderBeenFulfilled } from "@/lib/order-fulfillment-store";
 import { ensurePrestaShopOrderPaid } from "@/lib/mark-prestashop-order-paid";
 import { isPrestaShopPaidState } from "@/lib/prestashop-order-states";
 import { verifyPrestaShopOrderHasStripePayment } from "@/lib/stripe-order-reconcile";
@@ -36,10 +37,10 @@ export async function repairPrestaShopOrderStates(limit = 80): Promise<{
     if (!orderId || !reference) continue;
 
     const state = String(psOrder.current_state ?? "");
-    const stripePaid = await verifyPrestaShopOrderHasStripePayment({
-      orderId,
-      reference,
-    });
+    const stripePaid = await verifyPrestaShopOrderHasStripePayment(
+      { orderId, reference },
+      { strict: true },
+    );
 
     if (stripePaid && !isPrestaShopPaidState(state)) {
       const ok = await ensurePrestaShopOrderPaid(orderId);
@@ -47,6 +48,19 @@ export async function repairPrestaShopOrderStates(limit = 80): Promise<{
         markedPaid += 1;
         references.push(reference);
       }
+      continue;
+    }
+
+    if (
+      !stripePaid &&
+      isPrestaShopPaidState(state) &&
+      !(await hasOrderBeenFulfilled(orderId))
+    ) {
+      await cancelUnpaidPrestaShopOrder(orderId, reference).catch((err) => {
+        console.warn("[repair-ps] cancel phantom paid failed", reference, err);
+      });
+      cancelled += 1;
+      references.push(reference);
       continue;
     }
 
