@@ -1,7 +1,12 @@
 import "server-only";
 
-import { firstOrderThankYouPromo } from "@/config/promotions";
+import { apologyPromo, firstOrderThankYouPromo } from "@/config/promotions";
 import { countPaidOrdersForCheckout } from "@/lib/customer-order-history";
+import {
+  hasUsedFootshop15Promo,
+  isFootshop10RevokedForCustomer,
+  isFootshop15GrantedForCustomer,
+} from "@/lib/customer-promo-grants-store";
 import { hasUsedThankYouPromo } from "@/lib/thank-you-promo-store";
 import {
   applyPercentDiscount,
@@ -45,7 +50,36 @@ export async function validatePromoCodeForCheckout(input: {
       };
     }
 
+    const revoked = await isFootshop10RevokedForCustomer({
+      email: input.email,
+      customerId: input.customerId,
+    });
+    if (revoked) {
+      return {
+        valid: false,
+        message: "Ce code n'est plus actif sur votre compte. Utilisez FOOTSHOP15.",
+      };
+    }
+
     const alreadyUsed = await hasUsedThankYouPromo({
+      email: input.email,
+      customerId: input.customerId,
+    });
+    if (alreadyUsed) {
+      return { valid: false, message: "Ce code a déjà été utilisé." };
+    }
+  }
+
+  if (resolved.code === apologyPromo.code) {
+    const granted = await isFootshop15GrantedForCustomer({
+      email: input.email,
+      customerId: input.customerId,
+    });
+    if (!granted) {
+      return { valid: false, message: "Code promo invalide." };
+    }
+
+    const alreadyUsed = await hasUsedFootshop15Promo({
       email: input.email,
       customerId: input.customerId,
     });

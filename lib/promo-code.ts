@@ -1,4 +1,4 @@
-import { firstOrderThankYouPromo } from "@/config/promotions";
+import { apologyPromo, firstOrderThankYouPromo } from "@/config/promotions";
 
 export interface PromoCodeResult {
   valid: boolean;
@@ -17,6 +17,15 @@ export function resolvePromoCode(raw: string | undefined | null): PromoCodeResul
       code: firstOrderThankYouPromo.code,
       percent: firstOrderThankYouPromo.percent,
       label: firstOrderThankYouPromo.label,
+    };
+  }
+
+  if (code === apologyPromo.code) {
+    return {
+      valid: true,
+      code: apologyPromo.code,
+      percent: apologyPromo.percent,
+      label: apologyPromo.label,
     };
   }
 

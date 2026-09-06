@@ -48,6 +48,13 @@ export const firstOrderThankYouPromo = {
   label: "10 % sur votre prochaine commande",
 } as const;
 
+/** Code promo excuse incident serveur (-15 %), activé manuellement par compte. */
+export const apologyPromo = {
+  code: "FOOTSHOP15",
+  percent: 15,
+  label: "15 % sur votre prochaine commande",
+} as const;
+
 export const announcementMessages: string[] = [
   "2 achetés, 1 offert sur votre 1ʳᵉ commande - créez un compte",
   "Livraison offerte sur votre 1ʳᵉ commande",
