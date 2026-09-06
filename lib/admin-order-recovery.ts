@@ -6,6 +6,7 @@ import { isOrderDismissedFromRecovery } from "@/lib/order-admin-dismissals";
 import { isTestOrderReference } from "@/lib/is-test-order";
 import { rebuildArchiveFromPrestaShopOrder } from "@/lib/rebuild-order-archive";
 import { restoreArchivesFromBackups } from "@/lib/restore-order-archives";
+import { repairPrestaShopOrderStates } from "@/lib/repair-prestashop-orders";
 import { syncMissingSupplierDrafts } from "@/lib/ensure-supplier-draft";
 import { hasOrderCustomerEmailsBeenSent } from "@/lib/order-customer-email-store";
 import { verifyPrestaShopOrderHasStripePayment } from "@/lib/stripe-order-reconcile";
@@ -26,6 +27,8 @@ let lastRecoveryResult: {
   rebuiltFromPrestaShop: number;
   supplierDrafts: number;
   customerEmailsSent: number;
+  prestashopMarkedPaid: number;
+  prestashopCancelled: number;
   references: string[];
 } | null = null;
 
@@ -51,6 +54,8 @@ export async function runAdminOrderRecovery(
   rebuiltFromPrestaShop: number;
   supplierDrafts: number;
   customerEmailsSent: number;
+  prestashopMarkedPaid: number;
+  prestashopCancelled: number;
   references: string[];
 }> {
   const now = Date.now();
@@ -63,6 +68,12 @@ export async function runAdminOrderRecovery(
   }
 
   const references: string[] = [];
+
+  const psRepair = await repairPrestaShopOrderStates(limit).catch((err) => {
+    console.error("[admin-recovery] prestashop repair failed", err);
+    return { markedPaid: 0, cancelled: 0, references: [] as string[] };
+  });
+  references.push(...psRepair.references);
 
   const backup = await restoreArchivesFromBackups({ paidOnly: true }).catch((err) => {
     console.error("[admin-recovery] backup restore failed", err);
@@ -147,6 +158,8 @@ export async function runAdminOrderRecovery(
     rebuiltFromPrestaShop,
     supplierDrafts,
     customerEmailsSent,
+    prestashopMarkedPaid: psRepair.markedPaid,
+    prestashopCancelled: psRepair.cancelled,
     references: [...new Set(references)],
   };
 

@@ -14,6 +14,7 @@
     "test:emails": "tsx scripts/test-emails.ts",
     "reconcile:orders": "tsx scripts/reconcile-stripe-orders.ts",
     "grant:apology-promo": "node scripts/grant-apology-promo.mjs",
+    "repair:prestashop": "node scripts/repair-prestashop-orders.mjs",
     "admin:wipe": "node scripts/admin-wipe-data.mjs"
   },
   "dependencies": {

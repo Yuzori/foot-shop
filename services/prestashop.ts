@@ -1095,6 +1095,18 @@ class PrestaShopService {
     return mapOrder(order, tracking);
   }
 
+  async getOrderCurrentStateId(orderId: string): Promise<string | null> {
+    const { data } = await this.request<Record<string, unknown>>(
+      `/orders/${orderId}`,
+      { display: "[current_state]" },
+    );
+    const order =
+      (data?.order as PsOrder | undefined) ??
+      asArray<PsOrder>(data as never, "orders")[0];
+    const state = order?.current_state;
+    return state !== undefined && state !== null ? String(state) : null;
+  }
+
   async listRecentOrders(limit = 50): Promise<PsOrder[]> {
     const { data } = await this.request<{ orders?: PsOrder[] }>("/orders", {
       display: "full",

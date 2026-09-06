@@ -4,6 +4,7 @@ import { getCheckoutBaseUrl } from "@/lib/site-url";
 import { paymentConfig } from "@/config/payment";
 import { placeOrder, type CheckoutBody } from "@/lib/orders";
 import { attachStripeSessionToPending } from "@/lib/checkout-pending-store";
+import { cancelUnpaidPrestaShopOrder } from "@/lib/cancel-unpaid-order";
 import { getStripe } from "@/lib/stripe-server";
 import { getOrCreateStripeCustomer } from "@/lib/stripe-customer";
 import { ensureStripePaymentMethodDomains } from "@/lib/stripe-payment-domains";
@@ -234,6 +235,14 @@ async function handleStripeSession(request: Request) {
     });
   } catch (error) {
     console.error("[stripe] checkout.sessions.create failed", error);
+    if (order.ok && order.orderId && order.reference) {
+      await cancelUnpaidPrestaShopOrder(
+        String(order.orderId),
+        String(order.reference),
+      ).catch((cancelErr) => {
+        console.warn("[stripe/session] cancel orphan order failed", cancelErr);
+      });
+    }
     return NextResponse.json(
       { message: formatStripeError(error) },
       { status: 502 },

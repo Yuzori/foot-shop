@@ -299,13 +299,16 @@ const PS_STATE_MAP: Record<string, { status: OrderStatus; label: string }> = {
   "5": { status: "delivered", label: "Livrée" },
   "6": { status: "cancelled", label: "Annulée" },
   "7": { status: "refunded", label: "Remboursée" },
-  "8": { status: "pending", label: "Erreur de paiement" },
+  "8": { status: "cancelled", label: "Paiement non finalisé" },
+  "9": { status: "processing", label: "En cours de traitement" },
+  "10": { status: "processing", label: "En cours de traitement" },
+  "11": { status: "processing", label: "Paiement accepté" },
+  "12": { status: "shipped", label: "Expédiée" },
 };
 
 export function mapOrder(ps: PsOrder, trackingNumber: string | null = null): Order {
-  const state = ps.current_state
-    ? PS_STATE_MAP[ps.current_state]
-    : undefined;
+  const stateKey = ps.current_state ? String(ps.current_state) : "";
+  const state = stateKey ? PS_STATE_MAP[stateKey] : undefined;
 
   return {
     id: ps.id,

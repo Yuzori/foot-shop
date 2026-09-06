@@ -18,10 +18,12 @@ import {
   ensureSupplierDraftFromArchiveReference,
   ensureSupplierOrderDraftForOrder,
 } from "@/lib/ensure-supplier-draft";
+import { ensurePrestaShopOrderPaid } from "@/lib/mark-prestashop-order-paid";
 import { sendPaidOrderCustomerEmailsIfNeeded } from "@/lib/send-paid-order-customer-emails";
 import {
   claimOrderFulfillment,
   hasOrderBeenFulfilled,
+  releaseOrderFulfillmentClaim,
 } from "@/lib/order-fulfillment-store";
 import { rebuildArchiveFromPrestaShopOrder } from "@/lib/rebuild-order-archive";
 import { assertStripePaymentForOrder } from "@/lib/stripe-payment-guard";
@@ -122,11 +124,18 @@ export async function fulfillPaidOrder(
 
   const archive = await ensurePaidArchiveExists(order, options?.checkoutSessionId);
 
-  const claimed = await claimOrderFulfillment(key);
-  const alreadyFulfilled = !claimed && (await hasOrderBeenFulfilled(key));
+  const alreadyFulfilled = await hasOrderBeenFulfilled(key);
+  const claimed = alreadyFulfilled ? false : await claimOrderFulfillment(key);
 
-  if (!claimed && !alreadyFulfilled) {
-    console.warn("[order-paid] fulfillment claim failed", key);
+  const psMarkedPaid = await ensurePrestaShopOrderPaid(key);
+  if (!psMarkedPaid) {
+    console.error("[order-paid] PrestaShop paid state failed", key);
+    if (claimed) {
+      await releaseOrderFulfillmentClaim(key).catch(() => {});
+    }
+    throw new Error(
+      `Impossible de marquer la commande ${order.reference} comme payée dans PrestaShop.`,
+    );
   }
 
   if (claimed) {
@@ -145,12 +154,6 @@ export async function fulfillPaidOrder(
         await markOrderArchiveStockReserved(order.reference);
       }
     }
-
-    const history = await prestashop.addOrderHistory(key, paymentConfig.paidStateId);
-    if (!history.ok) {
-      console.warn("[order-paid] addOrderHistory failed", key, history.error);
-    }
-
   }
 
   await sendPaidOrderCustomerEmailsIfNeeded({

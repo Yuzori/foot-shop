@@ -23,8 +23,8 @@ export const paymentConfig = {
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
   /** Devise des paiements Stripe (doit correspondre à la boutique). */
   currency: (process.env.STRIPE_CURRENCY ?? "eur").toLowerCase(),
-  /** id_order_state PrestaShop appliqué après paiement réussi (2 = Paiement accepté). */
-  paidStateId: Number(process.env.PRESTASHOP_PAID_STATE_ID ?? "2"),
+  /** id_order_state PrestaShop appliqué après paiement réussi (11 = Paiement à distance accepté). */
+  paidStateId: Number(process.env.PRESTASHOP_PAID_STATE_ID ?? "11"),
   get stripeEnabled(): boolean {
     return Boolean(this.stripeSecretKey);
   },

@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 
+import { getOrderArchiveByReference } from "@/lib/order-archive-store";
+import { isPaidOrderStatus } from "@/lib/customer-order-history";
 import { getOrderShipping } from "@/lib/order-shipping-store";
+import { isPrestaShopPaidState } from "@/lib/prestashop-order-states";
 import { resolveOrderForTracking } from "@/lib/resolve-order-for-tracking";
+import { verifyPrestaShopOrderHasStripePayment } from "@/lib/stripe-order-reconcile";
+import { prestashop } from "@/services/prestashop";
 
 export const runtime = "nodejs";
 
@@ -36,9 +41,32 @@ export async function GET(request: Request) {
 
   let status = order.status;
   let statusLabel = order.statusLabel;
-  if (trackingNumber && status === "processing") {
+
+  const archive = await getOrderArchiveByReference(order.reference);
+  const stripePaid = await verifyPrestaShopOrderHasStripePayment({
+    orderId: order.id,
+    reference: order.reference,
+  }).catch(() => false);
+
+  const archivePaid = Boolean(archive?.paidAt || archive?.status === "paid");
+  const psState = await prestashop.getOrderCurrentStateId(order.id).catch(() => null);
+  const psPaid = isPrestaShopPaidState(psState);
+
+  if (archivePaid || stripePaid || psPaid) {
+    if (!isPaidOrderStatus(status) || status === "unknown") {
+      status = "processing";
+      statusLabel = trackingNumber ? "Expédiée" : "Paiement accepté";
+    }
+  }
+
+  if (trackingNumber && (status === "processing" || status === "unknown")) {
     status = "shipped";
     statusLabel = "Expédiée";
+  }
+
+  if (status === "unknown" && archivePaid) {
+    status = "processing";
+    statusLabel = "Paiement accepté";
   }
 
   return NextResponse.json({
@@ -47,7 +75,7 @@ export async function GET(request: Request) {
     statusLabel,
     trackingNumber,
     trackingUrl,
-    shippingPending: !trackingNumber,
+    shippingPending: !trackingNumber && (archivePaid || stripePaid || psPaid),
     shippingNotifiedAt: shipping?.sentAt ?? null,
   });
 }

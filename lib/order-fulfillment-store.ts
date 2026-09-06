@@ -79,6 +79,14 @@ export async function claimOrderFulfillment(orderId: string): Promise<boolean> {
   return true;
 }
 
+export async function releaseOrderFulfillmentClaim(orderId: string): Promise<void> {
+  const key = orderId.trim();
+  if (!key) return;
+  const store = await readStore();
+  store.orderIds = store.orderIds.filter((id) => id !== key);
+  await writeStore(store);
+}
+
 /** @deprecated Utiliser claimOrderFulfillment. */
 export async function markOrderFulfilled(orderId: string): Promise<void> {
   const key = orderId.trim();
