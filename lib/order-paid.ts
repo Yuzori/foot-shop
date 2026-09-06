@@ -1,8 +1,6 @@
 import "server-only";
 
 import { paymentConfig } from "@/config/payment";
-import { firstOrderThankYouPromo } from "@/config/promotions";
-import { countPaidOrdersByCustomer } from "@/lib/customer-order-history";
 import { backupFromArchive } from "@/lib/order-backup-store";
 import {
   archiveOrder,
@@ -16,17 +14,15 @@ import {
   getCheckoutPendingByReference,
   type CheckoutPendingRecord,
 } from "@/lib/checkout-pending-store";
-import { sendOrderConfirmationEmail } from "@/lib/order-confirmation-email";
-import { sendShippingPendingEmail } from "@/lib/shipping-pending-email";
 import {
   ensureSupplierDraftFromArchiveReference,
   ensureSupplierOrderDraftForOrder,
 } from "@/lib/ensure-supplier-draft";
+import { sendPaidOrderCustomerEmailsIfNeeded } from "@/lib/send-paid-order-customer-emails";
 import {
   claimOrderFulfillment,
   hasOrderBeenFulfilled,
 } from "@/lib/order-fulfillment-store";
-import { resolveCheckoutNotificationEmail } from "@/lib/checkout-notification-email";
 import { rebuildArchiveFromPrestaShopOrder } from "@/lib/rebuild-order-archive";
 import { assertStripePaymentForOrder } from "@/lib/stripe-payment-guard";
 import { prestashop } from "@/services/prestashop";
@@ -155,51 +151,16 @@ export async function fulfillPaidOrder(
       console.warn("[order-paid] addOrderHistory failed", key, history.error);
     }
 
-    const email = resolveCheckoutNotificationEmail({
-      archive,
-      checkoutEmail: customerEmail,
-      fallbackEmail: await prestashop.getCustomerEmailByOrderId(key),
-    });
-
-    const customerId = email
-      ? (await prestashop.getCustomerAuthByEmail(email))?.id ?? null
-      : null;
-    let isFirstPaidOrder = false;
-    if (customerId) {
-      const paidCount = await countPaidOrdersByCustomer(customerId);
-      isFirstPaidOrder = paidCount <= 1;
-    } else if (email) {
-      isFirstPaidOrder = true;
-    }
-
-    const firstName = archive?.contact.firstName;
-
-    await Promise.all([
-      email
-        ? sendOrderConfirmationEmail({
-            to: email,
-            order,
-            firstName,
-            firstOrderPromo: isFirstPaidOrder
-              ? {
-                  code: firstOrderThankYouPromo.code,
-                  percent: firstOrderThankYouPromo.percent,
-                }
-              : undefined,
-          }).catch((err) => {
-            console.error("[order-paid] confirmation email failed", key, err);
-          })
-        : Promise.resolve(),
-      email
-        ? sendShippingPendingEmail({
-            to: email,
-            reference: order.reference,
-          }).catch((err) => {
-            console.error("[order-paid] shipping pending email failed", key, err);
-          })
-        : Promise.resolve(),
-    ]);
   }
+
+  await sendPaidOrderCustomerEmailsIfNeeded({
+    order,
+    orderId: key,
+    archive,
+    checkoutEmail: customerEmail,
+  }).catch((err) => {
+    console.error("[order-paid] customer emails failed", key, err);
+  });
 
   try {
     await ensureSupplierOrderDraftForOrder(order, key);

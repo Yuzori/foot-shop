@@ -7,6 +7,8 @@ import { isTestOrderReference } from "@/lib/is-test-order";
 import { rebuildArchiveFromPrestaShopOrder } from "@/lib/rebuild-order-archive";
 import { restoreArchivesFromBackups } from "@/lib/restore-order-archives";
 import { syncMissingSupplierDrafts } from "@/lib/ensure-supplier-draft";
+import { hasOrderCustomerEmailsBeenSent } from "@/lib/order-customer-email-store";
+import { sendPaidOrderCustomerEmailsIfNeeded } from "@/lib/send-paid-order-customer-emails";
 import { notifySupplierOfOrder } from "@/lib/supplier-order";
 import { getSupplierOrderDraft } from "@/lib/supplier-order-store";
 import { prestashop } from "@/services/prestashop";
@@ -22,6 +24,7 @@ let lastRecoveryResult: {
   restoredFromBackup: number;
   rebuiltFromPrestaShop: number;
   supplierDrafts: number;
+  customerEmailsSent: number;
   references: string[];
 } | null = null;
 
@@ -45,6 +48,7 @@ export async function runAdminOrderRecovery(
   restoredFromBackup: number;
   rebuiltFromPrestaShop: number;
   supplierDrafts: number;
+  customerEmailsSent: number;
   references: string[];
 }> {
   const now = Date.now();
@@ -65,6 +69,7 @@ export async function runAdminOrderRecovery(
   references.push(...backup.references);
 
   let rebuiltFromPrestaShop = 0;
+  let customerEmailsSent = 0;
   const recent = await prestashop.listRecentOrders(limit).catch((err) => {
     console.error("[admin-recovery] list recent orders failed", err);
     return [];
@@ -107,13 +112,24 @@ export async function runAdminOrderRecovery(
     }
 
     const draft = await getSupplierOrderDraft(reference);
-    if (!draft) {
-      const order = await prestashop.getOrderById(orderId);
-      if (order) {
-        await notifySupplierOfOrder(order, orderId).catch((err) => {
-          console.error("[admin-recovery] supplier draft failed", reference, err);
-        });
-      }
+    const order = await prestashop.getOrderById(orderId);
+    if (!draft && order) {
+      await notifySupplierOfOrder(order, orderId).catch((err) => {
+        console.error("[admin-recovery] supplier draft failed", reference, err);
+      });
+    }
+
+    if (order && !(await hasOrderCustomerEmailsBeenSent(orderId))) {
+      const archive = (await getOrderArchiveByReference(reference)) ?? existing;
+      const sent = await sendPaidOrderCustomerEmailsIfNeeded({
+        order,
+        orderId,
+        archive,
+      }).catch((err) => {
+        console.error("[admin-recovery] customer emails failed", reference, err);
+        return false;
+      });
+      if (sent) customerEmailsSent += 1;
     }
   }
 
@@ -126,6 +142,7 @@ export async function runAdminOrderRecovery(
     restoredFromBackup: backup.restored,
     rebuiltFromPrestaShop,
     supplierDrafts,
+    customerEmailsSent,
     references: [...new Set(references)],
   };
 

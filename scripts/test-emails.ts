@@ -58,7 +58,7 @@ async function main(): Promise<void> {
   console.log(`Provider: ${mailConfig.provider} (enabled=${mailConfig.enabled})`);
   console.log(`Envoi des tests vers ${to}…\n`);
 
-  const report = await runAllEmailTests(to, { delayMs: 400 });
+  const report = await runAllEmailTests(to, { delayMs: 2000 });
 
   for (const row of report.results) {
     const status = row.devMode
