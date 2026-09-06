@@ -4,6 +4,7 @@ import {
   ensureSupplierDraftFromArchiveReference,
 } from "@/lib/ensure-supplier-draft";
 import { runAdminOrderRecovery } from "@/lib/admin-order-recovery";
+import { dismissOrderFromAdminRecovery, clearOrderDismissal } from "@/lib/order-admin-dismissals";
 import { mailConfig } from "@/config/mail";
 import {
   archiveSupplierOrderDraft,
@@ -94,6 +95,7 @@ export async function POST(request: Request) {
     if (!draft) {
       return NextResponse.json({ message: "not_found" }, { status: 404 });
     }
+    await dismissOrderFromAdminRecovery(reference, "archived");
     return NextResponse.json({ ok: true, draft });
   }
 
@@ -102,10 +104,12 @@ export async function POST(request: Request) {
     if (!ok) {
       return NextResponse.json({ message: "not_found" }, { status: 404 });
     }
+    await dismissOrderFromAdminRecovery(reference, "deleted");
     return NextResponse.json({ ok: true });
   }
 
   if (body.action === "recover_draft") {
+    await clearOrderDismissal(reference);
     let ok = await ensureSupplierDraftFromArchiveReference(reference);
     if (!ok) {
       const order = await prestashop.getOrderByReference(reference);

@@ -2,6 +2,8 @@ import "server-only";
 
 import { paymentConfig } from "@/config/payment";
 import { getOrderArchiveByReference } from "@/lib/order-archive-store";
+import { isOrderDismissedFromRecovery } from "@/lib/order-admin-dismissals";
+import { isTestOrderReference } from "@/lib/is-test-order";
 import { rebuildArchiveFromPrestaShopOrder } from "@/lib/rebuild-order-archive";
 import { restoreArchivesFromBackups } from "@/lib/restore-order-archives";
 import { syncMissingSupplierDrafts } from "@/lib/ensure-supplier-draft";
@@ -12,6 +14,16 @@ import { prestashop } from "@/services/prestashop";
 const CANCELLED_STATE_ID = String(
   process.env.PRESTASHOP_CANCELLED_STATE_ID ?? "6",
 );
+
+const RECOVERY_COOLDOWN_MS = 45_000;
+
+let lastRecoveryAt = 0;
+let lastRecoveryResult: {
+  restoredFromBackup: number;
+  rebuiltFromPrestaShop: number;
+  supplierDrafts: number;
+  references: string[];
+} | null = null;
 
 function isRecoverablePrestaShopOrder(input: {
   currentState: string | null;
@@ -26,12 +38,24 @@ function isRecoverablePrestaShopOrder(input: {
  * Répare historique + commandes BBDBuy au chargement admin :
  * backup → PrestaShop → brouillons fournisseur.
  */
-export async function runAdminOrderRecovery(limit = 100): Promise<{
+export async function runAdminOrderRecovery(
+  limit = 100,
+  options?: { force?: boolean },
+): Promise<{
   restoredFromBackup: number;
   rebuiltFromPrestaShop: number;
   supplierDrafts: number;
   references: string[];
 }> {
+  const now = Date.now();
+  if (
+    !options?.force &&
+    lastRecoveryResult &&
+    now - lastRecoveryAt < RECOVERY_COOLDOWN_MS
+  ) {
+    return lastRecoveryResult;
+  }
+
   const references: string[] = [];
 
   const backup = await restoreArchivesFromBackups({ paidOnly: true }).catch((err) => {
@@ -50,6 +74,8 @@ export async function runAdminOrderRecovery(limit = 100): Promise<{
     const orderId = String(psOrder.id ?? "").trim();
     const reference = psOrder.reference?.trim() ?? "";
     if (!orderId || !reference) continue;
+    if (isTestOrderReference(reference)) continue;
+    if (await isOrderDismissedFromRecovery(reference)) continue;
 
     const totalPaid = Number.parseFloat(psOrder.total_paid ?? "0") || 0;
     if (
@@ -81,12 +107,10 @@ export async function runAdminOrderRecovery(limit = 100): Promise<{
     }
 
     const draft = await getSupplierOrderDraft(reference);
-    if (!draft || draft.status === "archived") {
+    if (!draft) {
       const order = await prestashop.getOrderById(orderId);
       if (order) {
-        await notifySupplierOfOrder(order, orderId, {
-          force: draft?.status === "archived",
-        }).catch((err) => {
+        await notifySupplierOfOrder(order, orderId).catch((err) => {
           console.error("[admin-recovery] supplier draft failed", reference, err);
         });
       }
@@ -98,10 +122,14 @@ export async function runAdminOrderRecovery(limit = 100): Promise<{
     return 0;
   });
 
-  return {
+  const result = {
     restoredFromBackup: backup.restored,
     rebuiltFromPrestaShop,
     supplierDrafts,
     references: [...new Set(references)],
   };
+
+  lastRecoveryAt = now;
+  lastRecoveryResult = result;
+  return result;
 }

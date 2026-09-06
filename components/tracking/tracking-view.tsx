@@ -77,7 +77,7 @@ export function TrackingView() {
       <div className="mx-auto max-w-xl">
         <h1 className="display-2 text-center">Suivi de commande</h1>
         <p className="mt-3 text-center text-sm text-ink/55">
-          Saisissez la référence reçue par email pour suivre votre commande - aucun compte requis.
+          Saisissez la référence reçue par email ou le numéro de commande - aucun compte requis.
         </p>
 
         <form
@@ -88,13 +88,13 @@ export function TrackingView() {
           className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-end"
         >
           <Field
-            label="Référence de commande"
+            label="Référence ou n° de commande"
             name="reference"
             value={reference}
             onChange={(e) => setReference(e.target.value)}
             onFocus={handleFocusReference}
             placeholder={
-              latestReference ? `Ex. ${latestReference}` : "Ex. XKBKNABJK"
+              latestReference ? `Ex. ${latestReference} ou 99` : "Ex. XKBKNABJK ou 99"
             }
             list={orderReferences.length > 0 ? "order-refs-list" : undefined}
             className="flex-1"

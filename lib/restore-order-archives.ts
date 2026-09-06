@@ -7,6 +7,8 @@ import {
   getOrderArchiveByReference,
   type OrderArchiveRecord,
 } from "@/lib/order-archive-store";
+import { isOrderDismissedFromRecovery } from "@/lib/order-admin-dismissals";
+import { isTestOrderReference } from "@/lib/is-test-order";
 import {
   readAllOrderBackups,
   type OrderBackupEntry,
@@ -99,6 +101,14 @@ export async function restoreArchivesFromBackups(input?: {
   const references: string[] = [];
 
   for (const [reference, entry] of latestByRef) {
+    if (isTestOrderReference(reference)) {
+      skipped += 1;
+      continue;
+    }
+    if (await isOrderDismissedFromRecovery(reference)) {
+      skipped += 1;
+      continue;
+    }
     if (allow && !allow.includes(reference)) {
       skipped += 1;
       continue;

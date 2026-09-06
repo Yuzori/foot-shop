@@ -1,25 +1,30 @@
 import { NextResponse } from "next/server";
 
 import { getOrderShipping } from "@/lib/order-shipping-store";
-import { prestashop } from "@/services/prestashop";
+import { resolveOrderForTracking } from "@/lib/resolve-order-for-tracking";
 
-/** Track an order by its reference (read-only). */
+export const runtime = "nodejs";
+
+/** Track an order by reference or PrestaShop order number (read-only). */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const reference = searchParams.get("reference") ?? "";
 
   if (!reference.trim()) {
     return NextResponse.json(
-      { message: "Référence de commande requise" },
+      { message: "Référence ou numéro de commande requis" },
       { status: 400 },
     );
   }
 
-  const order = await prestashop.getOrderByReference(reference);
+  const order = await resolveOrderForTracking(reference);
 
   if (!order) {
     return NextResponse.json(
-      { message: "Aucune commande trouvée pour cette référence" },
+      {
+        message:
+          "Aucune commande trouvée. Vérifiez la référence (email de confirmation) ou le numéro de commande.",
+      },
       { status: 404 },
     );
   }

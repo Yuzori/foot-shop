@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 
 import { isAdminAuthorized } from "@/lib/admin-auth";
-import { runAdminOrderRecovery } from "@/lib/admin-order-recovery";
+import { dismissOrderFromAdminRecovery } from "@/lib/order-admin-dismissals";
 import {
   deleteOrderArchive,
   getOrderArchive,
   listPaidOrderArchives,
 } from "@/lib/order-archive-store";
+import { isTestArchiveRecord } from "@/lib/is-test-order";
+import { deleteSupplierOrderDraft } from "@/lib/supplier-order-store";
 
 /** Historique sécurisé des commandes (admin uniquement). */
 export async function GET(request: Request) {
@@ -29,15 +31,11 @@ export async function GET(request: Request) {
     Math.max(1, Number.parseInt(url.searchParams.get("limit") ?? "200", 10) || 200),
   );
 
-  const recovery = await runAdminOrderRecovery(limit).catch((err) => {
-    console.error("[order-archive] recovery failed", err);
-    return null;
-  });
-
-  const records = await listPaidOrderArchives(limit);
+  const records = (await listPaidOrderArchives(limit)).filter(
+    (record) => !isTestArchiveRecord(record),
+  );
   return NextResponse.json({
     total: records.length,
-    recovery,
     records: records.map((r) => ({
       id: r.id,
       reference: r.reference,
@@ -69,6 +67,11 @@ export async function DELETE(request: Request) {
   const ok = await deleteOrderArchive(id, reference);
   if (!ok) {
     return NextResponse.json({ message: "not_found" }, { status: 404 });
+  }
+
+  if (reference) {
+    await dismissOrderFromAdminRecovery(reference, "deleted");
+    await deleteSupplierOrderDraft(reference).catch(() => {});
   }
 
   return NextResponse.json({ ok: true });

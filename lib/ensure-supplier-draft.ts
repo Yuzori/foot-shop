@@ -2,6 +2,8 @@ import "server-only";
 
 import { buildBbdBuyOrderDraftFromArchive } from "@/lib/bbdbuy/build-draft";
 import { getOrderArchiveByReference, listPaidOrderArchives } from "@/lib/order-archive-store";
+import { isOrderDismissedFromRecovery } from "@/lib/order-admin-dismissals";
+import { isTestOrderReference } from "@/lib/is-test-order";
 import { notifySupplierOfOrder } from "@/lib/supplier-order";
 import { getSupplierOrderDraft, saveSupplierOrderDraft } from "@/lib/supplier-order-store";
 import { sendBbdBuyOperatorEmail } from "@/lib/supplier-order-email";
@@ -67,6 +69,8 @@ export async function syncMissingSupplierDrafts(limit = 80): Promise<number> {
 
   for (const record of archives) {
     if (!isPaidArchive(record)) continue;
+    if (isTestOrderReference(record.reference)) continue;
+    if (await isOrderDismissedFromRecovery(record.reference)) continue;
 
     const existing = await getSupplierOrderDraft(record.reference);
     if (existing && existing.status !== "archived") continue;
