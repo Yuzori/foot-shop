@@ -27,6 +27,7 @@ import {
   hasOrderBeenFulfilled,
 } from "@/lib/order-fulfillment-store";
 import { resolveCheckoutNotificationEmail } from "@/lib/checkout-notification-email";
+import { rebuildArchiveFromPrestaShopOrder } from "@/lib/rebuild-order-archive";
 import { assertStripePaymentForOrder } from "@/lib/stripe-payment-guard";
 import { prestashop } from "@/services/prestashop";
 import type { Order } from "@/types/domain";
@@ -91,6 +92,13 @@ async function ensurePaidArchiveExists(
         console.error("[order-paid] backup failed", err);
       });
     }
+  }
+
+  if (!archive || (!archive.paidAt && archive.status !== "paid")) {
+    archive = await rebuildArchiveFromPrestaShopOrder(order.id).catch((err) => {
+      console.error("[order-paid] rebuild archive failed", order.reference, err);
+      return null;
+    });
   }
 
   return archive;

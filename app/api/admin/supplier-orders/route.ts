@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 
 import {
   ensureSupplierDraftFromArchiveReference,
-  syncMissingSupplierDrafts,
 } from "@/lib/ensure-supplier-draft";
+import { runAdminOrderRecovery } from "@/lib/admin-order-recovery";
 import { mailConfig } from "@/config/mail";
 import {
   archiveSupplierOrderDraft,
@@ -33,9 +33,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ message: "unauthorized" }, { status: 401 });
   }
 
-  const recovered = await syncMissingSupplierDrafts(100).catch((err) => {
-    console.error("[supplier-orders] sync missing drafts failed", err);
-    return 0;
+  const recovery = await runAdminOrderRecovery(100).catch((err) => {
+    console.error("[supplier-orders] recovery failed", err);
+    return null;
   });
 
   const drafts = await listSupplierOrderDrafts();
@@ -43,7 +43,8 @@ export async function GET(request: Request) {
     pending: drafts.filter((d) => d.status === "pending"),
     submitted: drafts.filter((d) => d.status === "submitted"),
     archived: drafts.filter((d) => d.status === "archived"),
-    recovered,
+    recovered: recovery?.supplierDrafts ?? 0,
+    recovery,
   });
 }
 
@@ -53,11 +54,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "unauthorized" }, { status: 401 });
   }
 
-  let body: { reference?: string; action?: string };
+  let body: { reference?: string; action?: string; customerId?: string };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ message: "invalid_body" }, { status: 400 });
+  }
+
+  if (body.action === "repair_customer") {
+    const customerId = body.customerId?.trim();
+    if (!customerId) {
+      return NextResponse.json({ message: "customer_id_required" }, { status: 400 });
+    }
+    const result = await prestashop.repairCustomerBackOffice(customerId);
+    if (!result.ok) {
+      return NextResponse.json(
+        { message: result.error ?? "repair_failed" },
+        { status: 502 },
+      );
+    }
+    return NextResponse.json({ ok: true });
   }
 
   const reference = body.reference?.trim();

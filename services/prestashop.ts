@@ -1095,6 +1095,103 @@ class PrestaShopService {
     return mapOrder(order, tracking);
   }
 
+  async listRecentOrders(limit = 50): Promise<PsOrder[]> {
+    const { data } = await this.request<{ orders?: PsOrder[] }>("/orders", {
+      display: "full",
+      sort: "[id_DESC]",
+      limit: String(Math.min(200, Math.max(1, limit))),
+    });
+    return asArray<PsOrder>(data as never, "orders");
+  }
+
+  async getOrderCustomerId(orderId: string): Promise<string | null> {
+    const { data } = await this.request<Record<string, unknown>>(
+      `/orders/${orderId}`,
+      { display: "full" },
+    );
+    const order =
+      (data?.order as PsOrder | undefined) ??
+      asArray<PsOrder>(data as never, "orders")[0];
+    const customerId = order?.id_customer;
+    return customerId ? String(customerId) : null;
+  }
+
+  private defaultCustomerGroupId: string | null = null;
+
+  async resolveDefaultCustomerGroupId(): Promise<string> {
+    if (this.defaultCustomerGroupId) return this.defaultCustomerGroupId;
+
+    const env = process.env.PRESTASHOP_CUSTOMER_GROUP_ID?.trim();
+    if (env) {
+      this.defaultCustomerGroupId = env;
+      return env;
+    }
+
+    const { data } = await this.request<{ groups?: { id: string; name?: PsLangField }[] }>(
+      "/groups",
+      { display: "full", limit: "30" },
+    );
+    const groups = asArray<{ id: string; name?: PsLangField }>(data as never, "groups");
+    for (const group of groups) {
+      const name = resolveLang(group.name).toLowerCase();
+      if (/client|customer|visiteur|visitor/.test(name)) {
+        this.defaultCustomerGroupId = String(group.id);
+        return this.defaultCustomerGroupId;
+      }
+    }
+
+    this.defaultCustomerGroupId = "3";
+    return this.defaultCustomerGroupId;
+  }
+
+  async resolveDefaultLangId(): Promise<string> {
+    const { data } = await this.request<{ languages?: { id: string }[] }>("/languages", {
+      display: "full",
+      limit: "1",
+    });
+    const lang = asArray<{ id: string }>(data as never, "languages")[0];
+    return lang?.id ?? "1";
+  }
+
+  /** Corrige un client PrestaShop dont le groupe BO est invalide (erreur 500 fiche client). */
+  async repairCustomerBackOffice(
+    customerId: string,
+  ): Promise<{ ok: boolean; error?: string | null }> {
+    const id = customerId.trim();
+    if (!id) return { ok: false, error: "customer_id_required" };
+
+    const ps = await this.getCustomerRecord(id);
+    if (!ps?.email) return { ok: false, error: "customer_not_found" };
+
+    const groupId = await this.resolveDefaultCustomerGroupId();
+    const langId = ps.id_lang ?? (await this.resolveDefaultLangId());
+    const shopId = ps.id_shop ?? "1";
+
+    const xmlRaw = await this.getCustomerRawXml(id);
+    if (!xmlRaw) return { ok: false, error: "customer_xml_unavailable" };
+
+    let patched = patchCustomerXmlField(xmlRaw, "id_default_group", groupId);
+    patched = patchCustomerXmlField(patched, "id_lang", langId);
+    patched = patchCustomerXmlField(patched, "id_shop", shopId);
+
+    const groupsBlock = `<associations>
+  <groups>
+    <group>
+      <id>${escapeXml(groupId)}</id>
+    </group>
+  </groups>
+</associations>`;
+
+    if (/<associations>[\s\S]*?<\/associations>/.test(patched)) {
+      patched = patched.replace(/<associations>[\s\S]*?<\/associations>/, groupsBlock);
+    } else {
+      patched = patched.replace("</customer>", `  ${groupsBlock}\n  </customer>`);
+    }
+
+    const { status, error } = await this.put(`/customers/${id}`, patched);
+    return { ok: status !== null && status < 400, error };
+  }
+
   /** Numéro de suivi colis (table order_carriers PrestaShop). */
   async getOrderTrackingNumber(orderId: string): Promise<string | null> {
     const { data } = await this.request<{ order_carriers?: PsOrderCarrier[] }>(
@@ -1610,7 +1707,15 @@ class PrestaShopService {
     error: string | null;
   }> {
     const secureKey = input.secureKey?.trim() || crypto.randomBytes(16).toString("hex");
-    const xml = buildCustomerXml({ ...input, secureKey });
+    const groupId = await this.resolveDefaultCustomerGroupId();
+    const langId = await this.resolveDefaultLangId();
+    const xml = buildCustomerXml({
+      ...input,
+      secureKey,
+      idDefaultGroup: groupId,
+      idLang: langId,
+      idShop: "1",
+    });
     const { data, status, error } = await this.post<{ customer?: PsCustomer }>(
       "/customers",
       xml,
@@ -1627,6 +1732,12 @@ class PrestaShopService {
         const existing = await this.getCustomerAuthByEmail(input.email);
         if (existing) customer = existing;
       }
+    }
+
+    if (customer?.id) {
+      await this.repairCustomerBackOffice(customer.id).catch((err) => {
+        console.warn("[prestashop] customer group repair after create failed", err);
+      });
     }
 
     return {
@@ -3427,9 +3538,30 @@ function buildCustomerXml(input: {
   password: string;
   newsletter?: boolean;
   secureKey?: string;
+  idDefaultGroup?: string;
+  idLang?: string;
+  idShop?: string;
 }): string {
   const secureKeyXml = input.secureKey
     ? `<secure_key>${escapeXml(input.secureKey)}</secure_key>`
+    : "";
+  const groupXml = input.idDefaultGroup
+    ? `<id_default_group>${escapeXml(input.idDefaultGroup)}</id_default_group>`
+    : "";
+  const langXml = input.idLang
+    ? `<id_lang>${escapeXml(input.idLang)}</id_lang>`
+    : "";
+  const shopXml = input.idShop
+    ? `<id_shop>${escapeXml(input.idShop)}</id_shop>`
+    : "";
+  const groupAssocXml = input.idDefaultGroup
+    ? `<associations>
+    <groups>
+      <group>
+        <id>${escapeXml(input.idDefaultGroup)}</id>
+      </group>
+    </groups>
+  </associations>`
     : "";
   return `<?xml version="1.0" encoding="UTF-8"?>
 <prestashop xmlns:xlink="http://www.w3.org/1999/xlink">
@@ -3439,8 +3571,12 @@ function buildCustomerXml(input: {
     <email>${escapeXml(input.email)}</email>
     <passwd>${escapeXml(input.password)}</passwd>
     ${secureKeyXml}
+    ${groupXml}
+    ${langXml}
+    ${shopXml}
     <newsletter>${input.newsletter ? "1" : "0"}</newsletter>
     <active>1</active>
+    ${groupAssocXml}
   </customer>
 </prestashop>`;
 }

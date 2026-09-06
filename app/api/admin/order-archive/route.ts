@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { isAdminAuthorized } from "@/lib/admin-auth";
+import { runAdminOrderRecovery } from "@/lib/admin-order-recovery";
 import {
   deleteOrderArchive,
   getOrderArchive,
@@ -27,9 +28,16 @@ export async function GET(request: Request) {
     1000,
     Math.max(1, Number.parseInt(url.searchParams.get("limit") ?? "200", 10) || 200),
   );
+
+  const recovery = await runAdminOrderRecovery(limit).catch((err) => {
+    console.error("[order-archive] recovery failed", err);
+    return null;
+  });
+
   const records = await listPaidOrderArchives(limit);
   return NextResponse.json({
     total: records.length,
+    recovery,
     records: records.map((r) => ({
       id: r.id,
       reference: r.reference,
