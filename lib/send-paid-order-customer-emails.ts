@@ -23,7 +23,7 @@ export async function sendPaidOrderCustomerEmailsIfNeeded(input: {
   checkoutEmail?: string | null;
   force?: boolean;
 }): Promise<boolean> {
-  const key = input.orderId.trim();
+  const key = String(input.orderId).trim();
   if (!key) return false;
 
   if (!input.force && (await hasOrderCustomerEmailsBeenSent(key))) {

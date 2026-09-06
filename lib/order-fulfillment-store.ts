@@ -33,7 +33,7 @@ async function writeStore(store: FulfillmentStore): Promise<void> {
 }
 
 export async function hasOrderBeenFulfilled(orderId: string): Promise<boolean> {
-  const key = orderId.trim();
+  const key = String(orderId).trim();
   if (!key) return false;
   const store = await readStore();
   return store.orderIds.includes(key);
@@ -44,7 +44,7 @@ export async function hasOrderBeenFulfilled(orderId: string): Promise<boolean> {
  * Retourne false si la commande a déjà été traitée.
  */
 export async function claimOrderFulfillment(orderId: string): Promise<boolean> {
-  const key = orderId.trim();
+  const key = String(orderId).trim();
   if (!key) return false;
 
   await fs.mkdir(path.dirname(FILE), { recursive: true });
@@ -80,7 +80,7 @@ export async function claimOrderFulfillment(orderId: string): Promise<boolean> {
 }
 
 export async function releaseOrderFulfillmentClaim(orderId: string): Promise<void> {
-  const key = orderId.trim();
+  const key = String(orderId).trim();
   if (!key) return;
   const store = await readStore();
   store.orderIds = store.orderIds.filter((id) => id !== key);
@@ -89,7 +89,7 @@ export async function releaseOrderFulfillmentClaim(orderId: string): Promise<voi
 
 /** @deprecated Utiliser claimOrderFulfillment. */
 export async function markOrderFulfilled(orderId: string): Promise<void> {
-  const key = orderId.trim();
+  const key = String(orderId).trim();
   if (!key) return;
   const store = await readStore();
   if (store.orderIds.includes(key)) return;
