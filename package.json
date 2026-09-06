@@ -12,6 +12,7 @@
     "reclone": "tsx scripts/reclone-missing-products.ts",
     "reclone:dry-run": "tsx scripts/reclone-missing-products.ts --dry-run",
     "test:emails": "tsx scripts/test-emails.ts",
+    "reconcile:orders": "tsx scripts/reconcile-stripe-orders.ts",
     "admin:wipe": "node scripts/admin-wipe-data.mjs"
   },
   "dependencies": {

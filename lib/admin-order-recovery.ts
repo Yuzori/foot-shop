@@ -1,6 +1,6 @@
 import "server-only";
 
-import { paymentConfig } from "@/config/payment";
+import { isPrestaShopPaidState } from "@/lib/prestashop-order-states";
 import { getOrderArchiveByReference } from "@/lib/order-archive-store";
 import { isOrderDismissedFromRecovery } from "@/lib/order-admin-dismissals";
 import { isTestOrderReference } from "@/lib/is-test-order";
@@ -8,6 +8,7 @@ import { rebuildArchiveFromPrestaShopOrder } from "@/lib/rebuild-order-archive";
 import { restoreArchivesFromBackups } from "@/lib/restore-order-archives";
 import { syncMissingSupplierDrafts } from "@/lib/ensure-supplier-draft";
 import { hasOrderCustomerEmailsBeenSent } from "@/lib/order-customer-email-store";
+import { verifyPrestaShopOrderHasStripePayment } from "@/lib/stripe-order-reconcile";
 import { sendPaidOrderCustomerEmailsIfNeeded } from "@/lib/send-paid-order-customer-emails";
 import { notifySupplierOfOrder } from "@/lib/supplier-order";
 import { getSupplierOrderDraft } from "@/lib/supplier-order-store";
@@ -28,13 +29,14 @@ let lastRecoveryResult: {
   references: string[];
 } | null = null;
 
-function isRecoverablePrestaShopOrder(input: {
-  currentState: string | null;
-  totalPaid: number;
-}): boolean {
-  if (input.currentState === CANCELLED_STATE_ID) return false;
-  if (input.currentState === String(paymentConfig.paidStateId)) return true;
-  return input.totalPaid > 0;
+const PAYMENT_ERROR_STATE_ID = "8";
+const AWAITING_PAYMENT_STATE_ID = "1";
+
+function isRecoverablePrestaShopOrder(currentState: string | null): boolean {
+  if (!currentState || currentState === CANCELLED_STATE_ID) return false;
+  if (currentState === PAYMENT_ERROR_STATE_ID) return false;
+  if (currentState === AWAITING_PAYMENT_STATE_ID) return false;
+  return isPrestaShopPaidState(currentState);
 }
 
 /**
@@ -82,13 +84,15 @@ export async function runAdminOrderRecovery(
     if (isTestOrderReference(reference)) continue;
     if (await isOrderDismissedFromRecovery(reference)) continue;
 
-    const totalPaid = Number.parseFloat(psOrder.total_paid ?? "0") || 0;
-    if (
-      !isRecoverablePrestaShopOrder({
-        currentState: psOrder.current_state ?? null,
-        totalPaid,
-      })
-    ) {
+    if (!isRecoverablePrestaShopOrder(psOrder.current_state ?? null)) {
+      continue;
+    }
+
+    const stripePaid = await verifyPrestaShopOrderHasStripePayment({
+      orderId,
+      reference,
+    });
+    if (!stripePaid) {
       continue;
     }
 
