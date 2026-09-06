@@ -108,7 +108,7 @@ export async function fulfillPaidOrder(
   customerEmail?: string | null,
   options?: { checkoutSessionId?: string | null },
 ): Promise<void> {
-  const key = orderId.trim();
+  const key = String(orderId).trim();
   if (!key) return;
 
   const order = await prestashop.getOrderById(key);

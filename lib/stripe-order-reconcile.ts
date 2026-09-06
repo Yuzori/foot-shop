@@ -41,8 +41,8 @@ async function findPaidStripeSession(input: {
       });
 
       for (const session of batch.data) {
-        const metaOrderId = session.metadata?.orderId?.trim() ?? "";
-        const metaReference = session.metadata?.reference?.trim() ?? "";
+        const metaOrderId = String(session.metadata?.orderId ?? "").trim();
+        const metaReference = String(session.metadata?.reference ?? "").trim();
         if (
           (metaOrderId && metaOrderId === orderId) ||
           (metaReference && metaReference === reference)
