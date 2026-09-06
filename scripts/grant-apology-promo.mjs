@@ -26,8 +26,8 @@ loadEnvFile(".env.local");
 
 const secret = process.env.ADMIN_SECRET?.trim();
 const baseUrl = (
+  process.env.GRANT_PROMO_BASE_URL?.trim() ||
   process.env.SITE_URL?.trim() ||
-  process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
   "https://foot-shop.fr"
 ).replace(/\/$/, "");
 
