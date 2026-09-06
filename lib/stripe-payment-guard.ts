@@ -101,12 +101,8 @@ export async function assertStripePaymentForOrder(input: {
   }
 
   const metaOrderId = metaValue(session.metadata?.orderId);
-  const metaReference = metaValue(session.metadata?.reference);
   if (metaOrderId && metaOrderId !== orderId) {
     throw new Error("Incohérence entre la commande et la session Stripe.");
-  }
-  if (metaReference && metaReference !== reference) {
-    throw new Error("Incohérence de référence avec la session Stripe.");
   }
 
   return session;

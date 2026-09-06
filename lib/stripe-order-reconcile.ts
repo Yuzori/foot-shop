@@ -34,7 +34,7 @@ async function findPaidStripeSession(input: {
     }
 
     let startingAfter: string | undefined;
-    for (let page = 0; page < 8; page++) {
+    for (let page = 0; page < 15; page++) {
       const batch = await stripe.checkout.sessions.list({
         limit: 100,
         ...(startingAfter ? { starting_after: startingAfter } : {}),
