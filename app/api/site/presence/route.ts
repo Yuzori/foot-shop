@@ -14,6 +14,12 @@ export async function POST(request: Request) {
     cartLines?: number;
     cartItems?: number;
     pathname?: string;
+    displayName?: string;
+    products?: Array<{
+      name?: string;
+      quantity?: number;
+      optionsLabel?: string;
+    }>;
   };
   try {
     body = await request.json();
@@ -31,6 +37,12 @@ export async function POST(request: Request) {
     cartLines: Number(body.cartLines) || 0,
     cartItems: Number(body.cartItems) || 0,
     pathname: body.pathname,
+    displayName: body.displayName,
+    products: body.products?.map((item) => ({
+      name: item.name ?? "Article",
+      quantity: item.quantity ?? 1,
+      optionsLabel: item.optionsLabel,
+    })),
   });
 
   return NextResponse.json({ ok: true });

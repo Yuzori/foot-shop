@@ -76,6 +76,10 @@ export async function saveCheckoutPending(
   await writeIndex(index);
 }
 
+export async function listCheckoutPendingRecords(): Promise<CheckoutPendingRecord[]> {
+  return readIndex();
+}
+
 export async function getCheckoutPendingByReference(
   reference: string,
 ): Promise<CheckoutPendingRecord | null> {

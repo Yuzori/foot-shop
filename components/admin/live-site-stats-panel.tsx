@@ -187,22 +187,45 @@ export function LiveSiteStatsPanel({
       ) : null}
 
       {live ? (
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+        <div className="mt-6 space-y-4">
           <StatCard
             label="Visiteurs en ligne"
             value={live.activeVisitors}
             hint="Onglets actifs sur le site"
           />
-          <StatCard
-            label="Paniers avec articles"
-            value={live.cartsWithItems}
-            hint="Visiteurs ayant ajouté au moins 1 article"
-          />
-          <StatCard
-            label="Articles en panier"
-            value={live.totalCartItems}
-            hint={`${live.totalCartLines} ligne${live.totalCartLines > 1 ? "s" : ""} distincte${live.totalCartLines > 1 ? "s" : ""}`}
-          />
+
+          <div className="rounded-2xl border border-ink/10 bg-paper-soft/50 p-4 sm:p-5">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-ink/45">
+              Paniers en cours
+            </p>
+            {live.activeCarts.length === 0 ? (
+              <p className="mt-3 text-sm text-ink/50">Aucun panier actif pour le moment.</p>
+            ) : (
+              <ul className="mt-4 space-y-3">
+                {live.activeCarts.map((cart) => (
+                  <li
+                    key={cart.sessionId}
+                    className="rounded-xl border border-ink/8 bg-paper px-4 py-3"
+                  >
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <p className="font-medium text-ink">{cart.displayName}</p>
+                      <p className="text-xs text-ink/40">
+                        {cart.pathname} · {formatTime(cart.updatedAt)}
+                      </p>
+                    </div>
+                    <ul className="mt-2 space-y-1 text-sm text-ink/70">
+                      {cart.products.map((product, index) => (
+                        <li key={`${cart.sessionId}-${index}`}>
+                          {product.quantity}× {product.name}
+                          {product.optionsLabel ? ` · ${product.optionsLabel}` : ""}
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       ) : null}
 
@@ -243,26 +266,11 @@ export function LiveSiteStatsPanel({
         </div>
 
         {recap ? (
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-6">
             <StatCard
               label="Visiteurs uniques"
               value={recap.uniqueVisitors}
               hint="Sessions distinctes sur la période"
-            />
-            <StatCard
-              label="Ont mis au panier"
-              value={recap.visitorsWithCart}
-              hint="Au moins un article ajouté"
-            />
-            <StatCard
-              label="Articles en panier"
-              value={recap.totalCartItems}
-              hint="Max cumulé par visiteur"
-            />
-            <StatCard
-              label="Lignes panier"
-              value={recap.totalCartLines}
-              hint="Références distinctes max"
             />
           </div>
         ) : null}

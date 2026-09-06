@@ -7,6 +7,7 @@ import { Container } from "@/components/ui/container";
 import { Field } from "@/components/ui/field";
 import { Spinner } from "@/components/ui/spinner";
 import type { BbdBuyOrderDraft } from "@/lib/bbdbuy/types";
+import type { AbandonedCheckout } from "@/lib/abandoned-checkouts-types";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { ProductImage } from "@/components/product/product-image";
@@ -25,6 +26,7 @@ type DraftList = {
   pending: BbdBuyOrderDraft[];
   submitted: BbdBuyOrderDraft[];
   archived: BbdBuyOrderDraft[];
+  abandoned?: AbandonedCheckout[];
   recovered?: number;
 };
 
@@ -119,9 +121,9 @@ function DraftCard({
 }: {
   draft: BbdBuyOrderDraft;
   secret: string;
-  onSubmitted: () => void;
-  onArchived: () => void;
-  onDeleted: () => void;
+  onSubmitted: (draft: BbdBuyOrderDraft) => void;
+  onArchived: (draft: BbdBuyOrderDraft) => void;
+  onDeleted: (reference: string) => void;
 }) {
   const [busy, setBusy] = useState(false);
 
@@ -138,7 +140,7 @@ function DraftCard({
         body: JSON.stringify({ reference: draft.reference, action: "delete" }),
       });
       if (!res.ok) throw new Error("Échec");
-      onDeleted();
+      onDeleted(draft.reference);
     } finally {
       setBusy(false);
     }
@@ -156,7 +158,8 @@ function DraftCard({
         body: JSON.stringify({ reference: draft.reference, action: "mark_submitted" }),
       });
       if (!res.ok) throw new Error("Échec");
-      onSubmitted();
+      const payload = (await res.json()) as { draft?: BbdBuyOrderDraft };
+      if (payload.draft) onSubmitted(payload.draft);
     } finally {
       setBusy(false);
     }
@@ -174,7 +177,8 @@ function DraftCard({
         body: JSON.stringify({ reference: draft.reference, action: "archive" }),
       });
       if (!res.ok) throw new Error("Échec");
-      onArchived();
+      const payload = (await res.json()) as { draft?: BbdBuyOrderDraft };
+      if (payload.draft) onArchived(payload.draft);
     } finally {
       setBusy(false);
     }
@@ -300,6 +304,84 @@ function orderStatusLabel(status: string, paidAt: string | null): string {
   if (status === "paid" || paidAt) return "Payée";
   if (status === "test") return "Test";
   return "Paiement non reçu";
+}
+
+function AbandonedCheckoutsSection({ items }: { items: AbandonedCheckout[] }) {
+  if (items.length === 0) {
+    return (
+      <section className="mt-10 rounded-3xl border border-dashed border-ink/12 bg-paper-soft/30 p-6 lg:p-8">
+        <h2 className="font-display text-xl font-semibold">Abandons de panier</h2>
+        <p className="mt-2 text-sm text-ink/55">
+          Checkouts démarrés sans paiement — informatif uniquement, hors commandes BBDBuy.
+        </p>
+        <p className="mt-4 text-sm text-ink/50">Aucun abandon récent.</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="mt-10 rounded-3xl border border-dashed border-ink/12 bg-paper-soft/30 p-6 lg:p-8">
+      <h2 className="font-display text-xl font-semibold">Abandons de panier</h2>
+      <p className="mt-2 text-sm text-ink/55">
+        {items.length} checkout{items.length > 1 ? "s" : ""} non payé
+        {items.length > 1 ? "s" : ""} — ne comptent pas dans les commandes ni PrestaShop.
+      </p>
+      <ul className="mt-6 space-y-4">
+        {items.map((item) => (
+          <li
+            key={item.reference}
+            className="rounded-2xl border border-ink/8 bg-paper px-4 py-4 sm:px-5"
+          >
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <p className="font-medium text-ink">
+                {item.customerName}
+                <span className="ml-2 text-sm font-normal text-ink/50">{item.email}</span>
+              </p>
+              <p className="text-xs text-ink/45">
+                {item.reference} · {formatDate(item.createdAt)}
+              </p>
+            </div>
+            <ul className="mt-2 space-y-1 text-sm text-ink/70">
+              {item.lines.map((line, index) => (
+                <li key={`${item.reference}-${index}`}>
+                  {line.quantity}× {line.name}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-sm font-medium tabular-nums text-ink/75">
+              {item.total.toFixed(2)} {item.currency}
+            </p>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function applyDraftToList(data: DraftList, draft: BbdBuyOrderDraft): DraftList {
+  const without = (list: BbdBuyOrderDraft[]) =>
+    list.filter((entry) => entry.reference !== draft.reference);
+
+  return {
+    ...data,
+    pending: draft.status === "pending" ? [draft, ...without(data.pending)] : without(data.pending),
+    submitted:
+      draft.status === "submitted" ? [draft, ...without(data.submitted)] : without(data.submitted),
+    archived:
+      draft.status === "archived" ? [draft, ...without(data.archived)] : without(data.archived),
+  };
+}
+
+function removeDraftFromList(data: DraftList, reference: string): DraftList {
+  const drop = (list: BbdBuyOrderDraft[]) =>
+    list.filter((entry) => entry.reference !== reference);
+
+  return {
+    ...data,
+    pending: drop(data.pending),
+    submitted: drop(data.submitted),
+    archived: drop(data.archived),
+  };
 }
 
 function OrderArchiveSection({ secret }: { secret: string }) {
@@ -663,35 +745,53 @@ export function BbdBuyPanel() {
   const [unlocking, setUnlocking] = useState(false);
   const [tab, setTab] = useState<AdminTab>("pending");
 
-  const load = useCallback(async (token: string): Promise<boolean> => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/admin/supplier-orders", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.status === 401) {
-        setError("Mot de passe incorrect.");
+  const load = useCallback(
+    async (
+      token: string,
+      opts?: { recover?: boolean; silent?: boolean },
+    ): Promise<boolean> => {
+      if (!opts?.silent) {
+        setLoading(true);
+      }
+      setError(null);
+      try {
+        const qs = opts?.recover ? "?recover=1" : "";
+        const res = await fetch(`/api/admin/supplier-orders${qs}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.status === 401) {
+          setError("Mot de passe incorrect.");
+          setData(null);
+          return false;
+        }
+        if (!res.ok) throw new Error("Impossible de charger les commandes.");
+        const payload = (await res.json()) as DraftList;
+        setData(payload);
+        if (payload.recovered && payload.recovered > 0) {
+          setNotice(
+            `${payload.recovered} commande(s) payée(s) récupérée(s) automatiquement dans les commandes récentes.`,
+          );
+        }
+        return true;
+      } catch {
+        setError("Impossible de charger les commandes.");
         setData(null);
         return false;
+      } finally {
+        if (!opts?.silent) {
+          setLoading(false);
+        }
       }
-      if (!res.ok) throw new Error("Impossible de charger les commandes.");
-      const payload = (await res.json()) as DraftList;
-      setData(payload);
-      if (payload.recovered && payload.recovered > 0) {
-        setNotice(
-          `${payload.recovered} commande(s) payée(s) récupérée(s) automatiquement dans les commandes récentes.`,
-        );
-      }
-      return true;
-    } catch {
-      setError("Impossible de charger les commandes.");
-      setData(null);
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [],
+  );
+
+  const syncOrdersInBackground = useCallback(
+    (token: string) => {
+      void load(token, { recover: true, silent: true });
+    },
+    [load],
+  );
 
   useEffect(() => {
     const saved = sessionStorage.getItem(SECRET_KEY);
@@ -702,13 +802,22 @@ export function BbdBuyPanel() {
       if (ok) {
         setSecret(saved);
         void purgeVisitorFromLiveStats();
+        syncOrdersInBackground(saved);
       } else {
         sessionStorage.removeItem(SECRET_KEY);
         setSecret("");
         setLoginError("Mot de passe incorrect.");
       }
     })();
-  }, [load]);
+  }, [load, syncOrdersInBackground]);
+
+  useEffect(() => {
+    if (!secret) return;
+    const id = window.setInterval(() => {
+      void load(secret, { silent: true });
+    }, 30_000);
+    return () => window.clearInterval(id);
+  }, [secret, load]);
 
   async function unlock(e: React.FormEvent) {
     e.preventDefault();
@@ -731,6 +840,7 @@ export function BbdBuyPanel() {
     setSecret(trimmed);
     setInputSecret("");
     void purgeVisitorFromLiveStats();
+    syncOrdersInBackground(trimmed);
   }
 
   function logout() {
@@ -790,7 +900,12 @@ export function BbdBuyPanel() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="display-2">Administration</h1>
           <div className="flex gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => load(secret)}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void load(secret, { recover: true })}
+            >
               Actualiser
             </Button>
             <Button type="button" variant="ghost" size="sm" onClick={logout}>
@@ -843,6 +958,8 @@ export function BbdBuyPanel() {
           </AdminFlyer>
         </div>
 
+        <AbandonedCheckoutsSection items={data?.abandoned ?? []} />
+
         <div className="mt-10 flex gap-2 border-b border-ink/8">
           {(
             [
@@ -884,9 +1001,15 @@ export function BbdBuyPanel() {
               key={draft.reference}
               draft={draft}
               secret={secret}
-              onSubmitted={() => load(secret)}
-              onArchived={() => load(secret)}
-              onDeleted={() => load(secret)}
+              onSubmitted={(draft) =>
+                setData((prev) => (prev ? applyDraftToList(prev, draft) : prev))
+              }
+              onArchived={(draft) =>
+                setData((prev) => (prev ? applyDraftToList(prev, draft) : prev))
+              }
+              onDeleted={(reference) =>
+                setData((prev) => (prev ? removeDraftFromList(prev, reference) : prev))
+              }
             />
           ))}
         </div>

@@ -4,6 +4,7 @@ import {
   ensureSupplierDraftFromArchiveReference,
 } from "@/lib/ensure-supplier-draft";
 import { runAdminOrderRecovery } from "@/lib/admin-order-recovery";
+import { listAbandonedCheckouts } from "@/lib/abandoned-checkouts";
 import { dismissOrderFromAdminRecovery, clearOrderDismissal } from "@/lib/order-admin-dismissals";
 import { mailConfig } from "@/config/mail";
 import {
@@ -34,16 +35,38 @@ export async function GET(request: Request) {
     return NextResponse.json({ message: "unauthorized" }, { status: 401 });
   }
 
+  const url = new URL(request.url);
+  const shouldRecover = url.searchParams.get("recover") === "1";
+
+  const [drafts, abandoned] = await Promise.all([
+    listSupplierOrderDrafts(),
+    listAbandonedCheckouts().catch((err) => {
+      console.error("[supplier-orders] abandoned list failed", err);
+      return [];
+    }),
+  ]);
+
+  if (!shouldRecover) {
+    return NextResponse.json({
+      pending: drafts.filter((d) => d.status === "pending"),
+      submitted: drafts.filter((d) => d.status === "submitted"),
+      archived: drafts.filter((d) => d.status === "archived"),
+      abandoned,
+      recovered: 0,
+    });
+  }
+
   const recovery = await runAdminOrderRecovery(100).catch((err) => {
     console.error("[supplier-orders] recovery failed", err);
     return null;
   });
 
-  const drafts = await listSupplierOrderDrafts();
+  const refreshed = await listSupplierOrderDrafts();
   return NextResponse.json({
-    pending: drafts.filter((d) => d.status === "pending"),
-    submitted: drafts.filter((d) => d.status === "submitted"),
-    archived: drafts.filter((d) => d.status === "archived"),
+    pending: refreshed.filter((d) => d.status === "pending"),
+    submitted: refreshed.filter((d) => d.status === "submitted"),
+    archived: refreshed.filter((d) => d.status === "archived"),
+    abandoned,
     recovered: recovery?.supplierDrafts ?? 0,
     recovery,
   });

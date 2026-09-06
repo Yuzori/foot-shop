@@ -11,11 +11,26 @@ export type SiteStatsRecap = {
   totalCartLines: number;
 };
 
+export type LiveCartProduct = {
+  name: string;
+  quantity: number;
+  optionsLabel?: string;
+};
+
+export type LiveActiveCart = {
+  sessionId: string;
+  displayName: string;
+  pathname: string;
+  products: LiveCartProduct[];
+  updatedAt: string;
+};
+
 export type LiveSiteStats = {
   activeVisitors: number;
   cartsWithItems: number;
   totalCartLines: number;
   totalCartItems: number;
+  activeCarts: LiveActiveCart[];
   updatedAt: string;
 };
 
