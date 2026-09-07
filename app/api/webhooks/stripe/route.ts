@@ -102,16 +102,23 @@ export async function POST(request: Request) {
   }
 
   if (
-    event.type === "checkout.session.async_payment_failed" ||
-    event.type === "checkout.session.expired"
+    event.type === "checkout.session.async_payment_failed"
   ) {
     const session = event.data.object as Stripe.Checkout.Session;
     console.warn("[stripe] checkout session unpaid", event.type, session.id);
-    const cause =
-      event.type === "checkout.session.expired"
-        ? "Session expirée — le client a quitté sans payer"
-        : "Échec du paiement — erreur sur la plateforme de paiement";
-    await recordCheckoutAbandonFromSession(session, cause);
+    await recordCheckoutAbandonFromSession(
+      session,
+      "Échec du paiement — erreur sur la plateforme de paiement",
+    );
+  }
+
+  if (event.type === "checkout.session.expired") {
+    const session = event.data.object as Stripe.Checkout.Session;
+    console.warn("[stripe] checkout session expired", session.id);
+    await recordCheckoutAbandonFromSession(
+      session,
+      "Session expirée — le client a quitté sans payer",
+    );
     await cancelSessionIfUnpaid(session);
   }
 

@@ -31,6 +31,7 @@ export type StripeOrderMetadataInput = {
 
 const META_VALUE_MAX = 500;
 const META_CHUNK_SIZE = 450;
+const META_MAX_KEYS = 50;
 
 function formatFlocageForMeta(
   flocage: NonNullable<CreateOrderLine["flocage"]>,
@@ -109,7 +110,7 @@ export function buildStripeOrderMetadata(input: StripeOrderMetadataInput): Recor
     customerEmail: input.contact.email.trim(),
     customerPhone: input.contact.phone?.trim() || "",
     shippingName,
-    shippingAddress,
+    shippingAddress: shippingAddress.slice(0, META_VALUE_MAX),
     lineCount: String(lineMeta.length),
     welcomePromo: input.welcomePromo ? "1" : "",
     expectedTotalCents: String(input.expectedTotalCents ?? ""),
@@ -119,6 +120,19 @@ export function buildStripeOrderMetadata(input: StripeOrderMetadataInput): Recor
     shippingCents: String(input.shippingCents ?? ""),
     ...chunkJsonMetadata("lines", lineMeta),
   };
+
+  const keys = Object.keys(meta);
+  if (keys.length > META_MAX_KEYS) {
+    delete meta.lines;
+    delete meta.linesCount;
+    for (const key of keys) {
+      if (key.startsWith("lines")) delete meta[key];
+    }
+    meta.linesSummary = lineMeta
+      .map((line) => `${line.quantity}x ${line.name}`)
+      .join("; ")
+      .slice(0, META_VALUE_MAX);
+  }
 
   return meta;
 }

@@ -11,11 +11,13 @@ import type { StripeExpressCheckoutElementConfirmEvent } from "@stripe/stripe-js
 
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { api } from "@/lib/api";
 import { getStripePromise, isCheckoutSessionPaid } from "@/lib/stripe-client";
 
 interface StripePaymentFormProps {
   clientSecret: string;
   publishableKey: string;
+  returnUrl: string;
   onSuccess: (checkoutSessionId: string) => void | Promise<void>;
   onError: (message: string) => void;
   disabled?: boolean;
@@ -97,40 +99,87 @@ class StripeMountErrorBoundary extends Component<
   }
 }
 
+function humanizeConfirmError(message: string | undefined): string {
+  const text = (message ?? "").trim();
+  if (!text) return "Le paiement a échoué. Réessayez ou utilisez un autre moyen de paiement.";
+  if (/authentication/i.test(text) || /3d/i.test(text)) {
+    return "Authentification bancaire refusée ou annulée. Réessayez ou utilisez une autre carte.";
+  }
+  return text;
+}
+
+async function waitForPaidSession(sessionId: string): Promise<boolean> {
+  const delays = [400, 800, 1200, 1800];
+  for (const delay of delays) {
+    await new Promise((resolve) => setTimeout(resolve, delay));
+    try {
+      const status = await api.getStripeSessionStatus(sessionId);
+      if (status.state === "paid") return true;
+    } catch {
+      /* retry */
+    }
+  }
+  return false;
+}
+
 async function finalizeCheckout(
   checkout: { confirm: (opts: Record<string, unknown>) => Promise<unknown> },
   confirmArgs: Record<string, unknown>,
+  returnUrl: string,
   onSuccess: (checkoutSessionId: string) => void | Promise<void>,
   onError: (message: string) => void,
 ): Promise<boolean> {
   const confirmResult = (await checkout.confirm({
     redirect: "if_required",
+    returnUrl,
     ...confirmArgs,
   })) as {
     type: string;
-    error?: { message?: string };
-    session?: { id: string; status: { type: string } };
+    error?: { message?: string; code?: string };
+    session?: { id: string; status: { type: string; paymentStatus?: string } };
   };
 
   if (confirmResult.type === "error") {
-    onError(confirmResult.error?.message ?? "Le paiement a échoué.");
+    onError(humanizeConfirmError(confirmResult.error?.message));
     return false;
   }
 
   const session = confirmResult.session;
+  if (!session?.id) {
+    onError("Réponse Stripe incomplète. Réessayez.");
+    return false;
+  }
+
   if (
-    session &&
-    (isCheckoutSessionPaid(session.status) || session.status.type === "complete")
+    isCheckoutSessionPaid(session.status) ||
+    session.status.type === "complete"
   ) {
+    try {
+      await api.confirmStripePayment(session.id);
+    } catch {
+      /* le webhook ou la page succès réessaiera */
+    }
     await onSuccess(session.id);
     return true;
   }
 
-  onError("Le paiement n'a pas pu être finalisé. Réessayez.");
+  const paid = await waitForPaidSession(session.id);
+  if (paid) {
+    try {
+      await api.confirmStripePayment(session.id);
+    } catch {
+      /* non bloquant */
+    }
+    await onSuccess(session.id);
+    return true;
+  }
+
+  onError("Le paiement n'a pas pu être finalisé. Vérifiez votre carte ou réessayez.");
   return false;
 }
 
 function PaymentForm({
+  returnUrl,
   onSuccess,
   onError,
   disabled = false,
@@ -155,6 +204,7 @@ function PaymentForm({
         await finalizeCheckout(
           checkoutState.checkout,
           { expressCheckoutConfirmEvent: event },
+          returnUrl,
           onSuccess,
           onError,
         );
@@ -168,7 +218,7 @@ function PaymentForm({
         setPending(false);
       }
     },
-    [checkoutState, disabled, onError, onSuccess],
+    [checkoutState, disabled, onError, onSuccess, returnUrl],
   );
 
   async function handlePay(e: FormEvent) {
@@ -185,7 +235,7 @@ function PaymentForm({
     onError("");
 
     try {
-      await finalizeCheckout(checkout, {}, onSuccess, onError);
+      await finalizeCheckout(checkout, {}, returnUrl, onSuccess, onError);
     } catch (err) {
       onError(
         err instanceof Error
@@ -305,6 +355,7 @@ function PaymentForm({
 export function StripePaymentForm({
   clientSecret,
   publishableKey,
+  returnUrl,
   onSuccess,
   onError,
   disabled,
@@ -328,6 +379,14 @@ export function StripePaymentForm({
     );
   }
 
+  if (!returnUrl.trim()) {
+    return (
+      <p className="text-sm text-accent">
+        URL de retour paiement manquante. Rechargez la page et réessayez.
+      </p>
+    );
+  }
+
   return (
     <StripeMountErrorBoundary onError={onError}>
       <CheckoutElementsProvider
@@ -340,7 +399,12 @@ export function StripePaymentForm({
           },
         }}
       >
-        <PaymentForm onSuccess={onSuccess} onError={onError} disabled={disabled} />
+        <PaymentForm
+          returnUrl={returnUrl}
+          onSuccess={onSuccess}
+          onError={onError}
+          disabled={disabled}
+        />
       </CheckoutElementsProvider>
     </StripeMountErrorBoundary>
   );

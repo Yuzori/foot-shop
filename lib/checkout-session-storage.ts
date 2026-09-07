@@ -7,6 +7,8 @@ export interface StoredCheckoutSession {
   clientSecret: string;
   publishableKey: string;
   orderReference: string | null;
+  checkoutSessionId?: string | null;
+  returnUrl?: string | null;
   lines: CartLine[];
   stripeBogoDiscount: number;
   stripeFreeUnits: number;

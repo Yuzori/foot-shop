@@ -179,6 +179,7 @@ export function CheckoutView() {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [publishableKey, setPublishableKey] = useState<string | null>(null);
   const [orderReference, setOrderReference] = useState<string | null>(null);
+  const [paymentReturnUrl, setPaymentReturnUrl] = useState<string | null>(null);
   const [confirmingPayment, setConfirmingPayment] = useState(false);
   const [stripeBogoDiscount, setStripeBogoDiscount] = useState(0);
   const [stripeFreeUnits, setStripeFreeUnits] = useState(0);
@@ -375,6 +376,7 @@ export function CheckoutView() {
       setClientSecret(saved.clientSecret);
       setPublishableKey(saved.publishableKey);
       setOrderReference(saved.orderReference);
+      setPaymentReturnUrl(saved.returnUrl ?? null);
       setStripeBogoDiscount(saved.stripeBogoDiscount);
       setStripeFreeUnits(saved.stripeFreeUnits);
       setStep("payment");
@@ -521,12 +523,16 @@ export function CheckoutView() {
       snapshot: CartLine[],
       bogoDisc: number,
       freeUnits: number,
+      checkoutSessionId: string | null,
+      returnUrl: string | null,
     ) => {
       saveCheckoutSession({
         step: "payment",
         clientSecret: secret,
         publishableKey: pubKey,
         orderReference: ref,
+        checkoutSessionId,
+        returnUrl,
         lines: snapshot,
         stripeBogoDiscount: bogoDisc,
         stripeFreeUnits: freeUnits,
@@ -596,6 +602,13 @@ export function CheckoutView() {
       },
     }));
   }, [sessionQuery.data]);
+
+  const resolvedPaymentReturnUrl = useMemo(() => {
+    if (paymentReturnUrl?.trim()) return paymentReturnUrl;
+    const ref = orderReference?.trim();
+    if (!ref || typeof window === "undefined") return null;
+    return `${window.location.origin}/paiement/succes?ref=${encodeURIComponent(ref)}&session_id={CHECKOUT_SESSION_ID}`;
+  }, [paymentReturnUrl, orderReference]);
 
   if (!hydrated) {
     return (
@@ -837,6 +850,7 @@ export function CheckoutView() {
           setClientSecret(session.clientSecret);
           setPublishableKey(session.publishableKey);
           setOrderReference(session.reference);
+          setPaymentReturnUrl(session.returnUrl ?? null);
           setStep("payment");
           persistPaymentSession(
             session.clientSecret,
@@ -845,6 +859,8 @@ export function CheckoutView() {
             snapshot,
             bogoDisc,
             freeUnits,
+            session.checkoutSessionId ?? null,
+            session.returnUrl ?? null,
           );
           return;
         }
@@ -880,6 +896,7 @@ export function CheckoutView() {
     setStep("details");
     setClientSecret(null);
     setPublishableKey(null);
+    setPaymentReturnUrl(null);
     setError(null);
     clearCheckoutSession();
   }
@@ -1215,10 +1232,11 @@ export function CheckoutView() {
               </p>
             </div>
 
-            {clientSecret && publishableKey ? (
+            {clientSecret && publishableKey && resolvedPaymentReturnUrl ? (
               <StripePaymentForm
                 clientSecret={clientSecret}
                 publishableKey={publishableKey}
+                returnUrl={resolvedPaymentReturnUrl}
                 onSuccess={handlePaymentSuccess}
                 onError={setError}
                 disabled={confirmingPayment}
