@@ -1,5 +1,7 @@
 import "server-only";
 
+import type Stripe from "stripe";
+
 import { resolveCountry } from "@/lib/checkout-contact-validation";
 
 type Contact = {
@@ -21,34 +23,13 @@ function stripeCountryCode(country: string): string {
   return resolveCountry(country)?.code ?? "FR";
 }
 
-/** Infos client visibles dans le dashboard Stripe (pas seulement metadata). */
-export function buildStripeCheckoutCustomerDetails(
+/** Met à jour le client Stripe (téléphone, adresse) - visible dans le dashboard. */
+export async function syncStripeCustomerCheckoutDetails(
+  stripe: Stripe,
+  stripeCustomerId: string,
   contact: Contact,
   address: Address,
-): {
-  customer_details: {
-    email: string;
-    phone: string;
-    name: string;
-    address: {
-      line1: string;
-      line2?: string;
-      city: string;
-      postal_code: string;
-      country: string;
-    };
-  };
-  shipping_details: {
-    name: string;
-    address: {
-      line1: string;
-      line2?: string;
-      city: string;
-      postal_code: string;
-      country: string;
-    };
-  };
-} {
+): Promise<void> {
   const name = `${contact.firstName} ${contact.lastName}`.trim();
   const country = stripeCountryCode(address.country);
   const stripeAddress = {
@@ -59,16 +40,14 @@ export function buildStripeCheckoutCustomerDetails(
     country,
   };
 
-  return {
-    customer_details: {
-      email: contact.email.trim(),
-      phone: contact.phone?.trim() || "",
-      name,
+  await stripe.customers.update(stripeCustomerId, {
+    email: contact.email.trim(),
+    ...(contact.phone?.trim() ? { phone: contact.phone.trim() } : {}),
+    ...(name ? { name } : {}),
+    address: stripeAddress,
+    shipping: {
+      name: name || "Client",
       address: stripeAddress,
     },
-    shipping_details: {
-      name,
-      address: stripeAddress,
-    },
-  };
+  });
 }

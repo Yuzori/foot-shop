@@ -15,7 +15,7 @@ import {
   type OrderLineForMetadata,
 } from "@/lib/stripe-order-metadata";
 import { recordCheckoutAbandonFromPending } from "@/lib/record-checkout-abandon";
-import { buildStripeCheckoutCustomerDetails } from "@/lib/stripe-checkout-customer-details";
+import { syncStripeCustomerCheckoutDetails } from "@/lib/stripe-checkout-customer-details";
 import {
   formatStripeError,
   getStripePublishableKey,
@@ -196,10 +196,16 @@ async function handleStripeSession(request: Request) {
     lastName: body.contact.lastName,
   });
   const savePayment = Boolean(stripeCustomerId);
-  const stripeCustomerDetails = buildStripeCheckoutCustomerDetails(
-    body.contact,
-    body.address,
-  );
+  if (stripeCustomerId) {
+    await syncStripeCustomerCheckoutDetails(
+      stripe,
+      stripeCustomerId,
+      body.contact,
+      body.address,
+    ).catch((err) => {
+      console.warn("[stripe/session] customer sync failed", err);
+    });
+  }
   const orderMetadata = buildStripeOrderMetadata({
     reference: ref,
     orderId: String(order.orderId ?? ""),
@@ -234,7 +240,6 @@ async function handleStripeSession(request: Request) {
           }
         : {}),
       line_items: stripeLineItems,
-      ...stripeCustomerDetails,
       metadata: orderMetadata,
       payment_intent_data: {
         metadata: {
