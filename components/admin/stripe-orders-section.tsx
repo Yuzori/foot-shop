@@ -13,6 +13,7 @@ import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const POLL_MS = 30_000;
+const EMPTY = "n/a";
 
 function OrderLines({ lines }: { lines: StripeAdminOrder["lines"] }) {
   if (lines.length === 0) {
@@ -37,6 +38,7 @@ function StripeOrderCard({ order }: { order: StripeAdminOrder }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-display text-lg font-semibold">{order.reference}</p>
+          <p className="mt-0.5 text-xs text-ink/45">Réf. commande client</p>
           <p className="mt-1 text-sm text-ink/55">{formatDate(order.paidAt)}</p>
         </div>
         <p className="text-lg font-semibold tabular-nums text-ink">
@@ -50,20 +52,26 @@ function StripeOrderCard({ order }: { order: StripeAdminOrder }) {
           <dd className="font-medium text-ink">{order.customerName}</dd>
         </div>
         <div>
-          <dt className="text-ink/40">N° client</dt>
-          <dd className="text-ink/75">{order.customerId || "—"}</dd>
+          <dt className="text-ink/40">N° client PrestaShop</dt>
+          <dd className="text-ink/75">{order.customerId || EMPTY}</dd>
         </div>
+        {order.orderId ? (
+          <div>
+            <dt className="text-ink/40">ID commande PrestaShop</dt>
+            <dd className="text-ink/75">{order.orderId}</dd>
+          </div>
+        ) : null}
         <div>
           <dt className="text-ink/40">Email</dt>
-          <dd className="break-all text-ink/75">{order.email || "—"}</dd>
+          <dd className="break-all text-ink/75">{order.email || EMPTY}</dd>
         </div>
         <div>
           <dt className="text-ink/40">Téléphone</dt>
-          <dd className="text-ink/75">{order.phone || "—"}</dd>
+          <dd className="text-ink/75">{order.phone || EMPTY}</dd>
         </div>
         <div className="sm:col-span-2">
           <dt className="text-ink/40">Adresse de livraison</dt>
-          <dd className="text-ink/75">{order.shippingAddress || "—"}</dd>
+          <dd className="text-ink/75">{order.shippingAddress || EMPTY}</dd>
         </div>
       </dl>
 
@@ -115,6 +123,7 @@ export function StripeOrdersSection({ secret }: { secret: string }) {
   const [data, setData] = useState<StripeAdminOrdersResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [resettingAbandons, setResettingAbandons] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(
@@ -137,6 +146,35 @@ export function StripeOrdersSection({ secret }: { secret: string }) {
     [secret],
   );
 
+  const resetAbandons = useCallback(async () => {
+    if (
+      !window.confirm(
+        "Effacer tous les abandons affichés ? Les prochains abandons réapparaîtront automatiquement.",
+      )
+    ) {
+      return;
+    }
+
+    setResettingAbandons(true);
+    try {
+      const res = await fetch("/api/admin/stripe-orders", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${secret}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action: "reset_abandons" }),
+      });
+      if (!res.ok) throw new Error("reset_failed");
+      setData((await res.json()) as StripeAdminOrdersResponse);
+      setError(null);
+    } catch {
+      setError("Impossible de réinitialiser les abandons.");
+    } finally {
+      setResettingAbandons(false);
+    }
+  }, [secret]);
+
   useEffect(() => {
     void load();
   }, [load]);
@@ -153,7 +191,7 @@ export function StripeOrdersSection({ secret }: { secret: string }) {
           <div>
             <h2 className="font-display text-xl font-semibold">Commandes Stripe</h2>
             <p className="mt-1 text-sm text-ink/55">
-              Source de vérité — paiements confirmés sur Stripe uniquement.
+              Source de vérité : paiements confirmés sur Stripe uniquement.
             </p>
           </div>
           <Button
@@ -190,10 +228,25 @@ export function StripeOrdersSection({ secret }: { secret: string }) {
       </section>
 
       <section className="rounded-3xl border border-dashed border-ink/12 bg-paper-soft/30 p-6 lg:p-8">
-        <h2 className="font-display text-xl font-semibold">Abandons de panier</h2>
-        <p className="mt-2 text-sm text-ink/55">
-          Paiements non finalisés — informatif, hors commandes.
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-display text-xl font-semibold">Abandons de panier</h2>
+            <p className="mt-2 text-sm text-ink/55">
+              Paiements non finalisés, informatif, hors commandes.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={resettingAbandons || refreshing}
+            onClick={() => void resetAbandons()}
+            className="text-accent hover:bg-accent/10"
+          >
+            {resettingAbandons ? <Spinner className="h-3.5 w-3.5" /> : null}
+            Réinitialiser
+          </Button>
+        </div>
 
         {!loading && (data?.abandoned.length ?? 0) === 0 ? (
           <p className="mt-4 text-sm text-ink/50">Aucun abandon récent.</p>

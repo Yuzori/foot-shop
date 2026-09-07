@@ -41,14 +41,22 @@ function cartPayload(): {
   };
 }
 
-function resolveDisplayName(accountFirstName?: string | null): string {
-  if (accountFirstName?.trim()) {
-    return accountFirstName.trim();
+function guestDisplayName(sessionId: string): string {
+  const suffix = sessionId.replace(/-/g, "").slice(-6).toLowerCase();
+  return `User_${suffix}`;
+}
+
+function resolveDisplayName(
+  sessionId: string,
+  user?: { firstName?: string | null; lastName?: string | null } | null,
+): string {
+  if (user?.firstName?.trim() || user?.lastName?.trim()) {
+    return `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
   }
   const profile = loadCheckoutProfileFromStorage();
   const fromProfile = `${profile?.contact.firstName ?? ""} ${profile?.contact.lastName ?? ""}`.trim();
   if (fromProfile) return fromProfile;
-  return "User";
+  return guestDisplayName(sessionId);
 }
 
 function shouldSkipPresence(pathname: string): boolean {
@@ -78,7 +86,7 @@ export function SitePresenceHeartbeat() {
           cartLines,
           cartItems,
           products,
-          displayName: resolveDisplayName(user?.firstName),
+          displayName: resolveDisplayName(sessionId, user),
           pathname: window.location.pathname,
         }),
         keepalive: true,
@@ -99,7 +107,7 @@ export function SitePresenceHeartbeat() {
       unsub();
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [pathname, user?.firstName]);
+  }, [pathname, user]);
 
   return null;
 }

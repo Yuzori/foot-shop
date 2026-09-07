@@ -9,6 +9,7 @@ import { Field } from "@/components/ui/field";
 import { Spinner } from "@/components/ui/spinner";
 import { AdminFlyer } from "@/components/admin/admin-flyer";
 import { QuickImportSection } from "@/components/admin/quick-import-section";
+import { LiveCartsPanel } from "@/components/admin/live-carts-panel";
 import { LiveSiteStatsPanel } from "@/components/admin/live-site-stats-panel";
 import { JerseyStudioSection } from "@/components/admin/jersey-studio-section";
 import {
@@ -331,6 +332,14 @@ export function BbdBuyPanel() {
             tone="stats"
           >
             <LiveSiteStatsPanel secret={secret} embedded />
+          </AdminFlyer>
+
+          <AdminFlyer
+            title="Paniers en cours"
+            subtitle="Visiteurs avec articles au panier, en temps réel"
+            tone="carts"
+          >
+            <LiveCartsPanel secret={secret} embedded />
           </AdminFlyer>
 
           <AdminFlyer

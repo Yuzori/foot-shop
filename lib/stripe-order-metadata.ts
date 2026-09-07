@@ -109,8 +109,10 @@ export function buildStripeOrderMetadata(input: StripeOrderMetadataInput): Recor
     customerId: input.customerId,
     customerEmail: input.contact.email.trim(),
     customerPhone: input.contact.phone?.trim() || "",
+    phone: input.contact.phone?.trim() || "",
     shippingName,
     shippingAddress: shippingAddress.slice(0, META_VALUE_MAX),
+    address: shippingAddress.slice(0, META_VALUE_MAX),
     lineCount: String(lineMeta.length),
     welcomePromo: input.welcomePromo ? "1" : "",
     expectedTotalCents: String(input.expectedTotalCents ?? ""),
@@ -171,10 +173,10 @@ export function inferAbandonCauseFromStripeSession(input: {
   paymentStatus: string | null;
 }): string {
   if (input.paymentStatus === "unpaid" && input.status === "expired") {
-    return "Session expirée — le client a quitté le paiement sans finaliser";
+    return "Session expirée - le client a quitté le paiement sans finaliser";
   }
   if (input.paymentStatus === "unpaid" && input.status === "open") {
-    return "Paiement non finalisé — abandon en cours de checkout";
+    return "Paiement non finalisé - abandon en cours de checkout";
   }
   return "Paiement non reçu";
 }

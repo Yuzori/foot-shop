@@ -15,6 +15,7 @@ import {
   type OrderLineForMetadata,
 } from "@/lib/stripe-order-metadata";
 import { recordCheckoutAbandonFromPending } from "@/lib/record-checkout-abandon";
+import { buildStripeCheckoutCustomerDetails } from "@/lib/stripe-checkout-customer-details";
 import {
   formatStripeError,
   getStripePublishableKey,
@@ -195,6 +196,27 @@ async function handleStripeSession(request: Request) {
     lastName: body.contact.lastName,
   });
   const savePayment = Boolean(stripeCustomerId);
+  const stripeCustomerDetails = buildStripeCheckoutCustomerDetails(
+    body.contact,
+    body.address,
+  );
+  const orderMetadata = buildStripeOrderMetadata({
+    reference: ref,
+    orderId: String(order.orderId ?? ""),
+    customerId: order.customerId ?? "",
+    contact: body.contact,
+    address: body.address,
+    lines: serverLines.map((line, index) => ({
+      ...line,
+      optionsLabel: body.lines[index]?.optionsLabel,
+    })),
+    welcomePromo: bogoApplied,
+    expectedTotalCents,
+    bogoFreeUnits: bogoApplied ? freeUnits : undefined,
+    promoCode,
+    promoDiscountCents: promoDiscount > 0 ? Math.round(promoDiscount * 100) : undefined,
+    shippingCents: Math.round(shippingFee * 100),
+  });
 
   try {
     const { session, paymentMethodTypes, paymentMethodConfiguration } =
@@ -212,23 +234,18 @@ async function handleStripeSession(request: Request) {
           }
         : {}),
       line_items: stripeLineItems,
-      metadata: buildStripeOrderMetadata({
-        reference: ref,
-        orderId: String(order.orderId ?? ""),
-        customerId: order.customerId ?? "",
-        contact: body.contact,
-        address: body.address,
-        lines: serverLines.map((line, index) => ({
-          ...line,
-          optionsLabel: body.lines[index]?.optionsLabel,
-        })),
-        welcomePromo: bogoApplied,
-        expectedTotalCents,
-        bogoFreeUnits: bogoApplied ? freeUnits : undefined,
-        promoCode,
-        promoDiscountCents: promoDiscount > 0 ? Math.round(promoDiscount * 100) : undefined,
-        shippingCents: Math.round(shippingFee * 100),
-      }),
+      ...stripeCustomerDetails,
+      metadata: orderMetadata,
+      payment_intent_data: {
+        metadata: {
+          reference: ref,
+          orderId: String(order.orderId ?? ""),
+          customerPhone: orderMetadata.customerPhone ?? "",
+          phone: orderMetadata.customerPhone ?? "",
+          shippingAddress: orderMetadata.shippingAddress ?? "",
+          address: orderMetadata.shippingAddress ?? "",
+        },
+      },
       return_url: returnUrl,
     });
 

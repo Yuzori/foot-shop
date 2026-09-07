@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
-type FlyerTone = "default" | "stats" | "import" | "studio";
+type FlyerTone = "default" | "stats" | "import" | "studio" | "carts";
 
 const toneStyles: Record<
   FlyerTone,
@@ -29,6 +29,11 @@ const toneStyles: Record<
     border: "border-accent/25",
     header: "hover:bg-accent/[0.04]",
     icon: "text-accent/80",
+  },
+  carts: {
+    border: "border-[#2563eb]/25",
+    header: "hover:bg-[#2563eb]/[0.04]",
+    icon: "text-[#2563eb]/70",
   },
 };
 

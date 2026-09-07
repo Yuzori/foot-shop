@@ -11,6 +11,10 @@ import {
 import { clearCheckoutPendingStore } from "@/lib/checkout-pending-store";
 import { clearCheckoutAbandonsStore } from "@/lib/checkout-abandons-store";
 import {
+  ensureAbandonsResetV2,
+  getAbandonsCutoffIso,
+} from "@/lib/abandons-cutoff";
+import {
   inferAbandonCauseFromStripeSession,
   parseStripeOrderLinesFromMetadata,
 } from "@/lib/stripe-order-metadata";
@@ -40,6 +44,82 @@ function stripeDashboardUrl(sessionId: string): string {
   return `https://dashboard.stripe.com/checkout/sessions/${sessionId}`;
 }
 
+type StripeAddress = {
+  line1?: string | null;
+  line2?: string | null;
+  city?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
+};
+
+function formatStripeAddress(address: StripeAddress | null | undefined): string {
+  if (!address) return "";
+  return [
+    address.line1,
+    address.line2,
+    `${address.postal_code ?? ""} ${address.city ?? ""}`.trim(),
+    address.country,
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
+function extractSessionContactDetails(session: {
+  metadata: Record<string, string> | null;
+  customer_email: string | null;
+  customer_details?: {
+    email?: string | null;
+    phone?: string | null;
+    name?: string | null;
+    address?: StripeAddress | null;
+  } | null;
+  shipping_details?: {
+    name?: string | null;
+    address?: StripeAddress | null;
+  } | null;
+}): {
+  customerName: string;
+  email: string;
+  phone: string;
+  shippingAddress: string;
+} {
+  const metadata = session.metadata ?? {};
+  const customerDetails = session.customer_details;
+  const shippingDetails = session.shipping_details;
+
+  const phone =
+    metadata.customerPhone?.trim() ||
+    metadata.phone?.trim() ||
+    customerDetails?.phone?.trim() ||
+    "";
+  const shippingAddress =
+    metadata.shippingAddress?.trim() ||
+    metadata.address?.trim() ||
+    formatStripeAddress(shippingDetails?.address ?? customerDetails?.address);
+  const customerName =
+    metadata.shippingName?.trim() ||
+    shippingDetails?.name?.trim() ||
+    customerDetails?.name?.trim() ||
+    "Client";
+  const email =
+    metadata.customerEmail?.trim() ||
+    session.customer_email?.trim() ||
+    customerDetails?.email?.trim() ||
+    "";
+
+  return { customerName, email, phone, shippingAddress };
+}
+
+function readSessionShippingDetails(session: unknown): {
+  name?: string | null;
+  address?: StripeAddress | null;
+} | null {
+  if (!session || typeof session !== "object") return null;
+  const details = (session as { shipping_details?: { name?: string | null; address?: StripeAddress | null } | null })
+    .shipping_details;
+  return details ?? null;
+}
+
 function mapAbandonRecord(record: CheckoutAbandonRecord): AbandonedCheckout {
   return {
     reference: record.reference,
@@ -62,11 +142,22 @@ function mapStripeSessionToOrder(session: {
   currency: string | null;
   metadata: Record<string, string> | null;
   customer_email: string | null;
+  customer_details?: {
+    email?: string | null;
+    phone?: string | null;
+    name?: string | null;
+    address?: StripeAddress | null;
+  } | null;
+  shipping_details?: {
+    name?: string | null;
+    address?: StripeAddress | null;
+  } | null;
 }): StripeAdminOrder | null {
   const metadata = session.metadata ?? {};
   const reference = metadata.reference?.trim();
   if (!reference) return null;
 
+  const contact = extractSessionContactDetails(session);
   const lines = parseStripeOrderLinesFromMetadata(metadata);
   const amount = (session.amount_total ?? 0) / 100;
 
@@ -75,10 +166,10 @@ function mapStripeSessionToOrder(session: {
     reference,
     orderId: metadata.orderId?.trim() || "",
     customerId: metadata.customerId?.trim() || "",
-    customerName: metadata.shippingName?.trim() || "Client",
-    email: metadata.customerEmail?.trim() || session.customer_email?.trim() || "",
-    phone: metadata.customerPhone?.trim() || "",
-    shippingAddress: metadata.shippingAddress?.trim() || "",
+    customerName: contact.customerName,
+    email: contact.email,
+    phone: contact.phone,
+    shippingAddress: contact.shippingAddress,
     lines,
     amount,
     currency: (session.currency ?? "eur").toUpperCase(),
@@ -87,24 +178,38 @@ function mapStripeSessionToOrder(session: {
   };
 }
 
-function mapStripeSessionToAbandon(session: {
-  id: string;
-  created: number;
-  amount_total: number | null;
-  currency: string | null;
-  status: string | null;
-  payment_status: string | null;
-  metadata: Record<string, string> | null;
-  customer_email: string | null;
-}): AbandonedCheckout | null {
+function mapStripeSessionToAbandon(
+  session: {
+    id: string;
+    created: number;
+    amount_total: number | null;
+    currency: string | null;
+    status: string | null;
+    payment_status: string | null;
+    metadata: Record<string, string> | null;
+    customer_email: string | null;
+    customer_details?: {
+      email?: string | null;
+      phone?: string | null;
+      name?: string | null;
+      address?: StripeAddress | null;
+    } | null;
+    shipping_details?: {
+      name?: string | null;
+      address?: StripeAddress | null;
+    } | null;
+  },
+  cutoffMs: number,
+): AbandonedCheckout | null {
   if (isSessionPaid(session)) return null;
+
+  const createdAt = new Date((session.created ?? 0) * 1000);
+  if (createdAt.getTime() < cutoffMs) return null;
+  const ageMinutes = (Date.now() - createdAt.getTime()) / (60 * 1000);
 
   const metadata = session.metadata ?? {};
   const reference = metadata.reference?.trim();
   if (!reference) return null;
-
-  const createdAt = new Date((session.created ?? 0) * 1000);
-  const ageMinutes = (Date.now() - createdAt.getTime()) / (60 * 1000);
 
   if (session.status === "open" && session.payment_status === "unpaid") {
     if (ageMinutes < ABANDON_OPEN_MINUTES) return null;
@@ -114,6 +219,7 @@ function mapStripeSessionToAbandon(session: {
 
   const lines = parseStripeOrderLinesFromMetadata(metadata);
   const total = (session.amount_total ?? 0) / 100;
+  const contact = extractSessionContactDetails(session);
 
   return {
     reference,
@@ -123,9 +229,9 @@ function mapStripeSessionToAbandon(session: {
       status: session.status,
       paymentStatus: session.payment_status,
     }),
-    customerName: metadata.shippingName?.trim() || "User",
-    email: metadata.customerEmail?.trim() || session.customer_email?.trim() || "",
-    phone: metadata.customerPhone?.trim() || "",
+    customerName: contact.customerName === "Client" ? "User" : contact.customerName,
+    email: contact.email,
+    phone: contact.phone,
     total,
     currency: (session.currency ?? "eur").toUpperCase(),
     lines,
@@ -155,6 +261,10 @@ export async function listStripeAdminOrders(limit = 50): Promise<StripeAdminOrde
   }
 
   await ensureStripeAdminMigration();
+  await ensureAbandonsResetV2();
+
+  const cutoffIso = await getAbandonsCutoffIso();
+  const cutoffMs = new Date(cutoffIso).getTime();
 
   const stripe = getStripe();
   const orders: StripeAdminOrder[] = [];
@@ -180,6 +290,8 @@ export async function listStripeAdminOrders(limit = 50): Promise<StripeAdminOrde
           currency: session.currency,
           metadata,
           customer_email: session.customer_email,
+          customer_details: session.customer_details,
+          shipping_details: readSessionShippingDetails(session),
         });
         if (order && !seenOrderRefs.has(order.reference)) {
           seenOrderRefs.add(order.reference);
@@ -188,16 +300,21 @@ export async function listStripeAdminOrders(limit = 50): Promise<StripeAdminOrde
         continue;
       }
 
-      const abandon = mapStripeSessionToAbandon({
-        id: session.id,
-        created: session.created,
-        amount_total: session.amount_total,
-        currency: session.currency,
-        status: session.status,
-        payment_status: session.payment_status,
-        metadata,
-        customer_email: session.customer_email,
-      });
+      const abandon = mapStripeSessionToAbandon(
+        {
+          id: session.id,
+          created: session.created,
+          amount_total: session.amount_total,
+          currency: session.currency,
+          status: session.status,
+          payment_status: session.payment_status,
+          metadata,
+          customer_email: session.customer_email,
+          customer_details: session.customer_details,
+          shipping_details: readSessionShippingDetails(session),
+        },
+        cutoffMs,
+      );
       if (abandon && !seenAbandonRefs.has(abandon.reference)) {
         seenAbandonRefs.add(abandon.reference);
         abandonedFromStripe.push(abandon);
@@ -215,6 +332,7 @@ export async function listStripeAdminOrders(limit = 50): Promise<StripeAdminOrde
 
   for (const item of [...abandonedFromStripe, ...localAbandons]) {
     if (seenOrderRefs.has(item.reference)) continue;
+    if (new Date(item.createdAt).getTime() < cutoffMs) continue;
     const existing = abandonedMap.get(item.reference);
     if (!existing || item.createdAt > existing.createdAt) {
       abandonedMap.set(item.reference, item);
@@ -232,4 +350,5 @@ export async function listStripeAdminOrders(limit = 50): Promise<StripeAdminOrde
   };
 }
 
+export { resetAbandonsCutoff } from "@/lib/abandons-cutoff";
 export type { StripeAdminOrder, AbandonedCheckout } from "@/lib/stripe-admin-types";
