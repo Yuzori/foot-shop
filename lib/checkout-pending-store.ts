@@ -80,6 +80,14 @@ export async function listCheckoutPendingRecords(): Promise<CheckoutPendingRecor
   return readIndex();
 }
 
+export async function clearCheckoutPendingStore(): Promise<void> {
+  const index = await readIndex();
+  for (const item of index) {
+    await fs.rm(fileFor(item.id), { force: true }).catch(() => undefined);
+  }
+  await fs.rm(INDEX_FILE, { force: true }).catch(() => undefined);
+}
+
 export async function getCheckoutPendingByReference(
   reference: string,
 ): Promise<CheckoutPendingRecord | null> {

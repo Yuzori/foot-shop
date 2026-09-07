@@ -35,6 +35,7 @@ interface OrderSummaryProps {
   promoError?: string | null;
   promoPending?: boolean;
   showEditCart?: boolean;
+  orderReference?: string | null;
   /** Coller le récap seul au scroll - false si le parent englobe récap + boutons. */
   pinSummary?: boolean;
   /** `mobile` = récap compact en haut sur petit écran ; `sidebar` = panneau latéral desktop */
@@ -148,6 +149,7 @@ export function OrderSummary({
   promoError,
   promoPending = false,
   showEditCart = true,
+  orderReference = null,
   pinSummary = true,
   variant = "sidebar",
 }: OrderSummaryProps) {
@@ -155,6 +157,15 @@ export function OrderSummary({
   const bogoDiscount =
     stripeBogoDiscount > 0 ? stripeBogoDiscount : welcomeBogoDiscount;
   const shippingBadge = shippingLabel ?? shopConfig.freeShippingLabel;
+
+  const referenceBlock = orderReference ? (
+    <div className="mb-4 rounded-xl border border-ink/10 bg-paper-soft/80 px-3 py-2.5 text-sm">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-ink/40">
+        Référence commande
+      </p>
+      <p className="mt-1 font-semibold tracking-wide text-ink">{orderReference}</p>
+    </div>
+  ) : null;
 
   const promoField =
     onPromoCodeChange ? (
@@ -186,6 +197,8 @@ export function OrderSummary({
             {units} article{units > 1 ? "s" : ""}
           </p>
         </div>
+
+        {referenceBlock}
 
         <LineItems lines={lines} freePerLine={freePerLine} />
 
@@ -239,6 +252,7 @@ export function OrderSummary({
       sticky={pinSummary}
       className="hidden lg:block"
     >
+      {referenceBlock}
       <div className="mt-6">
         <LineItems lines={lines} freePerLine={freePerLine} />
       </div>

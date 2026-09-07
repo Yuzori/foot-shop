@@ -10,6 +10,12 @@ import { getOrCreateStripeCustomer } from "@/lib/stripe-customer";
 import { ensureStripePaymentMethodDomains } from "@/lib/stripe-payment-domains";
 import { createStripeElementsCheckoutSession } from "@/lib/stripe-create-checkout-session";
 import {
+  buildStripeLineItemDescription,
+  buildStripeOrderMetadata,
+  type OrderLineForMetadata,
+} from "@/lib/stripe-order-metadata";
+import { recordCheckoutAbandonFromPending } from "@/lib/record-checkout-abandon";
+import {
   formatStripeError,
   getStripePublishableKey,
   validateStripeKeyPair,
@@ -114,16 +120,30 @@ async function handleStripeSession(request: Request) {
   const promoDiscount = order.promoDiscount ?? 0;
   const promoCode = order.promoCode ?? null;
 
-  const stripeLineItems = chargeLines.map((it) => ({
-    quantity: it.quantity,
-    price_data: {
-      currency: paymentConfig.currency,
-      unit_amount: Math.round(it.unitPrice * 100),
-      product_data: {
-        name: it.name || "Article",
+  const stripeLineItems = chargeLines.map((it, index) => {
+    const sourceLine: OrderLineForMetadata = {
+      ...(serverLines[index] ?? {
+        productId: "",
+        variantId: null,
+        quantity: it.quantity,
+        unitPrice: it.unitPrice,
+        name: it.name,
+      }),
+      optionsLabel: body.lines[index]?.optionsLabel,
+    };
+    const description = buildStripeLineItemDescription(sourceLine);
+    return {
+      quantity: it.quantity,
+      price_data: {
+        currency: paymentConfig.currency,
+        unit_amount: Math.round(it.unitPrice * 100),
+        product_data: {
+          name: it.name || "Article",
+          ...(description ? { description } : {}),
+        },
       },
-    },
-  }));
+    };
+  });
 
   if (shippingFee > 0) {
     stripeLineItems.push({
@@ -192,18 +212,23 @@ async function handleStripeSession(request: Request) {
           }
         : {}),
       line_items: stripeLineItems,
-      metadata: {
-        orderId: String(order.orderId ?? ""),
+      metadata: buildStripeOrderMetadata({
         reference: ref,
-        customerEmail: body.contact.email,
+        orderId: String(order.orderId ?? ""),
         customerId: order.customerId ?? "",
-        welcomePromo: bogoApplied ? "1" : "",
-        expectedTotalCents: String(expectedTotalCents),
-        bogoFreeUnits: bogoApplied ? String(freeUnits) : "",
-        promoCode: promoCode ?? "",
-        promoDiscountCents: promoDiscount > 0 ? String(Math.round(promoDiscount * 100)) : "",
-        shippingCents: String(Math.round(shippingFee * 100)),
-      },
+        contact: body.contact,
+        address: body.address,
+        lines: serverLines.map((line, index) => ({
+          ...line,
+          optionsLabel: body.lines[index]?.optionsLabel,
+        })),
+        welcomePromo: bogoApplied,
+        expectedTotalCents,
+        bogoFreeUnits: bogoApplied ? freeUnits : undefined,
+        promoCode,
+        promoDiscountCents: promoDiscount > 0 ? Math.round(promoDiscount * 100) : undefined,
+        shippingCents: Math.round(shippingFee * 100),
+      }),
       return_url: returnUrl,
     });
 
@@ -236,6 +261,20 @@ async function handleStripeSession(request: Request) {
   } catch (error) {
     console.error("[stripe] checkout.sessions.create failed", error);
     if (order.ok && order.orderId && order.reference) {
+      await recordCheckoutAbandonFromPending(
+        String(order.reference),
+        "Erreur d'ouverture du paiement Stripe — redirection impossible",
+        serverLines.map((line, index) => ({
+          name: line.name?.trim() || `Produit #${line.productId}`,
+          quantity: line.quantity,
+          size: body.lines[index]?.optionsLabel?.replace(/^taille:\s*/i, "").trim() || "",
+          flocage: line.flocage
+            ? [line.flocage.name, line.flocage.number, line.flocage.text].filter(Boolean).join(" ")
+            : "",
+        })),
+      ).catch((abandonErr) => {
+        console.warn("[stripe/session] abandon record failed", abandonErr);
+      });
       await cancelUnpaidPrestaShopOrder(
         String(order.orderId),
         String(order.reference),

@@ -3200,6 +3200,8 @@ export interface CreateOrderLine {
   quantity: number;
   unitPrice: number;
   name?: string;
+  /** Taille / variante (ex. "Taille: M"). */
+  optionsLabel?: string;
   flocage?: { name?: string; number?: string; text?: string; price: number };
 }
 

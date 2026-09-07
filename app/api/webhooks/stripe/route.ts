@@ -6,6 +6,8 @@ import { cancelUnpaidPrestaShopOrder } from "@/lib/cancel-unpaid-order";
 import { fulfillPaidOrder } from "@/lib/order-paid";
 import { getCheckoutSnapshotByReference } from "@/lib/checkout-snapshot";
 import { resolveCheckoutNotificationEmail } from "@/lib/checkout-notification-email";
+import { recordCheckoutAbandonFromSession } from "@/lib/record-checkout-abandon";
+import { removeCheckoutAbandonByReference } from "@/lib/checkout-abandons-store";
 import { markWelcomePromoUsed } from "@/lib/welcome-promo-store";
 import { isCheckoutSessionPaidOnStripe } from "@/lib/stripe-checkout-session-status";
 import { getStripe } from "@/lib/stripe-server";
@@ -37,6 +39,9 @@ async function fulfillSessionIfPaid(
     await fulfillPaidOrder(orderId, customerEmail, {
       checkoutSessionId: session.id,
     });
+    if (session.metadata?.reference) {
+      await removeCheckoutAbandonByReference(session.metadata.reference);
+    }
   }
   if (
     session.metadata?.welcomePromo === "1" &&
@@ -102,6 +107,11 @@ export async function POST(request: Request) {
   ) {
     const session = event.data.object as Stripe.Checkout.Session;
     console.warn("[stripe] checkout session unpaid", event.type, session.id);
+    const cause =
+      event.type === "checkout.session.expired"
+        ? "Session expirée — le client a quitté sans payer"
+        : "Échec du paiement — erreur sur la plateforme de paiement";
+    await recordCheckoutAbandonFromSession(session, cause);
     await cancelSessionIfUnpaid(session);
   }
 

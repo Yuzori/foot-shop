@@ -74,6 +74,7 @@ function mapLineForApi(line: CartLine) {
     quantity: line.quantity,
     unitPrice: line.unitPrice + flocageUnit,
     name: line.name,
+    optionsLabel: line.optionsLabel,
     flocage:
       line.flocage?.enabled && isFlocageComplete(line)
         ? {
@@ -928,6 +929,7 @@ export function CheckoutView() {
           onPromoCodeChange={handlePromoCodeChange}
           promoError={promoError}
           promoPending={promoPending}
+          orderReference={orderReference}
         />
         </div>
 
@@ -1267,6 +1269,7 @@ export function CheckoutView() {
           onPromoCodeChange={handlePromoCodeChange}
           promoError={promoError}
           promoPending={promoPending}
+          orderReference={orderReference}
         />
       </div>
     </Container>
