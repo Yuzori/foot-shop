@@ -125,13 +125,11 @@ async function waitForPaidSession(sessionId: string): Promise<boolean> {
 async function finalizeCheckout(
   checkout: { confirm: (opts: Record<string, unknown>) => Promise<unknown> },
   confirmArgs: Record<string, unknown>,
-  returnUrl: string,
   onSuccess: (checkoutSessionId: string) => void | Promise<void>,
   onError: (message: string) => void,
 ): Promise<boolean> {
   const confirmResult = (await checkout.confirm({
     redirect: "if_required",
-    returnUrl,
     ...confirmArgs,
   })) as {
     type: string;
@@ -179,11 +177,10 @@ async function finalizeCheckout(
 }
 
 function PaymentForm({
-  returnUrl,
   onSuccess,
   onError,
   disabled = false,
-}: Omit<StripePaymentFormProps, "clientSecret" | "publishableKey">) {
+}: Omit<StripePaymentFormProps, "clientSecret" | "publishableKey" | "returnUrl">) {
   const checkoutState = useCheckoutElements();
   const [pending, setPending] = useState(false);
   const [ready, setReady] = useState(false);
@@ -204,7 +201,6 @@ function PaymentForm({
         await finalizeCheckout(
           checkoutState.checkout,
           { expressCheckoutConfirmEvent: event },
-          returnUrl,
           onSuccess,
           onError,
         );
@@ -218,7 +214,7 @@ function PaymentForm({
         setPending(false);
       }
     },
-    [checkoutState, disabled, onError, onSuccess, returnUrl],
+    [checkoutState, disabled, onError, onSuccess],
   );
 
   async function handlePay(e: FormEvent) {
@@ -235,7 +231,7 @@ function PaymentForm({
     onError("");
 
     try {
-      await finalizeCheckout(checkout, {}, returnUrl, onSuccess, onError);
+      await finalizeCheckout(checkout, {}, onSuccess, onError);
     } catch (err) {
       onError(
         err instanceof Error
@@ -400,7 +396,6 @@ export function StripePaymentForm({
         }}
       >
         <PaymentForm
-          returnUrl={returnUrl}
           onSuccess={onSuccess}
           onError={onError}
           disabled={disabled}
