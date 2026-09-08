@@ -9,6 +9,10 @@ export async function POST(request: Request) {
     email?: string;
     customerId?: string;
     subtotal?: number;
+    lines?: Array<{
+      flocage?: { name?: string; number?: string; text?: string; price?: number } | null;
+      quantity?: number;
+    }>;
   };
   try {
     body = (await request.json()) as typeof body;
@@ -22,11 +26,28 @@ export async function POST(request: Request) {
   }
 
   const session = await getSession();
+  const promoLines =
+    body.lines?.map((line) => ({
+      quantity: line.quantity ?? 1,
+      flocage: line.flocage
+        ? {
+            name: line.flocage.name,
+            number: line.flocage.number,
+            text: line.flocage.text,
+            price: line.flocage.price ?? 0,
+          }
+        : undefined,
+      productId: "",
+      variantId: null,
+      unitPrice: 0,
+    })) ?? [];
+
   const result = await validatePromoCodeForCheckout({
     code,
     email: body.email?.trim() ?? "",
     customerId: body.customerId ?? session?.id,
     subtotal: typeof body.subtotal === "number" ? body.subtotal : 0,
+    lines: promoLines,
   });
 
   if (!result) {
@@ -40,8 +61,10 @@ export async function POST(request: Request) {
   return NextResponse.json({
     valid: true,
     code: result.code,
+    kind: result.kind,
     percent: result.percent,
     discount: result.discount,
     label: result.label,
+    flocagePrice: result.flocagePrice,
   });
 }

@@ -475,6 +475,18 @@ export function CheckoutView() {
             email: email?.trim() ?? "",
             customerId: sessionQuery.data?.id,
             subtotal: subtotal - bogoDiscount,
+            lines: lines.map((line) => ({
+              quantity: line.quantity,
+              flocage:
+                line.flocage?.enabled && isFlocageComplete(line)
+                  ? {
+                      name: line.flocage.name,
+                      number: line.flocage.number,
+                      text: line.flocage.text,
+                      price: line.flocage.price,
+                    }
+                  : undefined,
+            })),
           }),
         });
         const data = (await res.json()) as {
@@ -496,7 +508,7 @@ export function CheckoutView() {
         setPromoPending(false);
       }
     },
-    [bogoDiscount, sessionQuery.data?.id, subtotal],
+    [bogoDiscount, lines, sessionQuery.data?.id, subtotal],
   );
 
   const handlePromoCodeChange = useCallback(
@@ -609,6 +621,21 @@ export function CheckoutView() {
     if (!ref || typeof window === "undefined") return null;
     return `${window.location.origin}/paiement/succes?ref=${encodeURIComponent(ref)}&session_id={CHECKOUT_SESSION_ID}`;
   }, [paymentReturnUrl, orderReference]);
+
+  const checkoutShippingAddress = useMemo(() => {
+    if (step !== "payment") return null;
+    const { contact, address } = deliveryForm;
+    if (!address.address1.trim()) return null;
+    return {
+      firstName: contact.firstName,
+      lastName: contact.lastName,
+      address1: address.address1,
+      address2: address.address2,
+      postcode: address.postcode,
+      city: address.city,
+      country: address.country,
+    };
+  }, [step, deliveryForm]);
 
   if (!hydrated) {
     return (
@@ -947,6 +974,7 @@ export function CheckoutView() {
           promoError={promoError}
           promoPending={promoPending}
           orderReference={orderReference}
+          shippingAddress={checkoutShippingAddress}
         />
         </div>
 
@@ -1288,6 +1316,7 @@ export function CheckoutView() {
           promoError={promoError}
           promoPending={promoPending}
           orderReference={orderReference}
+          shippingAddress={checkoutShippingAddress}
         />
       </div>
     </Container>

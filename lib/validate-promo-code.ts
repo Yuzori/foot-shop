@@ -1,6 +1,7 @@
 import "server-only";
 
-import { apologyPromo, firstOrderThankYouPromo } from "@/config/promotions";
+import { apologyPromo, firstOrderThankYouPromo, flocageTestPromo } from "@/config/promotions";
+import { flocagePromoDiscount } from "@/lib/apply-flocage-promo";
 import { countPaidOrdersForCheckout } from "@/lib/customer-order-history";
 import {
   hasUsedFootshop15Promo,
@@ -11,12 +12,15 @@ import { hasUsedThankYouPromo } from "@/lib/thank-you-promo-store";
 import {
   applyPercentDiscount,
   resolvePromoCode,
+  type PromoCodeKind,
   type PromoCodeResult,
 } from "@/lib/promo-code";
+import type { CreateOrderLine } from "@/services/prestashop";
 
 export interface PromoValidationSuccess extends PromoCodeResult {
   valid: true;
   discount: number;
+  kind: PromoCodeKind;
 }
 
 export type PromoValidationResult =
@@ -29,6 +33,7 @@ export async function validatePromoCodeForCheckout(input: {
   email: string;
   customerId?: string | null;
   subtotal: number;
+  lines?: readonly CreateOrderLine[];
 }): Promise<PromoValidationResult | null> {
   const resolved = resolvePromoCode(input.code);
   if (!resolved) return null;
@@ -86,6 +91,25 @@ export async function validatePromoCodeForCheckout(input: {
     if (alreadyUsed) {
       return { valid: false, message: "Ce code a déjà été utilisé." };
     }
+  }
+
+  if (resolved.code === flocageTestPromo.code) {
+    const flocageQty =
+      input.lines?.filter((line) => line.flocage).reduce((sum, line) => sum + line.quantity, 0) ??
+      0;
+    if (flocageQty === 0) {
+      return {
+        valid: false,
+        message: "Ce code s'applique aux commandes avec flocage.",
+      };
+    }
+
+    const discount = flocagePromoDiscount(input.lines ?? [], flocageTestPromo.flocagePrice);
+    return {
+      ...resolved,
+      valid: true,
+      discount,
+    };
   }
 
   const discount = applyPercentDiscount(input.subtotal, resolved.percent);

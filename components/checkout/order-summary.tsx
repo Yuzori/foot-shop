@@ -18,6 +18,16 @@ import { cn } from "@/lib/utils";
 import type { BogoLine } from "@/lib/welcome-bogo";
 import type { CartLine } from "@/types/domain";
 
+export type CheckoutShippingAddress = {
+  firstName: string;
+  lastName: string;
+  address1: string;
+  address2?: string;
+  postcode: string;
+  city: string;
+  country: string;
+};
+
 interface OrderSummaryProps {
   lines: CartLine[];
   freePerLine: number[];
@@ -36,6 +46,7 @@ interface OrderSummaryProps {
   promoPending?: boolean;
   showEditCart?: boolean;
   orderReference?: string | null;
+  shippingAddress?: CheckoutShippingAddress | null;
   /** Coller le récap seul au scroll - false si le parent englobe récap + boutons. */
   pinSummary?: boolean;
   /** `mobile` = récap compact en haut sur petit écran ; `sidebar` = panneau latéral desktop */
@@ -131,6 +142,27 @@ function TotalsBreakdown({
   );
 }
 
+function ShippingAddressBlock({ address }: { address: CheckoutShippingAddress }) {
+  return (
+    <div className="mb-4 rounded-xl border border-ink/10 bg-paper-soft/80 px-3 py-2.5 text-sm">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-ink/40">
+        Adresse de livraison
+      </p>
+      <p className="mt-1 font-medium text-ink">
+        {address.firstName} {address.lastName}
+      </p>
+      <p className="mt-1 text-ink/65">
+        {address.address1}
+        {address.address2 ? `, ${address.address2}` : ""}
+        <br />
+        {address.postcode} {address.city}
+        <br />
+        {address.country}
+      </p>
+    </div>
+  );
+}
+
 /** Récapitulatif commande partagé panier / checkout. */
 export function OrderSummary({
   lines,
@@ -150,6 +182,7 @@ export function OrderSummary({
   promoPending = false,
   showEditCart = true,
   orderReference = null,
+  shippingAddress = null,
   pinSummary = true,
   variant = "sidebar",
 }: OrderSummaryProps) {
@@ -159,12 +192,21 @@ export function OrderSummary({
   const shippingBadge = shippingLabel ?? shopConfig.freeShippingLabel;
 
   const referenceBlock = orderReference ? (
-    <div className="mb-4 rounded-xl border border-ink/10 bg-paper-soft/80 px-3 py-2.5 text-sm">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-ink/40">
-        Référence commande
+    <div className="mb-4 rounded-xl border border-accent/20 bg-accent/5 px-3 py-2.5 text-sm">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-accent/80">
+        Numéro de commande
       </p>
-      <p className="mt-1 font-semibold tracking-wide text-ink">{orderReference}</p>
+      <p className="mt-1 font-display text-lg font-semibold tracking-wide text-ink">
+        {orderReference}
+      </p>
+      <p className="mt-1 text-xs text-ink/50">
+        Conservez ce numéro pour le suivi de votre commande.
+      </p>
     </div>
+  ) : null;
+
+  const addressBlock = shippingAddress ? (
+    <ShippingAddressBlock address={shippingAddress} />
   ) : null;
 
   const promoField =
@@ -199,6 +241,7 @@ export function OrderSummary({
         </div>
 
         {referenceBlock}
+        {addressBlock}
 
         <LineItems lines={lines} freePerLine={freePerLine} />
 
@@ -253,6 +296,7 @@ export function OrderSummary({
       className="hidden lg:block"
     >
       {referenceBlock}
+      {addressBlock}
       <div className="mt-6">
         <LineItems lines={lines} freePerLine={freePerLine} />
       </div>

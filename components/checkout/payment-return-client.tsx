@@ -228,13 +228,22 @@ export function PaymentReturnClient({
   return (
     <div className="mx-auto max-w-xl">
       <h1 className="display-2 mb-6 text-center">Merci pour votre commande</h1>
+      {reference ? (
+        <div className="mb-8 rounded-2xl border border-accent/20 bg-accent/5 px-5 py-4 text-center">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-accent/80">
+            Numéro de commande
+          </p>
+          <p className="mt-2 font-display text-2xl font-semibold tracking-wide text-ink">
+            {reference}
+          </p>
+          <p className="mt-2 text-sm text-ink/55">
+            Conservez ce numéro pour suivre votre colis sur la page Suivi de commande.
+          </p>
+        </div>
+      ) : null}
       <EmptyState
-        title={
-          reference
-            ? `Paiement confirmé - Référence ${reference}`
-            : "Paiement confirmé"
-        }
-        description="Votre paiement a bien été reçu. Conservez votre référence : vous pouvez suivre votre commande sans créer de compte."
+        title="Paiement confirmé"
+        description="Votre paiement a bien été reçu. Un email de confirmation avec le détail de votre commande vous a été envoyé."
         action={{ label: "Suivre ma commande", href: trackingHref }}
       />
     </div>

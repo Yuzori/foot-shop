@@ -20,6 +20,7 @@ import {
   type CheckoutPendingRecord,
 } from "@/lib/checkout-pending-store";
 import { validatePromoCodeForCheckout } from "@/lib/validate-promo-code";
+import { applyFlocagePromoPrice } from "@/lib/apply-flocage-promo";
 import { resolveCartLines } from "@/lib/resolve-cart-lines";
 import { resolveShippingFee } from "@/lib/shipping-fee";
 import { welcomePromo } from "@/config/promotions";
@@ -465,6 +466,7 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
     email: contact.email,
     customerId,
     subtotal,
+    lines: orderLines,
   });
   if (body.promoCode?.trim() && promoValidation && !promoValidation.valid) {
     return {
@@ -485,7 +487,13 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
   const promoDiscount =
     promoValidation?.valid === true ? promoValidation.discount : 0;
 
-  if (promoDiscount > 0) {
+  if (
+    promoValidation?.valid === true &&
+    promoValidation.kind === "flocage_price" &&
+    promoValidation.flocagePrice != null
+  ) {
+    orderLines = applyFlocagePromoPrice(orderLines, promoValidation.flocagePrice);
+  } else if (promoDiscount > 0) {
     orderLines = distributePromoDiscountAcrossLines(orderLines, promoDiscount);
   }
 

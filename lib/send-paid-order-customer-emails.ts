@@ -64,6 +64,7 @@ export async function sendPaidOrderCustomerEmailsIfNeeded(input: {
       sendOrderConfirmationEmail({
         to: email,
         order: input.order,
+        archive: input.archive,
         firstName,
         firstOrderPromo: isFirstPaidOrder
           ? {

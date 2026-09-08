@@ -1,10 +1,14 @@
-import { apologyPromo, firstOrderThankYouPromo } from "@/config/promotions";
+import { apologyPromo, firstOrderThankYouPromo, flocageTestPromo } from "@/config/promotions";
+
+export type PromoCodeKind = "percent" | "flocage_price";
 
 export interface PromoCodeResult {
   valid: boolean;
   code: string;
+  kind: PromoCodeKind;
   percent: number;
   label: string;
+  flocagePrice?: number;
 }
 
 export function resolvePromoCode(raw: string | undefined | null): PromoCodeResult | null {
@@ -15,6 +19,7 @@ export function resolvePromoCode(raw: string | undefined | null): PromoCodeResul
     return {
       valid: true,
       code: firstOrderThankYouPromo.code,
+      kind: "percent",
       percent: firstOrderThankYouPromo.percent,
       label: firstOrderThankYouPromo.label,
     };
@@ -24,12 +29,24 @@ export function resolvePromoCode(raw: string | undefined | null): PromoCodeResul
     return {
       valid: true,
       code: apologyPromo.code,
+      kind: "percent",
       percent: apologyPromo.percent,
       label: apologyPromo.label,
     };
   }
 
-  return { valid: false, code, percent: 0, label: "" };
+  if (code === flocageTestPromo.code) {
+    return {
+      valid: true,
+      code: flocageTestPromo.code,
+      kind: "flocage_price",
+      percent: 0,
+      label: flocageTestPromo.label,
+      flocagePrice: flocageTestPromo.flocagePrice,
+    };
+  }
+
+  return { valid: false, code, kind: "percent", percent: 0, label: "" };
 }
 
 export function applyPercentDiscount(subtotal: number, percent: number): number {
