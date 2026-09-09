@@ -14,6 +14,7 @@ import {
   listSupplierOrderDrafts,
   markSupplierOrderSubmitted,
 } from "@/lib/supplier-order-store";
+import { resolveOrderForTracking } from "@/lib/resolve-order-for-tracking";
 import { notifySupplierOfOrder } from "@/lib/supplier-order";
 import { prestashop } from "@/services/prestashop";
 
@@ -132,17 +133,18 @@ export async function POST(request: Request) {
   }
 
   if (body.action === "recover_draft") {
-    await clearOrderDismissal(reference);
-    let ok = await ensureSupplierDraftFromArchiveReference(reference);
+    const order = await resolveOrderForTracking(reference);
+    if (!order) {
+      return NextResponse.json({ message: "order_not_found" }, { status: 404 });
+    }
+    const orderRef = order.reference;
+    await clearOrderDismissal(orderRef);
+    let ok = await ensureSupplierDraftFromArchiveReference(orderRef);
     if (!ok) {
-      const order = await prestashop.getOrderByReference(reference);
-      if (!order) {
-        return NextResponse.json({ message: "order_not_found" }, { status: 404 });
-      }
       await notifySupplierOfOrder(order, order.id, { force: true });
       ok = true;
     }
-    const draft = await getSupplierOrderDraft(reference);
+    const draft = await getSupplierOrderDraft(orderRef);
     if (!draft) {
       return NextResponse.json({ message: "recover_failed" }, { status: 502 });
     }
@@ -150,7 +152,7 @@ export async function POST(request: Request) {
   }
 
   if (body.action === "resend_email") {
-    const order = await prestashop.getOrderByReference(reference);
+    const order = await resolveOrderForTracking(reference);
     if (!order) {
       return NextResponse.json({ message: "order_not_found" }, { status: 404 });
     }
@@ -160,7 +162,7 @@ export async function POST(request: Request) {
       const message = err instanceof Error ? err.message : "email_failed";
       return NextResponse.json({ message }, { status: 502 });
     }
-    const draft = await getSupplierOrderDraft(reference);
+    const draft = await getSupplierOrderDraft(order.reference);
     return NextResponse.json({ ok: true, draft });
   }
 

@@ -74,7 +74,22 @@ function ShippingForm({ secret }: { secret: string }) {
     void load();
   }, [load]);
 
-  async function save(sendEmail: boolean) {
+  function formatShippingError(code: string | undefined): string {
+    switch (code) {
+      case "order_not_found":
+        return "Commande introuvable. Utilisez le n° de commande (ex. 124) ou la référence reçue par le client.";
+      case "tracking_and_url_required":
+        return "Renseignez le numéro de suivi et le lien transporteur.";
+      case "customer_email_missing":
+        return "Email client introuvable. Saisissez l'email manuellement.";
+      case "reference_required":
+        return "Indiquez le n° de commande ou la référence.";
+      default:
+        return code ?? "Échec de l'envoi.";
+    }
+  }
+
+  async function sendShipping() {
     setBusy(true);
     setMessage(null);
     try {
@@ -87,33 +102,29 @@ function ShippingForm({ secret }: { secret: string }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          reference: reference.trim().toUpperCase(),
+          reference: reference.trim(),
           trackingNumber: trackingNumber.trim(),
           carrierUrl: carrierUrl.trim(),
           customerEmail: customerEmail.trim() || undefined,
-          action: sendEmail ? "send" : "save",
+          action: "send",
         }),
         signal: controller.signal,
       });
       window.clearTimeout(timeout);
-      const data = (await res.json().catch(() => null)) as { message?: string } | null;
-      if (!res.ok) throw new Error(data?.message ?? "Échec");
-      setMessage(
-        sendEmail
-          ? `Email d'expédition envoyé pour ${reference.trim().toUpperCase()}.`
-          : `Suivi enregistré pour ${reference.trim().toUpperCase()}.`,
-      );
-      if (!sendEmail) {
-        setReference("");
-        setTrackingNumber("");
-        setCarrierUrl("");
-        setCustomerEmail("");
+      const data = (await res.json().catch(() => null)) as {
+        message?: string;
+        emailError?: string;
+      } | null;
+      if (!res.ok) throw new Error(formatShippingError(data?.message));
+      if (data?.emailError) {
+        throw new Error(data.emailError);
       }
+      setMessage(`Email d'expédition envoyé pour la commande ${reference.trim()}.`);
       await load();
     } catch (err) {
       const msg =
         err instanceof Error && err.name === "AbortError"
-          ? "Délai dépassé - le suivi est peut-être enregistré, rechargez la page."
+          ? "Délai dépassé - vérifiez si l'email est parti puis rechargez la page."
           : err instanceof Error
             ? err.message
             : "Échec";
@@ -147,16 +158,17 @@ function ShippingForm({ secret }: { secret: string }) {
     <section className="mt-16 rounded-3xl border border-ink/8 p-6 lg:p-8">
       <h2 className="font-display text-xl font-semibold">Expédition & suivi</h2>
       <p className="mt-2 text-sm text-ink/55">
-        Référence depuis Stripe ou le récap client. Saisissez le suivi puis envoyez l&apos;email.
+        N° de commande client (ex. 124) ou référence email. Saisissez le suivi Chronopost puis
+        envoyez.
       </p>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <Field
-          label="Référence commande"
+          label="N° commande ou référence"
           name="shipRef"
           value={reference}
           onChange={(e) => setReference(e.target.value)}
-          placeholder="Ex. QZYXJKEOE"
+          placeholder="Ex. 124"
         />
         <Field
           label="Email client (optionnel)"
@@ -181,21 +193,15 @@ function ShippingForm({ secret }: { secret: string }) {
         />
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-3">
+      <div className="mt-6">
         <Button
           type="button"
-          variant="outline"
-          disabled={busy || !reference.trim()}
-          onClick={() => save(false)}
+          disabled={
+            busy || !reference.trim() || !trackingNumber.trim() || !carrierUrl.trim()
+          }
+          onClick={() => void sendShipping()}
         >
-          Enregistrer
-        </Button>
-        <Button
-          type="button"
-          disabled={busy || !reference.trim() || !trackingNumber.trim() || !carrierUrl.trim()}
-          onClick={() => save(true)}
-        >
-          {busy ? <Spinner className="h-4 w-4" /> : "Enregistrer et envoyer l'email"}
+          {busy ? <Spinner className="h-4 w-4" /> : "Envoyer"}
         </Button>
       </div>
 

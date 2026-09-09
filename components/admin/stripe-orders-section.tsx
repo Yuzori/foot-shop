@@ -38,7 +38,7 @@ function StripeOrderCard({ order }: { order: StripeAdminOrder }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-display text-lg font-semibold">{order.reference}</p>
-          <p className="mt-0.5 text-xs text-ink/45">Réf. commande client</p>
+          <p className="mt-0.5 text-xs text-ink/45">N° commande client</p>
           <p className="mt-1 text-sm text-ink/55">{formatDate(order.paidAt)}</p>
         </div>
         <p className="text-lg font-semibold tabular-nums text-ink">

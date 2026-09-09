@@ -10,6 +10,7 @@ import {
   markShippingEmailSent,
   upsertOrderShipping,
 } from "@/lib/order-shipping-store";
+import { resolveOrderForTracking } from "@/lib/resolve-order-for-tracking";
 import { sendShippingNotificationEmail } from "@/lib/shipping-notification-email";
 import { prestashop } from "@/services/prestashop";
 
@@ -51,18 +52,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "invalid_body" }, { status: 400 });
   }
 
-  const reference = body.reference?.trim();
+  const referenceInput = body.reference?.trim();
   const trackingNumber = body.trackingNumber?.trim() ?? "";
   const carrierUrl = body.carrierUrl?.trim() ?? "";
 
-  if (!reference) {
+  if (!referenceInput) {
     return NextResponse.json({ message: "reference_required" }, { status: 400 });
   }
 
-  const order = await prestashop.getOrderByReference(reference);
+  const order = await resolveOrderForTracking(referenceInput);
   if (!order) {
     return NextResponse.json({ message: "order_not_found" }, { status: 404 });
   }
+
+  const reference = order.reference;
 
   const customerEmail =
     body.customerEmail?.trim().toLowerCase() ||
