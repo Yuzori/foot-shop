@@ -2,8 +2,11 @@ import { NextResponse } from "next/server";
 
 import { isAdminAuthorized } from "@/lib/admin-auth";
 import { getOrderArchiveByReference } from "@/lib/order-archive-store";
+import { enrichOrderArchiveForEmail } from "@/lib/enrich-order-archive-for-email";
 import { fulfillPaidOrder } from "@/lib/order-paid";
+import { sendOrderConfirmationEmail } from "@/lib/order-confirmation-email";
 import { repairPrestaShopOrderStates } from "@/lib/repair-prestashop-orders";
+import { resolveCheckoutNotificationEmail } from "@/lib/checkout-notification-email";
 import { sendPaidOrderCustomerEmailsIfNeeded } from "@/lib/send-paid-order-customer-emails";
 import { prestashop } from "@/services/prestashop";
 
@@ -20,13 +23,16 @@ export async function POST(request: Request) {
   let limit = 80;
   let references: string[] = [];
   let action: string | undefined;
+  let resendTo: string | undefined;
   try {
     const body = (await request.json()) as {
       limit?: number;
       references?: string[];
       action?: string;
+      to?: string;
     };
     action = body.action;
+    resendTo = body.to?.trim();
     if (typeof body.limit === "number" && body.limit > 0) {
       limit = Math.min(200, body.limit);
     }
@@ -44,6 +50,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "Commande introuvable." }, { status: 404 });
     }
     const archive = await getOrderArchiveByReference(reference);
+    const emailArchive = await enrichOrderArchiveForEmail(archive, order.id);
+
+    if (resendTo) {
+      await sendOrderConfirmationEmail({
+        to: resendTo,
+        order,
+        archive: emailArchive,
+        firstName: emailArchive?.contact.firstName,
+      });
+      return NextResponse.json({
+        message: `Email récap envoyé pour ${reference} → ${resendTo}.`,
+        reference,
+        to: resendTo,
+        sent: true,
+      });
+    }
+
+    const to =
+      resolveCheckoutNotificationEmail({ archive: emailArchive }) ??
+      (await prestashop.getCustomerEmailByOrderId(order.id));
     const sent = await sendPaidOrderCustomerEmailsIfNeeded({
       order,
       orderId: order.id,
@@ -52,9 +78,10 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({
       message: sent
-        ? `Email client renvoyé pour ${reference}.`
+        ? `Email client renvoyé pour ${reference}${to ? ` → ${to}` : ""}.`
         : `Échec envoi email client pour ${reference}.`,
       reference,
+      to: to ?? null,
       sent,
     });
   }
