@@ -11,9 +11,13 @@ import { ProductCard } from "@/components/product/product-card";
 import { ProductGrid } from "@/components/product/product-grid";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Container } from "@/components/ui/container";
+import { featuredArrivalsConfig } from "@/config/featured-arrivals";
 import { useCatalogNav } from "@/hooks/use-catalog-nav";
 import { useProducts } from "@/hooks/use-products";
+import { api } from "@/lib/api";
 import { filterProductsByKind } from "@/lib/product-collection";
+import { queryKeys } from "@/lib/query-client";
+import { useQuery } from "@tanstack/react-query";
 import { BRAND_BUTTON_BASE, brandButtonStyle } from "@/lib/brand-button";
 import { toImageAccent } from "@/lib/image-accent-client";
 import { cn } from "@/lib/utils";
@@ -63,22 +67,35 @@ export function FeaturedProducts() {
   const catalogNav = useCatalogNav();
   const [tab, setTab] = useState<DropTab>("jersey");
 
-  const productsQuery = useProducts({
+  const featuredJerseysQuery = useQuery({
+    queryKey: [...queryKeys.products({ featured: "arrivals" }), featuredArrivalsConfig.jerseyProductIds],
+    queryFn: () => api.getProductsByIds([...featuredArrivalsConfig.jerseyProductIds]),
+    staleTime: 300_000,
+  });
+
+  const shortsQuery = useProducts({
     sort: "newest",
     limit: 120,
   });
 
-  const jerseys = useMemo(
-    () => filterProductsByKind(productsQuery.data?.items ?? [], "jersey").slice(0, 4),
-    [productsQuery.data],
-  );
+  const jerseys = useMemo(() => {
+    const byId = new Map(
+      (featuredJerseysQuery.data?.items ?? []).map((product) => [product.id, product]),
+    );
+    return featuredArrivalsConfig.jerseyProductIds
+      .map((id) => byId.get(id))
+      .filter((product): product is Product => Boolean(product));
+  }, [featuredJerseysQuery.data]);
+
   const shorts = useMemo(
-    () => filterProductsByKind(productsQuery.data?.items ?? [], "short").slice(0, 4),
-    [productsQuery.data],
+    () => filterProductsByKind(shortsQuery.data?.items ?? [], "short").slice(0, 4),
+    [shortsQuery.data],
   );
 
-  const isLoading = productsQuery.isLoading;
-  const isError = productsQuery.isError;
+  const isLoading =
+    tab === "jersey" ? featuredJerseysQuery.isLoading : shortsQuery.isLoading;
+  const isError =
+    tab === "jersey" ? featuredJerseysQuery.isError : shortsQuery.isError;
 
   const activeProducts = tab === "jersey" ? jerseys : shorts;
   const activeHref =
