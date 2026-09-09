@@ -17,8 +17,10 @@ const moduleLoad = (Module as unknown as { _load: Function })._load;
 
 import { shopConfig } from "../config/shop";
 import { buildOrderEmailLines } from "../lib/order-email-lines";
+import { enrichOrderLinesFromStripeMeta } from "../lib/enrich-archive-lines-from-stripe";
 import {
   enrichOrderLinesWithFlocage,
+  findFlocageForLine,
   parseFlocageEntriesFromNote,
 } from "../lib/parse-flocage-note";
 import type { OrderArchiveRecord } from "../lib/order-archive-store";
@@ -50,6 +52,9 @@ function runCase(
   const lines = buildOrderEmailLines({ archive });
   const productLine = lines[0];
   const flocageLine = lines.find((l) => l.label.toLowerCase().includes("flocage"));
+  if (!productLine) {
+    return { name: title, ok: false, details: ["✗ Aucune ligne produit"] };
+  }
 
   details.push(`Lignes email : ${lines.map((l) => `${l.label} = ${formatPrice(l.amount)}`).join(" | ")}`);
 
@@ -97,6 +102,72 @@ function runCase(
   return { name: title, ok, details };
 }
 
+function runTotalCase(
+  title: string,
+  archive: OrderArchiveRecord,
+  expectations: {
+    jerseyOnly: number;
+    flocagePrice: number;
+    flocageName: string;
+    orderTotal: number;
+  },
+): CaseResult {
+  const details: string[] = [];
+  const lines = buildOrderEmailLines({ archive });
+  const flocageLine = lines.find((l) => l.label.toLowerCase().includes("flocage"));
+  const linesSum = Math.round(lines.reduce((sum, line) => sum + line.amount, 0) * 100) / 100;
+  const expectedSum =
+    Math.round((expectations.jerseyOnly + expectations.flocagePrice) * 100) / 100;
+
+  details.push("--- Récap email simulé ---");
+  for (const line of lines) {
+    details.push(`  ${line.label}${line.detail ? ` (${line.detail})` : ""} : ${formatPrice(line.amount)}`);
+  }
+  details.push(`  Livraison : Offerte`);
+  details.push(`  Total : ${formatPrice(archive.total)}`);
+
+  let ok = true;
+
+  if (!flocageLine) {
+    ok = false;
+    details.push("✗ Ligne flocage absente");
+  } else if (!flocageLine.label.includes(expectations.flocageName)) {
+    ok = false;
+    details.push(`✗ Nom flocage « ${expectations.flocageName} » absent du label : ${flocageLine.label}`);
+  } else {
+    details.push(`✓ Nom flocage affiché : ${flocageLine.label}`);
+  }
+
+  if (flocageLine && flocageLine.amount !== expectations.flocagePrice) {
+    ok = false;
+    details.push(
+      `✗ Flocage attendu ${formatPrice(expectations.flocagePrice)}, reçu ${formatPrice(flocageLine.amount)}`,
+    );
+  } else if (flocageLine) {
+    details.push(`✓ Flocage à ${formatPrice(expectations.flocagePrice)}`);
+  }
+
+  if (linesSum !== expectedSum) {
+    ok = false;
+    details.push(
+      `✗ Somme lignes ${formatPrice(linesSum)} ≠ maillot + flocage (${formatPrice(expectedSum)})`,
+    );
+  } else {
+    details.push(`✓ Somme lignes = ${formatPrice(expectedSum)} (25,99 + 3,99)`);
+  }
+
+  if (archive.total !== expectations.orderTotal) {
+    ok = false;
+    details.push(
+      `✗ Total commande ${formatPrice(archive.total)} ≠ attendu ${formatPrice(expectations.orderTotal)}`,
+    );
+  } else {
+    details.push(`✓ Total commande ${formatPrice(expectations.orderTotal)}`);
+  }
+
+  return { name: title, ok, details };
+}
+
 function baseArchive(overrides: Partial<OrderArchiveRecord>): OrderArchiveRecord {
   return {
     id: "test",
@@ -125,7 +196,7 @@ function baseArchive(overrides: Partial<OrderArchiveRecord>): OrderArchiveRecord
     promoDiscount: 0,
     total: 29.98,
     currency: "EUR",
-    note: null,
+    note: undefined,
     stripeSessionId: null,
     source: "stripe",
     stockReserved: false,
@@ -222,6 +293,110 @@ function main(): void {
         productAmount: jerseyOnly,
         flocageAmount: flocagePrice,
         flocageLabelContains: "7",
+      },
+    ),
+  );
+
+  results.push(
+    runTotalCase(
+      "Récap complet : nom flocage + 3,99 € dans le total",
+      baseArchive({ lines: [flocageLine], note, total: 29.98, subtotal: 29.98 }),
+      {
+        jerseyOnly,
+        flocagePrice,
+        flocageName: "MESSI",
+        orderTotal: 29.98,
+      },
+    ),
+  );
+
+  const bogoNote = `Maillot Arsenal Third 26-27 (2+1 offert) (x1) - FLOCAGE NOM="ZAKARIA" NUM="7" (+0.50 EUR/maillot)`;
+  const bogoParsed = parseFlocageEntriesFromNote(bogoNote);
+  results.push(
+    assert(
+      "note fournisseur avec suffixe promo (2+1)",
+      Boolean(
+        findFlocageForLine(
+          {
+            productId: "1",
+            variantId: "1",
+            quantity: 1,
+            unitPrice: 0.5,
+            name: "Maillot Arsenal Third 26-27",
+            optionsLabel: "Taille : L",
+          },
+          bogoParsed,
+        ),
+      ),
+      "flocage retrouvé malgré le suffixe promo dans la note",
+    ),
+  );
+
+  const stripeEnriched = enrichOrderLinesFromStripeMeta(
+    [
+      {
+        productId: "1",
+        variantId: "1",
+        quantity: 1,
+        unitPrice: 0.5,
+        name: "Maillot Arsenal Third 26-27",
+        optionsLabel: "Taille : L",
+      },
+    ],
+    [
+      {
+        name: "Maillot Arsenal Third 26-27",
+        quantity: 1,
+        size: "L",
+        flocage: "ZAKARIA 7",
+      },
+    ],
+    0.5,
+  );
+
+  results.push(
+    runCase(
+      "Stripe metadata (FLOC50) : flocage 0,50 € séparé",
+      baseArchive({
+        lines: stripeEnriched,
+        note: bogoNote,
+        promoCode: "FLOC50",
+        total: 0.5,
+        subtotal: 0.5,
+      }),
+      {
+        lineCount: 2,
+        hasFlocageLine: true,
+        productAmount: 0,
+        flocageAmount: 0.5,
+        flocageLabelContains: "ZAKARIA",
+      },
+    ),
+  );
+
+  results.push(
+    runTotalCase(
+      "Récap PrestaShop : nom flocage + 3,99 € dans le total",
+      baseArchive({
+        lines: [
+          {
+            productId: "462",
+            variantId: "1613",
+            quantity: 1,
+            unitPrice: jerseyOnly,
+            name: productName,
+            optionsLabel: "M",
+          },
+        ],
+        note,
+        total: 29.98,
+        subtotal: 29.98,
+      }),
+      {
+        jerseyOnly,
+        flocagePrice,
+        flocageName: "MESSI",
+        orderTotal: 29.98,
       },
     ),
   );

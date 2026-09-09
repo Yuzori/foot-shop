@@ -9,6 +9,15 @@ export type ParsedFlocageNote = {
   price: number;
 };
 
+/** Normalise un nom produit pour rapprocher archive / note / Stripe. */
+export function normalizeProductNameForMatch(name: string): string {
+  return name
+    .replace(/\s*\([^)]*\)\s*/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
 /** Parse la note fournisseur (buildOrderNote) pour retrouver le flocage. */
 export function parseFlocageEntriesFromNote(note: string | undefined | null): ParsedFlocageNote[] {
   if (!note?.trim()) return [];
@@ -30,12 +39,22 @@ export function parseFlocageEntriesFromNote(note: string | undefined | null): Pa
   return entries;
 }
 
-function findFlocageForLine(
+export function findFlocageForLine(
   line: CreateOrderLine,
   entries: ParsedFlocageNote[],
 ): ParsedFlocageNote | undefined {
   const name = line.name?.trim() ?? "";
-  return entries.find((entry) => entry.productName === name);
+  const norm = normalizeProductNameForMatch(name);
+
+  return entries.find((entry) => {
+    const entryNorm = normalizeProductNameForMatch(entry.productName);
+    return (
+      entry.productName === name ||
+      entryNorm === norm ||
+      entryNorm.includes(norm) ||
+      norm.includes(entryNorm)
+    );
+  });
 }
 
 function flocagePriceFromLine(line: CreateOrderLine, parsed?: ParsedFlocageNote): number {
@@ -69,11 +88,12 @@ export function enrichOrderLinesWithFlocage(
       [name, number].filter(Boolean).join(" ") ||
       undefined;
 
-    // Prix PrestaShop = maillot seul ; pending checkout = maillot + flocage déjà inclus.
-    const unitPrice =
-      !hadFlocageOnLine && parsed
-        ? Math.round((line.unitPrice + flocageUnit) * 100) / 100
-        : line.unitPrice;
+    // Prix catalogue PrestaShop (~20 €+) : ajouter le flocage. Sinon garder le montant payé.
+    const shouldAddFlocagePrice =
+      !hadFlocageOnLine && parsed && line.unitPrice >= 15;
+    const unitPrice = shouldAddFlocagePrice
+      ? Math.round((line.unitPrice + flocageUnit) * 100) / 100
+      : line.unitPrice;
 
     return {
       ...line,

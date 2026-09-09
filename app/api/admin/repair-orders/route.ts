@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 
 import { isAdminAuthorized } from "@/lib/admin-auth";
+import { getOrderArchiveByReference } from "@/lib/order-archive-store";
 import { fulfillPaidOrder } from "@/lib/order-paid";
 import { repairPrestaShopOrderStates } from "@/lib/repair-prestashop-orders";
+import { sendPaidOrderCustomerEmailsIfNeeded } from "@/lib/send-paid-order-customer-emails";
 import { prestashop } from "@/services/prestashop";
 
 export const runtime = "nodejs";
@@ -17,8 +19,14 @@ export async function POST(request: Request) {
   try {
   let limit = 80;
   let references: string[] = [];
+  let action: string | undefined;
   try {
-    const body = (await request.json()) as { limit?: number; references?: string[] };
+    const body = (await request.json()) as {
+      limit?: number;
+      references?: string[];
+      action?: string;
+    };
+    action = body.action;
     if (typeof body.limit === "number" && body.limit > 0) {
       limit = Math.min(200, body.limit);
     }
@@ -27,6 +35,28 @@ export async function POST(request: Request) {
     }
   } catch {
     // corps vide OK
+  }
+
+  if (action === "resend_customer_email" && references.length === 1) {
+    const reference = references[0]!;
+    const order = await prestashop.getOrderByReference(reference);
+    if (!order) {
+      return NextResponse.json({ message: "Commande introuvable." }, { status: 404 });
+    }
+    const archive = await getOrderArchiveByReference(reference);
+    const sent = await sendPaidOrderCustomerEmailsIfNeeded({
+      order,
+      orderId: order.id,
+      archive,
+      force: true,
+    });
+    return NextResponse.json({
+      message: sent
+        ? `Email client renvoyé pour ${reference}.`
+        : `Échec envoi email client pour ${reference}.`,
+      reference,
+      sent,
+    });
   }
 
   if (references.length > 0) {

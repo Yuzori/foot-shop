@@ -22,6 +22,7 @@ export async function sendPaidOrderCustomerEmailsIfNeeded(input: {
   orderId: string;
   archive?: OrderArchiveRecord | null;
   checkoutEmail?: string | null;
+  checkoutSessionId?: string | null;
   force?: boolean;
 }): Promise<boolean> {
   const key = String(input.orderId).trim();
@@ -59,7 +60,11 @@ export async function sendPaidOrderCustomerEmailsIfNeeded(input: {
   }
 
   const firstName = input.archive?.contact.firstName;
-  const emailArchive = await enrichOrderArchiveForEmail(input.archive, key);
+  const emailArchive = await enrichOrderArchiveForEmail(
+    input.archive,
+    key,
+    input.checkoutSessionId,
+  );
 
   try {
     await Promise.all([

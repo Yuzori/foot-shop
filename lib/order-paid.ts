@@ -65,12 +65,24 @@ async function ensurePaidArchiveExists(
   stripeSessionId?: string | null,
 ): Promise<OrderArchiveRecord | null> {
   let archive = await getOrderArchiveByReference(order.reference);
-  if (archive && (archive.status === "paid" || archive.paidAt)) {
-    return archive;
-  }
-
   const pending = await getCheckoutPendingByReference(order.reference);
   const paidAt = new Date().toISOString();
+
+  if (archive && (archive.status === "paid" || archive.paidAt)) {
+    if (pending?.lines.length) {
+      archive = materializePaidArchive(
+        order,
+        pending,
+        stripeSessionId ?? pending.stripeSessionId,
+      );
+      await archiveOrder(archive);
+      await backupFromArchive("paid", archive, { status: "paid" }).catch((err) => {
+        console.error("[order-paid] backup failed", err);
+      });
+      await deleteCheckoutPending(order.reference);
+    }
+    return archive;
+  }
 
   if (!archive && pending) {
     archive = materializePaidArchive(order, pending, stripeSessionId);
@@ -161,6 +173,7 @@ export async function fulfillPaidOrder(
     orderId: key,
     archive,
     checkoutEmail: customerEmail,
+    checkoutSessionId: options?.checkoutSessionId,
   }).catch((err) => {
     console.error("[order-paid] customer emails failed", key, err);
   });
