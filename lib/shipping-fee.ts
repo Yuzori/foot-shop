@@ -1,7 +1,9 @@
 import "server-only";
 
+import { flocageTestPromo } from "@/config/promotions";
 import { shopConfig } from "@/config/shop";
 import { countPaidOrdersForCheckout } from "@/lib/customer-order-history";
+import { promoGrantsFreeShipping } from "@/lib/promo-code";
 import { prestashop } from "@/services/prestashop";
 
 export interface ShippingFeeResult {
@@ -38,7 +40,17 @@ export async function resolveShippingFee(input: {
   customerId?: string | null;
   /** Quantité totale d'articles dans le panier. */
   itemCount?: number;
+  promoCode?: string | null;
 }): Promise<ShippingFeeResult> {
+  if (promoGrantsFreeShipping(input.promoCode)) {
+    return {
+      fee: 0,
+      free: true,
+      label: flocageTestPromo.shippingLabel,
+      units: 0,
+    };
+  }
+
   const itemCount = Math.max(0, Math.floor(input.itemCount ?? 1));
   const units = Math.max(1, Math.ceil(itemCount / shopConfig.shippingItemsPerUnit));
   const standard = calculateShippingFee(Math.max(1, itemCount));

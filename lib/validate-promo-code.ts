@@ -109,6 +109,7 @@ export async function validatePromoCodeForCheckout(input: {
       ...resolved,
       valid: true,
       discount,
+      freeShipping: flocageTestPromo.freeShipping,
     };
   }
 

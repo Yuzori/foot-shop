@@ -55,11 +55,13 @@ export const apologyPromo = {
   label: "15 % sur votre prochaine commande",
 } as const;
 
-/** Code test : flocage à 0,50 € (au lieu de 3,99 €) par maillot flocé. */
+/** Code test : flocage à 0,50 € + livraison offerte (commande test ~0,50 €). */
 export const flocageTestPromo = {
   code: "FLOC50",
   flocagePrice: 0.5,
-  label: "Flocage à 0,50 €",
+  freeShipping: true,
+  label: "Flocage à 0,50 € + livraison offerte",
+  shippingLabel: "Livraison offerte",
 } as const;
 
 export const announcementMessages: string[] = [

@@ -507,6 +507,7 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
     email: contact.email,
     customerId,
     itemCount,
+    promoCode: promoValidation?.valid === true ? promoValidation.code : body.promoCode,
   });
 
   const pricedSubtotal = orderLines.reduce(

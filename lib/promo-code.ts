@@ -9,6 +9,7 @@ export interface PromoCodeResult {
   percent: number;
   label: string;
   flocagePrice?: number;
+  freeShipping?: boolean;
 }
 
 export function resolvePromoCode(raw: string | undefined | null): PromoCodeResult | null {
@@ -43,6 +44,7 @@ export function resolvePromoCode(raw: string | undefined | null): PromoCodeResul
       percent: 0,
       label: flocageTestPromo.label,
       flocagePrice: flocageTestPromo.flocagePrice,
+      freeShipping: flocageTestPromo.freeShipping,
     };
   }
 
@@ -52,4 +54,8 @@ export function resolvePromoCode(raw: string | undefined | null): PromoCodeResul
 export function applyPercentDiscount(subtotal: number, percent: number): number {
   if (percent <= 0 || subtotal <= 0) return 0;
   return Math.round(subtotal * (percent / 100) * 100) / 100;
+}
+
+export function promoGrantsFreeShipping(code: string | null | undefined): boolean {
+  return code?.trim().toUpperCase() === flocageTestPromo.code && flocageTestPromo.freeShipping;
 }

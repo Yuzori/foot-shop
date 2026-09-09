@@ -3,12 +3,13 @@ import { NextResponse } from "next/server";
 import { resolveShippingFee } from "@/lib/shipping-fee";
 
 export async function POST(request: Request) {
-  let body: { email?: string; customerId?: string; itemCount?: number };
+  let body: { email?: string; customerId?: string; itemCount?: number; promoCode?: string };
   try {
     body = (await request.json()) as {
       email?: string;
       customerId?: string;
       itemCount?: number;
+      promoCode?: string;
     };
   } catch {
     return NextResponse.json({ message: "invalid_body" }, { status: 400 });
@@ -28,6 +29,7 @@ export async function POST(request: Request) {
     email,
     customerId: body.customerId,
     itemCount,
+    promoCode: body.promoCode,
   });
 
   return NextResponse.json(shipping);

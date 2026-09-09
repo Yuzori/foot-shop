@@ -66,5 +66,6 @@ export async function POST(request: Request) {
     discount: result.discount,
     label: result.label,
     flocagePrice: result.flocagePrice,
+    freeShipping: result.freeShipping ?? false,
   });
 }

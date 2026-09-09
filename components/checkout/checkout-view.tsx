@@ -22,6 +22,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Spinner } from "@/components/ui/spinner";
 import { routes } from "@/config/site";
 import { publicConfig } from "@/config";
+import { flocageTestPromo } from "@/config/promotions";
 import {
   getCheckoutFieldErrors,
   type CheckoutFieldErrors,
@@ -187,6 +188,7 @@ export function CheckoutView() {
   const [promoDiscount, setPromoDiscount] = useState(0);
   const [promoError, setPromoError] = useState<string | null>(null);
   const [promoPending, setPromoPending] = useState(false);
+  const [promoFreeShipping, setPromoFreeShipping] = useState(false);
   const [shippingPreview, setShippingPreview] = useState<{
     fee: number;
     label: string;
@@ -426,9 +428,14 @@ export function CheckoutView() {
       ? stripeBogoDiscount
       : (bogoPreview?.discountTotal ?? 0);
 
+  const effectiveShippingFee = promoFreeShipping ? 0 : (shippingPreview?.fee ?? 0);
+  const effectiveShippingLabel = promoFreeShipping
+    ? flocageTestPromo.shippingLabel
+    : (shippingPreview?.label ?? "");
+
   const orderTotal = Math.max(
     0,
-    subtotal - bogoDiscount - promoDiscount + (shippingPreview?.fee ?? 0),
+    subtotal - bogoDiscount - promoDiscount + effectiveShippingFee,
   );
 
   const refreshShippingPreview = useCallback(
@@ -443,6 +450,7 @@ export function CheckoutView() {
             email,
             customerId: sessionQuery.data?.id,
             itemCount,
+            promoCode: promoCode.trim() || undefined,
           }),
         });
         const data = (await res.json()) as { fee?: number; label?: string };
@@ -453,7 +461,7 @@ export function CheckoutView() {
         /* ignore */
       }
     },
-    [sessionQuery.data?.id, lines],
+    [sessionQuery.data?.id, lines, promoCode],
   );
 
   const refreshPromoPreview = useCallback(
@@ -461,6 +469,7 @@ export function CheckoutView() {
       const trimmed = code.trim();
       if (!trimmed) {
         setPromoDiscount(0);
+        setPromoFreeShipping(false);
         setPromoError(null);
         return;
       }
@@ -493,16 +502,20 @@ export function CheckoutView() {
           valid?: boolean;
           discount?: number;
           message?: string;
+          freeShipping?: boolean;
         };
         if (data.valid && typeof data.discount === "number") {
           setPromoDiscount(data.discount);
+          setPromoFreeShipping(Boolean(data.freeShipping));
           setPromoError(null);
         } else {
           setPromoDiscount(0);
+          setPromoFreeShipping(false);
           setPromoError(data.message || "Code promo invalide.");
         }
       } catch {
         setPromoDiscount(0);
+        setPromoFreeShipping(false);
         setPromoError("Impossible de vérifier le code promo.");
       } finally {
         setPromoPending(false);
@@ -583,7 +596,7 @@ export function CheckoutView() {
     const email = sessionQuery.data?.email?.trim();
     if (!email) return;
     void refreshShippingPreview(email);
-  }, [refreshShippingPreview, sessionQuery.data?.email]);
+  }, [refreshShippingPreview, sessionQuery.data?.email, promoCode]);
 
   useEffect(() => {
     if (!savedProfile) return;
@@ -966,8 +979,8 @@ export function CheckoutView() {
           welcomeBogoDiscount={bogoDiscount}
           stripeBogoDiscount={stripeBogoDiscount}
           stripeFreeUnits={stripeFreeUnits}
-          shippingFee={shippingPreview?.fee}
-          shippingLabel={shippingPreview?.label}
+          shippingFee={effectiveShippingFee}
+          shippingLabel={effectiveShippingLabel}
           promoDiscount={promoDiscount}
           promoCode={promoCode}
           onPromoCodeChange={handlePromoCodeChange}
@@ -1308,8 +1321,8 @@ export function CheckoutView() {
           welcomeBogoDiscount={bogoDiscount}
           stripeBogoDiscount={stripeBogoDiscount}
           stripeFreeUnits={stripeFreeUnits}
-          shippingFee={shippingPreview?.fee}
-          shippingLabel={shippingPreview?.label}
+          shippingFee={effectiveShippingFee}
+          shippingLabel={effectiveShippingLabel}
           promoDiscount={promoDiscount}
           promoCode={promoCode}
           onPromoCodeChange={handlePromoCodeChange}
