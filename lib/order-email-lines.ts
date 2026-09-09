@@ -1,4 +1,4 @@
-import { formatFlocageLabel } from "@/config/shop";
+import { formatFlocageLabel, shopConfig } from "@/config/shop";
 import { enrichOrderLinesWithFlocage } from "@/lib/parse-flocage-note";
 import type { OrderArchiveRecord } from "@/lib/order-archive-store";
 import type { CreateOrderLine } from "@/services/prestashop";
@@ -47,6 +47,24 @@ function flocageLabel(line: CreateOrderLine): string {
   return line.flocage.text?.trim() ?? "Flocage";
 }
 
+function splitLineAmounts(line: CreateOrderLine): {
+  productUnit: number;
+  flocageUnit: number;
+} {
+  if (!line.flocage) {
+    return { productUnit: line.unitPrice, flocageUnit: 0 };
+  }
+
+  const flocageUnit =
+    line.flocage.price > 0 ? line.flocage.price : shopConfig.flocagePrice;
+  const productUnit = Math.max(
+    0,
+    Math.round((line.unitPrice - flocageUnit) * 100) / 100,
+  );
+
+  return { productUnit, flocageUnit };
+}
+
 /** Lignes email avec flocage séparé du prix produit (depuis l'archive si dispo). */
 export function buildOrderEmailLines(input: {
   archive?: OrderArchiveRecord | null;
@@ -59,8 +77,7 @@ export function buildOrderEmailLines(input: {
     );
     const rows: OrderEmailLine[] = [];
     for (const line of archiveLines) {
-      const flocageUnit = line.flocage?.price ?? 0;
-      const productUnit = Math.max(0, line.unitPrice - flocageUnit);
+      const { productUnit, flocageUnit } = splitLineAmounts(line);
       const size = line.optionsLabel?.trim();
 
       rows.push({
@@ -69,7 +86,7 @@ export function buildOrderEmailLines(input: {
         amount: productUnit * line.quantity,
       });
 
-      if (line.flocage) {
+      if (line.flocage && flocageUnit > 0) {
         const label = flocageLabel(line);
         rows.push({
           label: label ? `Flocage : ${label}` : "Flocage personnalisé",

@@ -59,7 +59,7 @@ export async function sendPaidOrderCustomerEmailsIfNeeded(input: {
   }
 
   const firstName = input.archive?.contact.firstName;
-  const emailArchive = await enrichOrderArchiveForEmail(input.archive);
+  const emailArchive = await enrichOrderArchiveForEmail(input.archive, key);
 
   try {
     await Promise.all([

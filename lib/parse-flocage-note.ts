@@ -38,33 +38,50 @@ function findFlocageForLine(
   return entries.find((entry) => entry.productName === name);
 }
 
-/** Complète les lignes archive sans objet flocage (ex. rebuild PrestaShop). */
+function flocagePriceFromLine(line: CreateOrderLine, parsed?: ParsedFlocageNote): number {
+  const fromLine = line.flocage?.price ?? 0;
+  if (fromLine > 0) return fromLine;
+  if (parsed?.price && parsed.price > 0) return parsed.price;
+  return shopConfig.flocagePrice;
+}
+
+function lineIncludesFlocagePrice(unitPrice: number, flocageUnit: number): boolean {
+  return unitPrice >= flocageUnit + 1;
+}
+
+/** Complète les lignes archive : flocage + prix total (maillot + flocage). */
 export function enrichOrderLinesWithFlocage(
   lines: CreateOrderLine[],
   note?: string | null,
 ): CreateOrderLine[] {
   const entries = parseFlocageEntriesFromNote(note);
-  if (entries.length === 0) return lines;
 
   return lines.map((line) => {
-    if (line.flocage?.name || line.flocage?.text) return line;
-
     const parsed = findFlocageForLine(line, entries);
-    if (!parsed) return line;
+    const hasFlocageData =
+      Boolean(line.flocage?.name?.trim() || line.flocage?.text?.trim()) || Boolean(parsed);
 
-    const flocageUnit = parsed.price;
-    const productOnly =
-      line.unitPrice > flocageUnit + 0.5
-        ? line.unitPrice - flocageUnit
-        : line.unitPrice;
+    if (!hasFlocageData) return line;
+
+    const flocageUnit = flocagePriceFromLine(line, parsed);
+    const name = line.flocage?.name?.trim() || parsed?.name || "";
+    const number = line.flocage?.number?.trim() || parsed?.number || "";
+    const text =
+      line.flocage?.text?.trim() ||
+      [name, number].filter(Boolean).join(" ") ||
+      undefined;
+
+    const unitPrice = lineIncludesFlocagePrice(line.unitPrice, flocageUnit)
+      ? line.unitPrice
+      : Math.round((line.unitPrice + flocageUnit) * 100) / 100;
 
     return {
       ...line,
-      unitPrice: Math.round((productOnly + flocageUnit) * 100) / 100,
+      unitPrice,
       flocage: {
-        name: parsed.name,
-        number: parsed.number,
-        text: parsed.name && parsed.number ? `${parsed.name} ${parsed.number}` : parsed.name,
+        name,
+        number,
+        text,
         price: flocageUnit,
       },
     };

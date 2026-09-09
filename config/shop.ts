@@ -18,7 +18,7 @@ export const shopConfig = {
   stockDisplayMax: 10,
   flocageLabel: "Flocage personnalisé",
   flocageNameMax: 15,
-  flocageNumberMin: 2,
+  flocageNumberMin: 1,
   flocageNumberMax: 2,
   /** Messages sous le bouton d'achat (rotation toutes les 3 s). */
   purchaseTicker: [

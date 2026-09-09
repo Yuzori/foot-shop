@@ -178,13 +178,15 @@ export function CheckoutFlocage() {
                             },
                           }))
                         }
-                        placeholder="10"
+                        placeholder="7"
                         autoComplete="off"
                         maxLength={shopConfig.flocageNumberMax}
                         className="mt-1.5 h-11 w-full rounded-xl border border-ink/15 bg-paper px-4 text-sm font-bold tabular-nums text-ink outline-none focus:border-accent"
                       />
                       <p className="mt-1 text-[11px] text-ink/45">
-                        {shopConfig.flocageNumberMin} chiffres minimum
+                        {shopConfig.flocageNumberMin === 1
+                          ? "1 chiffre minimum"
+                          : `${shopConfig.flocageNumberMin} chiffres minimum`}
                       </p>
                     </div>
                   </div>
