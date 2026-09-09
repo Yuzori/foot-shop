@@ -45,10 +45,6 @@ function flocagePriceFromLine(line: CreateOrderLine, parsed?: ParsedFlocageNote)
   return shopConfig.flocagePrice;
 }
 
-function lineIncludesFlocagePrice(unitPrice: number, flocageUnit: number): boolean {
-  return unitPrice >= flocageUnit + 1;
-}
-
 /** Complète les lignes archive : flocage + prix total (maillot + flocage). */
 export function enrichOrderLinesWithFlocage(
   lines: CreateOrderLine[],
@@ -58,8 +54,10 @@ export function enrichOrderLinesWithFlocage(
 
   return lines.map((line) => {
     const parsed = findFlocageForLine(line, entries);
-    const hasFlocageData =
-      Boolean(line.flocage?.name?.trim() || line.flocage?.text?.trim()) || Boolean(parsed);
+    const hadFlocageOnLine = Boolean(
+      line.flocage?.name?.trim() || line.flocage?.text?.trim(),
+    );
+    const hasFlocageData = hadFlocageOnLine || Boolean(parsed);
 
     if (!hasFlocageData) return line;
 
@@ -71,9 +69,11 @@ export function enrichOrderLinesWithFlocage(
       [name, number].filter(Boolean).join(" ") ||
       undefined;
 
-    const unitPrice = lineIncludesFlocagePrice(line.unitPrice, flocageUnit)
-      ? line.unitPrice
-      : Math.round((line.unitPrice + flocageUnit) * 100) / 100;
+    // Prix PrestaShop = maillot seul ; pending checkout = maillot + flocage déjà inclus.
+    const unitPrice =
+      !hadFlocageOnLine && parsed
+        ? Math.round((line.unitPrice + flocageUnit) * 100) / 100
+        : line.unitPrice;
 
     return {
       ...line,
