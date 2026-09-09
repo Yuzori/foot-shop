@@ -10,6 +10,7 @@ import {
   markOrderCustomerEmailsSent,
   releaseOrderCustomerEmailsClaim,
 } from "@/lib/order-customer-email-store";
+import { enrichOrderArchiveForEmail } from "@/lib/enrich-order-archive-for-email";
 import { sendOrderConfirmationEmail } from "@/lib/order-confirmation-email";
 import { sendShippingPendingEmail } from "@/lib/shipping-pending-email";
 import { prestashop } from "@/services/prestashop";
@@ -58,13 +59,14 @@ export async function sendPaidOrderCustomerEmailsIfNeeded(input: {
   }
 
   const firstName = input.archive?.contact.firstName;
+  const emailArchive = await enrichOrderArchiveForEmail(input.archive);
 
   try {
     await Promise.all([
       sendOrderConfirmationEmail({
         to: email,
         order: input.order,
-        archive: input.archive,
+        archive: emailArchive,
         firstName,
         firstOrderPromo: isFirstPaidOrder
           ? {

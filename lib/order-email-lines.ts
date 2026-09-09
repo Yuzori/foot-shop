@@ -1,4 +1,5 @@
 import { formatFlocageLabel } from "@/config/shop";
+import { enrichOrderLinesWithFlocage } from "@/lib/parse-flocage-note";
 import type { OrderArchiveRecord } from "@/lib/order-archive-store";
 import type { CreateOrderLine } from "@/services/prestashop";
 import type { Order } from "@/types/domain";
@@ -52,8 +53,12 @@ export function buildOrderEmailLines(input: {
   order?: Order;
 }): OrderEmailLine[] {
   if (input.archive?.lines.length) {
+    const archiveLines = enrichOrderLinesWithFlocage(
+      input.archive.lines,
+      input.archive.note,
+    );
     const rows: OrderEmailLine[] = [];
-    for (const line of input.archive.lines) {
+    for (const line of archiveLines) {
       const flocageUnit = line.flocage?.price ?? 0;
       const productUnit = Math.max(0, line.unitPrice - flocageUnit);
       const size = line.optionsLabel?.trim();
@@ -64,9 +69,10 @@ export function buildOrderEmailLines(input: {
         amount: productUnit * line.quantity,
       });
 
-      if (line.flocage && flocageUnit > 0) {
+      if (line.flocage) {
+        const label = flocageLabel(line);
         rows.push({
-          label: `Flocage : ${flocageLabel(line)}`,
+          label: label ? `Flocage : ${label}` : "Flocage personnalisé",
           amount: flocageUnit * line.quantity,
         });
       }

@@ -146,6 +146,7 @@ export async function resolveCartLines(
       quantity,
       unitPrice: Math.round(unitPrice * 100) / 100,
       name: product.name,
+      optionsLabel: line.optionsLabel?.trim() || undefined,
       flocage,
     });
   }

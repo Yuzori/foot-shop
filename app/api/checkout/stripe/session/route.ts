@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { flocageTestPromo } from "@/config/promotions";
 import { getCheckoutBaseUrl } from "@/lib/site-url";
 import { paymentConfig } from "@/config/payment";
 import { placeOrder, type CheckoutBody } from "@/lib/orders";
@@ -9,8 +10,9 @@ import { getStripe } from "@/lib/stripe-server";
 import { getOrCreateStripeCustomer } from "@/lib/stripe-customer";
 import { ensureStripePaymentMethodDomains } from "@/lib/stripe-payment-domains";
 import { createStripeElementsCheckoutSession } from "@/lib/stripe-create-checkout-session";
+import { buildStripeCheckoutLineItems } from "@/lib/build-stripe-checkout-line-items";
+import { buildStripePaymentIntentShipping } from "@/lib/stripe-payment-intent-shipping";
 import {
-  buildStripeLineItemDescription,
   buildStripeOrderMetadata,
   type OrderLineForMetadata,
 } from "@/lib/stripe-order-metadata";
@@ -96,11 +98,6 @@ async function handleStripeSession(request: Request) {
   const ref = order.reference ?? "";
   const returnUrl = `${base}/paiement/succes?ref=${encodeURIComponent(ref)}&session_id={CHECKOUT_SESSION_ID}`;
 
-  const chargeLines = serverLines.map((line) => ({
-    name: line.name || "Article",
-    unitPrice: line.unitPrice,
-    quantity: line.quantity,
-  }));
   const bogoApplied = Boolean(order.bogoApplied);
   const bogoDiscount = order.bogoDiscount ?? 0;
   const freeUnits = bogoApplied
@@ -114,78 +111,33 @@ async function handleStripeSession(request: Request) {
     : 0;
 
   const shippingFee = order.shippingFee ?? 0;
-  const productsSubtotal = chargeLines.reduce(
-    (sum, line) => sum + line.unitPrice * line.quantity,
-    0,
-  );
   const promoDiscount = order.promoDiscount ?? 0;
   const promoCode = order.promoCode ?? null;
 
-  const stripeLineItems = chargeLines.map((it, index) => {
-    const sourceLine: OrderLineForMetadata = {
-      ...(serverLines[index] ?? {
-        productId: "",
-        variantId: null,
-        quantity: it.quantity,
-        unitPrice: it.unitPrice,
-        name: it.name,
-      }),
-      optionsLabel: body.lines[index]?.optionsLabel,
-    };
-    const description = buildStripeLineItemDescription(sourceLine);
-    return {
-      quantity: it.quantity,
-      price_data: {
-        currency: paymentConfig.currency,
-        unit_amount: Math.round(it.unitPrice * 100),
-        product_data: {
-          name: it.name || "Article",
-          ...(description ? { description } : {}),
-        },
-      },
-    };
+  const bodyLines: OrderLineForMetadata[] = serverLines.map((line, index) => ({
+    ...line,
+    optionsLabel: body.lines[index]?.optionsLabel,
+  }));
+
+  const stripeLineItems = buildStripeCheckoutLineItems({
+    serverLines,
+    bodyLines,
+    shippingFee,
+    promoDiscount,
+    promoCode,
+    reference: ref,
   });
 
-  if (shippingFee > 0) {
-    stripeLineItems.push({
-      quantity: 1,
-      price_data: {
-        currency: paymentConfig.currency,
-        unit_amount: Math.round(shippingFee * 100),
-        product_data: {
-          name: "Livraison",
-        },
-      },
-    });
-  }
+  const productsSubtotal = serverLines.reduce(
+    (sum, line) => sum + line.unitPrice * line.quantity,
+    0,
+  );
 
-  if (promoDiscount > 0 && promoCode) {
-    const subtotal = chargeLines.reduce(
-      (sum, line) => sum + line.unitPrice * line.quantity,
-      0,
-    );
-    let remaining = promoDiscount;
-    for (let i = 0; i < chargeLines.length; i++) {
-      const line = chargeLines[i]!;
-      const lineTotal = line.unitPrice * line.quantity;
-      const share =
-        i === chargeLines.length - 1
-          ? remaining
-          : Math.round(((promoDiscount * lineTotal) / subtotal) * 100) / 100;
-      remaining -= share;
-      if (share <= 0) continue;
-      const item = stripeLineItems[i];
-      if (!item) continue;
-      const newTotal = Math.max(0.01, lineTotal - share);
-      item.price_data.unit_amount = Math.round(
-        (newTotal / line.quantity) * 100,
-      );
-      item.price_data.product_data.name = `${line.name} (${promoCode})`;
-    }
-  }
+  const stripePromoDiscount =
+    promoCode === flocageTestPromo.code ? 0 : promoDiscount;
 
   const expectedTotalCents = Math.round(
-    (productsSubtotal - promoDiscount + shippingFee) * 100,
+    (productsSubtotal - stripePromoDiscount + shippingFee) * 100,
   );
 
   await ensureStripePaymentMethodDomains();
@@ -242,6 +194,7 @@ async function handleStripeSession(request: Request) {
       line_items: stripeLineItems,
       metadata: orderMetadata,
       payment_intent_data: {
+        shipping: buildStripePaymentIntentShipping(body.contact, body.address),
         metadata: {
           reference: ref,
           orderId: String(order.orderId ?? ""),

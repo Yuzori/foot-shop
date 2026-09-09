@@ -8,9 +8,11 @@ import {
   getOrderArchiveByReference,
   type OrderArchiveRecord,
 } from "@/lib/order-archive-store";
+import { enrichOrderLinesWithFlocage } from "@/lib/parse-flocage-note";
 import { prestashop } from "@/services/prestashop";
 import type { CreateOrderLine } from "@/services/prestashop";
 import type { Order } from "@/types/domain";
+
 export async function rebuildArchiveFromPrestaShopOrder(
   orderId: string,
 ): Promise<OrderArchiveRecord | null> {
@@ -28,7 +30,7 @@ export async function rebuildArchiveFromPrestaShopOrder(
   const context = await prestashop.getSupplierOrderContext(key);
   if (!context?.lines.length) return null;
 
-  const lines: CreateOrderLine[] = context.lines.map((line) => {
+  const rawLines: CreateOrderLine[] = context.lines.map((line) => {
     const priced =
       order.lines.find(
         (row) =>
@@ -43,6 +45,8 @@ export async function rebuildArchiveFromPrestaShopOrder(
       unitPrice: priced?.unitPrice ?? 0,
     };
   });
+
+  const lines = enrichOrderLinesWithFlocage(rawLines, context.flocageNote);
 
   const subtotal = lines.reduce(
     (sum, line) => sum + line.unitPrice * line.quantity,

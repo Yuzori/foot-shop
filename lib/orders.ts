@@ -447,7 +447,10 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
     customerId,
     contact.email,
   );
-  let orderLines = bogoResult.lines;
+  let orderLines = bogoResult.lines.map((line, index) => {
+    const optionsLabel = body.lines[index]?.optionsLabel?.trim();
+    return optionsLabel ? { ...line, optionsLabel } : line;
+  });
 
   const normalizedAddress = {
     address1: address.address1.trim(),
