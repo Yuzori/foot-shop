@@ -20,7 +20,7 @@ export const legalInfo = {
     "79 rue du Huit Mai 1945, 69100 Villeurbanne, France",
   ),
   email: envOr("CONTACT_EMAIL", "contact@foot-shop.fr"),
-  phone: envOr("LEGAL_PHONE", "Non communiqué"),
+  phone: envOr("LEGAL_PHONE", "07 83 28 26 13"),
   siret: envOr("LEGAL_SIRET", "109 167 346 00013"),
   apeCode: envOr("LEGAL_APE", "4791B"),
   activity: envOr(
