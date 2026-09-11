@@ -91,6 +91,9 @@ function LineItems({
               unitPrice={unitPrice}
               quantity={line.quantity}
               freeQuantity={freePerLine[index] ?? 0}
+              flocageUnitPrice={
+                line.flocage?.enabled ? line.flocage.price : 0
+              }
             />
           </li>
         );

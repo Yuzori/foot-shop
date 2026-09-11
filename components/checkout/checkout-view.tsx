@@ -49,7 +49,11 @@ import {
 import { formatPrice } from "@/lib/format";
 import { getErrorMessage } from "@/lib/http";
 import { preloadStripe } from "@/lib/stripe-client";
-import { calculateWelcomeBogo, allocateBogoFreeQuantities } from "@/lib/welcome-bogo";
+import {
+  allocateBogoFreeQuantities,
+  bogoLineFromCart,
+  calculateWelcomeBogo,
+} from "@/lib/welcome-bogo";
 import {
   emptyCheckoutProfile,
   type CheckoutDeliveryProfile,
@@ -60,7 +64,6 @@ import { useHydrated } from "@/hooks/use-hydrated";
 import { useScrollToTop } from "@/hooks/use-scroll-to-top";
 import { useSession } from "@/hooks/use-auth";
 import { useCheckoutProfile } from "@/hooks/use-checkout-profile";
-import { cartLineUnitPrice } from "@/hooks/use-cart-bogo";
 import {
   resolveCartLinesForCheckout,
   useCartStore,
@@ -398,12 +401,7 @@ export function CheckoutView() {
   }, [step, checkoutLines]);
 
   const bogoCartLines = useMemo(
-    () =>
-      lines.map((line) => ({
-        name: line.name,
-        unitPrice: cartLineUnitPrice(line),
-        quantity: line.quantity,
-      })),
+    () => lines.map((line) => bogoLineFromCart(line)),
     [lines],
   );
 

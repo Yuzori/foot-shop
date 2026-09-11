@@ -9,6 +9,7 @@ import {
 } from "@/components/checkout/welcome-promo-banner";
 import {
   allocateBogoFreeQuantities,
+  bogoLineFromCart,
   calculateWelcomeBogo,
 } from "@/lib/welcome-bogo";
 import { cartSelectors, useCartStore } from "@/store/cart-store";
@@ -27,12 +28,7 @@ export function useCartBogo() {
   const sessionQuery = useSession();
 
   const bogoLines = useMemo(
-    () =>
-      lines.map((line) => ({
-        name: line.name,
-        unitPrice: cartLineUnitPrice(line),
-        quantity: line.quantity,
-      })),
+    () => lines.map((line) => bogoLineFromCart(line)),
     [lines],
   );
 

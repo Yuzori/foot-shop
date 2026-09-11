@@ -26,7 +26,7 @@ import { resolveShippingFee } from "@/lib/shipping-fee";
 import { welcomePromo } from "@/config/promotions";
 import { countPaidOrdersForCheckout } from "@/lib/customer-order-history";
 import { isWelcomePromoEligible } from "@/lib/welcome-promo-store";
-import { calculateWelcomeBogo } from "@/lib/welcome-bogo";
+import { bogoLineFromOrder, calculateWelcomeBogo } from "@/lib/welcome-bogo";
 import { prestashop } from "@/services/prestashop";
 
 import type { CreateOrderLine } from "@/services/prestashop";
@@ -286,11 +286,14 @@ async function applyWelcomeBogoToLines(
     return { lines, bogoDiscount: 0, bogoApplied: false };
   }
 
-  const bogoInput = lines.map((line) => ({
-    name: line.name ?? `Produit #${line.productId}`,
-    unitPrice: line.unitPrice,
-    quantity: line.quantity,
-  }));
+  const bogoInput = lines.map((line) =>
+    bogoLineFromOrder({
+      name: line.name ?? `Produit #${line.productId}`,
+      unitPrice: line.unitPrice,
+      quantity: line.quantity,
+      flocage: line.flocage,
+    }),
+  );
   const bogo = calculateWelcomeBogo(bogoInput);
   if (!bogo.applied) {
     return { lines, bogoDiscount: 0, bogoApplied: false };

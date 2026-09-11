@@ -24,7 +24,7 @@ import {
   validateStripeKeyPair,
   validateStripeSiteUrl,
 } from "@/lib/stripe-keys";
-import { calculateWelcomeBogo } from "@/lib/welcome-bogo";
+import { bogoLineFromOrder, calculateWelcomeBogo } from "@/lib/welcome-bogo";
 
 export const runtime = "nodejs";
 
@@ -102,11 +102,14 @@ async function handleStripeSession(request: Request) {
   const bogoDiscount = order.bogoDiscount ?? 0;
   const freeUnits = bogoApplied
     ? calculateWelcomeBogo(
-        body.items.map((item) => ({
-          name: item.name,
-          unitPrice: item.unitPrice,
-          quantity: item.quantity,
-        })),
+        serverLines.map((line, index) =>
+          bogoLineFromOrder({
+            name: line.name,
+            unitPrice: body.items[index]?.unitPrice ?? line.unitPrice,
+            quantity: line.quantity,
+            flocage: line.flocage,
+          }),
+        ),
       ).freeUnits
     : 0;
 
