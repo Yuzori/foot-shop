@@ -18,6 +18,7 @@ import {
   inferAbandonCauseFromStripeSession,
   parseStripeOrderLinesFromMetadata,
 } from "@/lib/stripe-order-metadata";
+import { getOrderArchiveByReference } from "@/lib/order-archive-store";
 import { getStripe } from "@/lib/stripe-server";
 import type {
   AbandonedCheckout,
@@ -62,6 +63,52 @@ function formatStripeAddress(address: StripeAddress | null | undefined): string 
   ]
     .filter(Boolean)
     .join(", ");
+}
+
+/** Adresse Stripe incomplète (ex. « FR » seul sur anciennes sessions Elements). */
+function isWeakShippingAddress(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return true;
+  if (/^[A-Za-z]{2}$/.test(trimmed)) return true;
+  if (trimmed.toLowerCase() === "france") return true;
+  return trimmed.length < 12;
+}
+
+function formatArchiveShippingAddress(
+  address: {
+    address1: string;
+    address2?: string;
+    postcode: string;
+    city: string;
+    country: string;
+  },
+): string {
+  return [
+    address.address1,
+    address.address2,
+    `${address.postcode} ${address.city}`.trim(),
+    address.country,
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
+async function enrichOrderFromArchive(
+  order: StripeAdminOrder,
+): Promise<StripeAdminOrder> {
+  const archive = await getOrderArchiveByReference(order.reference);
+  if (!archive?.address?.address1?.trim()) return order;
+
+  const shippingAddress = isWeakShippingAddress(order.shippingAddress)
+    ? formatArchiveShippingAddress(archive.address)
+    : order.shippingAddress;
+
+  return {
+    ...order,
+    shippingAddress,
+    phone: order.phone || archive.contact.phone || "",
+    email: order.email || archive.contact.email || "",
+  };
 }
 
 function extractSessionContactDetails(session: {
@@ -326,6 +373,9 @@ export async function listStripeAdminOrders(limit = 50): Promise<StripeAdminOrde
   }
 
   orders.sort((a, b) => b.paidAt.localeCompare(a.paidAt));
+  const enrichedOrders = await Promise.all(
+    orders.slice(0, limit).map((order) => enrichOrderFromArchive(order)),
+  );
 
   const localAbandons = (await listCheckoutAbandonRecords()).map(mapAbandonRecord);
   const abandonedMap = new Map<string, AbandonedCheckout>();
@@ -344,7 +394,7 @@ export async function listStripeAdminOrders(limit = 50): Promise<StripeAdminOrde
     .slice(0, limit);
 
   return {
-    orders: orders.slice(0, limit),
+    orders: enrichedOrders,
     abandoned,
     updatedAt: new Date().toISOString(),
   };
