@@ -20,7 +20,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}${routes.tracking}`, lastModified: now, changeFrequency: "monthly", priority: 0.3 },
     { url: `${base}${routes.terms}`, lastModified: now, changeFrequency: "yearly", priority: 0.2 },
     { url: `${base}${routes.privacy}`, lastModified: now, changeFrequency: "yearly", priority: 0.2 },
-    { url: `${base}${routes.legal}`, lastModified: now, changeFrequency: "yearly", priority: 0.2 },
   ];
 
   if (!prestashop.isConfigured) return staticEntries;

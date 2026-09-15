@@ -17,6 +17,7 @@ export default function robots(): MetadataRoute.Robots {
         "/creer-compte",
         "/mot-de-passe-oublie",
         "/reinitialiser",
+        "/mentions-legales",
       ],
     },
     sitemap: `${base}/sitemap.xml`,
