@@ -18,12 +18,8 @@ export default function LegalPage() {
     >
       <section>
         <h2>Éditeur du site</h2>
-        <p>
-          {legalInfo.companyName}, site exploité par {legalInfo.proprietorName}{" "}
-          — {legalInfo.legalForm}.
-        </p>
+        <p>{legalInfo.companyName} — {legalInfo.legalForm}.</p>
         <p>Capital social : {legalInfo.shareCapital}</p>
-        <p>Adresse : {legalInfo.address}</p>
         <p>SIRET : {legalInfo.siret}</p>
         <p>RCS : {legalInfo.rcs}</p>
         <p>
@@ -32,11 +28,6 @@ export default function LegalPage() {
         <p>Régime TVA : {legalInfo.vat}</p>
         <p>Email : {legalInfo.email}</p>
         <p>Téléphone : {legalInfo.phone}</p>
-      </section>
-
-      <section>
-        <h2>Directeur de la publication</h2>
-        <p>{legalInfo.publicationDirector}</p>
       </section>
 
       <section>
