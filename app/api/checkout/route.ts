@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { placeOrder, type CheckoutBody } from "@/lib/orders";
+import { clientIp } from "@/lib/rate-limit";
 
 /**
  * Creates a real order in PrestaShop (state: "Awaiting payment").
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Requête invalide." }, { status: 400 });
   }
 
-  const result = await placeOrder(body);
+  const result = await placeOrder(body, { clientIp: clientIp(request) });
   if (!result.ok) {
     return NextResponse.json(
       { message: result.message, detail: result.detail },

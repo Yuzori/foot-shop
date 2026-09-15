@@ -1,26 +1,19 @@
 "use client";
 
-import Link from "next/link";
-
 import { welcomePromo } from "@/config/promotions";
-import { buttonClasses } from "@/components/ui/button";
-import { routes } from "@/config/site";
 import { unitsUntilWelcomeBogo } from "@/lib/welcome-bogo";
-import { useSession } from "@/hooks/use-auth";
 
 interface WelcomePromoGuestNudgeProps {
   totalUnits: number;
   className?: string;
 }
 
-/** Invite à créer un compte pour bénéficier du 2+1 (invités uniquement). */
+/** Rappel offre 2+1 — sans compte, appliquée au paiement si éligible. */
 export function WelcomePromoGuestNudge({
   totalUnits,
   className,
 }: WelcomePromoGuestNudgeProps) {
-  const { data: user, isLoading } = useSession();
-
-  if (isLoading || user || !welcomePromo.enabled || totalUnits < 3) {
+  if (!welcomePromo.enabled || totalUnits < 3) {
     return null;
   }
 
@@ -40,20 +33,14 @@ export function WelcomePromoGuestNudge({
         {missing > 0 ? (
           <>
             Ajoutez encore <strong>{missing}</strong> article
-            {missing > 1 ? "s" : ""}, puis{" "}
+            {missing > 1 ? "s" : ""}, puis payez : le{" "}
           </>
         ) : (
-          <>Vous avez assez d&apos;articles - </>
+          <>Au paiement : le </>
         )}
-        <strong>créez un compte</strong> pour profiter du{" "}
-        {welcomePromo.checkoutLabel.toLowerCase()} sur votre première commande.
+        <strong>{welcomePromo.checkoutLabel.toLowerCase()}</strong> s&apos;applique
+        automatiquement sur votre première commande (une utilisation par foyer).
       </p>
-      <Link
-        href={routes.register}
-        className={buttonClasses("accent", "md", "mt-4 inline-flex")}
-      >
-        Créer un compte
-      </Link>
     </div>
   );
 }

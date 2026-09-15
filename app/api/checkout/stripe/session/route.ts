@@ -24,6 +24,7 @@ import {
   validateStripeKeyPair,
   validateStripeSiteUrl,
 } from "@/lib/stripe-keys";
+import { clientIp } from "@/lib/rate-limit";
 import { bogoLineFromOrder, calculateWelcomeBogo } from "@/lib/welcome-bogo";
 
 export const runtime = "nodejs";
@@ -80,7 +81,7 @@ async function handleStripeSession(request: Request) {
     return NextResponse.json({ message: "Requête invalide." }, { status: 400 });
   }
 
-  const order = await placeOrder(body);
+  const order = await placeOrder(body, { clientIp: clientIp(request) });
   if (!order.ok) {
     return NextResponse.json(
       { message: order.message, detail: order.detail },
@@ -172,6 +173,8 @@ async function handleStripeSession(request: Request) {
       optionsLabel: body.lines[index]?.optionsLabel,
     })),
     welcomePromo: bogoApplied,
+    welcomePromoIdentityHash: order.welcomePromoIdentityHash,
+    welcomePromoIpHash: order.welcomePromoIpHash,
     expectedTotalCents,
     bogoFreeUnits: bogoApplied ? freeUnits : undefined,
     promoCode,

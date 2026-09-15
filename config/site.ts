@@ -63,12 +63,11 @@ export const footerNav: { title: string; links: NavLink[] }[] = [
     ],
   },
   {
-    title: "Compte",
+    title: "Commande",
     links: [
-      { label: "Connexion", href: routes.login },
-      { label: "Créer un compte", href: routes.register },
-      { label: "Mes commandes", href: routes.orders },
       { label: "Suivi de commande", href: routes.tracking },
+      { label: "Paiement", href: routes.checkout },
+      { label: "Panier", href: routes.cart },
     ],
   },
   {

@@ -6,7 +6,7 @@ import { fulfillPaidOrder } from "@/lib/order-paid";
 import { hasOrderBeenFulfilled } from "@/lib/order-fulfillment-store";
 import { getCheckoutSnapshotByReference } from "@/lib/checkout-snapshot";
 import { resolveCheckoutNotificationEmail } from "@/lib/checkout-notification-email";
-import { markWelcomePromoUsed } from "@/lib/welcome-promo-store";
+import { fulfillWelcomePromoFromStripeMetadata } from "@/lib/welcome-promo-fulfill";
 import { isCheckoutSessionPaidOnStripe } from "@/lib/stripe-checkout-session-status";
 import { formatStripeError } from "@/lib/stripe-keys";
 import { getStripe } from "@/lib/stripe-server";
@@ -97,12 +97,7 @@ export async function POST(request: Request) {
             checkoutSessionId,
           });
         }
-        if (
-          session.metadata?.welcomePromo === "1" &&
-          session.metadata.customerId
-        ) {
-          await markWelcomePromoUsed(session.metadata.customerId);
-        }
+        await fulfillWelcomePromoFromStripeMetadata(session.metadata);
       } catch (error) {
         console.error("[stripe] confirm background fulfillment failed", error);
       }

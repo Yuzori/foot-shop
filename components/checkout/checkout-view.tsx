@@ -8,10 +8,6 @@ import { useRouter } from "next/navigation";
 import { CheckoutFlocage } from "@/components/checkout/checkout-flocage";
 import { CheckoutSteps } from "@/components/checkout/checkout-steps";
 import { OrderSummary, CheckoutMobileStickyBar, summarySubtotal } from "@/components/checkout/order-summary";
-import {
-  shouldApplyWelcomePromo,
-  useWelcomePromo,
-} from "@/components/checkout/welcome-promo-banner";
 import { StripePaymentForm } from "@/components/checkout/stripe-payment-form";
 import { WelcomePromoGuestNudge } from "@/components/marketing/welcome-promo-guest-nudge";
 import { Button } from "@/components/ui/button";
@@ -62,8 +58,11 @@ import { useCartStockGuard } from "@/hooks/use-cart-stock-guard";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { useScrollToTop } from "@/hooks/use-scroll-to-top";
-import { useSession } from "@/hooks/use-auth";
 import { useCheckoutProfile } from "@/hooks/use-checkout-profile";
+import {
+  shouldApplyWelcomePromoPreview,
+  useWelcomePromoPreview,
+} from "@/hooks/use-welcome-promo-preview";
 import {
   resolveCartLinesForCheckout,
   useCartStore,
@@ -149,8 +148,6 @@ export function CheckoutView() {
   const storeLines = useCartStore((s) => s.lines);
   const removeLine = useCartStore((s) => s.removeLine);
   const clear = useCartStore((s) => s.clear);
-  const welcomePromoQuery = useWelcomePromo();
-  const sessionQuery = useSession();
   const { profile: savedProfile, hasProfile, saveProfile } = useCheckoutProfile();
 
   const [deliveryForm, setDeliveryForm] = useState(() => emptyCheckoutProfile());
@@ -172,6 +169,7 @@ export function CheckoutView() {
     }),
     450,
   );
+  const debouncedEmail = useDebounce(deliveryForm.contact.email.trim(), 450);
 
   const [frozenLines, setFrozenLines] = useState<CartLine[] | null>(null);
   const [step, setStep] = useState<Step>("details");
@@ -199,8 +197,6 @@ export function CheckoutView() {
   const paymentRestoredRef = useRef(false);
   const detailsFormRef = useRef<HTMLFormElement>(null);
   const paymentSectionRef = useRef<HTMLElement>(null);
-  const accountPrefilled = useRef(false);
-
   useScrollToTop();
 
   const markFieldTouched = useCallback((field: CheckoutFieldName) => {
@@ -405,21 +401,29 @@ export function CheckoutView() {
     [lines],
   );
 
+  const promoPreviewInput = useMemo(() => {
+    const { contact, address } = normalizeDeliveryForm(deliveryForm);
+    return { contact, address };
+  }, [deliveryForm]);
+
+  const welcomePromoQuery = useWelcomePromoPreview(promoPreviewInput);
+  const promoEligible = shouldApplyWelcomePromoPreview(welcomePromoQuery.data);
+
   const freePerLine = useMemo(() => {
-    if (!sessionQuery.data?.id || welcomePromoQuery.data?.status !== "eligible") {
+    if (!promoEligible) {
       return lines.map(() => 0);
     }
     return allocateBogoFreeQuantities(bogoCartLines);
-  }, [bogoCartLines, lines, sessionQuery.data?.id, welcomePromoQuery.data?.status]);
+  }, [bogoCartLines, lines, promoEligible]);
 
   const subtotal = useMemo(() => summarySubtotal(lines), [lines]);
 
   const bogoPreview = useMemo(() => {
-    if (!sessionQuery.data?.id || welcomePromoQuery.data?.status !== "eligible") {
+    if (!promoEligible) {
       return null;
     }
     return calculateWelcomeBogo(bogoCartLines);
-  }, [bogoCartLines, sessionQuery.data?.id, welcomePromoQuery.data?.status]);
+  }, [bogoCartLines, promoEligible]);
 
   const bogoDiscount =
     stripeBogoDiscount > 0
@@ -446,7 +450,6 @@ export function CheckoutView() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             email,
-            customerId: sessionQuery.data?.id,
             itemCount,
             promoCode: promoCode.trim() || undefined,
           }),
@@ -459,7 +462,7 @@ export function CheckoutView() {
         /* ignore */
       }
     },
-    [sessionQuery.data?.id, lines, promoCode],
+    [lines, promoCode],
   );
 
   const refreshPromoPreview = useCallback(
@@ -480,7 +483,6 @@ export function CheckoutView() {
           body: JSON.stringify({
             code: trimmed,
             email: email?.trim() ?? "",
-            customerId: sessionQuery.data?.id,
             subtotal: subtotal - bogoDiscount,
             lines: lines.map((line) => ({
               quantity: line.quantity,
@@ -519,7 +521,7 @@ export function CheckoutView() {
         setPromoPending(false);
       }
     },
-    [bogoDiscount, lines, sessionQuery.data?.id, subtotal],
+    [bogoDiscount, lines, subtotal],
   );
 
   const handlePromoCodeChange = useCallback(
@@ -591,10 +593,9 @@ export function CheckoutView() {
   }, [promoCode, refreshPromoPreview]);
 
   useEffect(() => {
-    const email = sessionQuery.data?.email?.trim();
-    if (!email) return;
-    void refreshShippingPreview(email);
-  }, [refreshShippingPreview, sessionQuery.data?.email, promoCode]);
+    if (!debouncedEmail) return;
+    void refreshShippingPreview(debouncedEmail);
+  }, [refreshShippingPreview, debouncedEmail, promoCode]);
 
   useEffect(() => {
     if (!savedProfile) return;
@@ -610,21 +611,6 @@ export function CheckoutView() {
     });
     setUsingSavedProfile(true);
   }, [savedProfile]);
-
-  useEffect(() => {
-    const user = sessionQuery.data;
-    if (!user || accountPrefilled.current) return;
-    accountPrefilled.current = true;
-    setDeliveryForm((current) => ({
-      ...current,
-      contact: {
-        ...current.contact,
-        firstName: current.contact.firstName || user.firstName,
-        lastName: current.contact.lastName || user.lastName,
-        email: current.contact.email || user.email,
-      },
-    }));
-  }, [sessionQuery.data]);
 
   const resolvedPaymentReturnUrl = useMemo(() => {
     if (paymentReturnUrl?.trim()) return paymentReturnUrl;
@@ -865,7 +851,7 @@ export function CheckoutView() {
         const session = await api.checkoutStripeSession({
           ...payload,
           items: stripeItems,
-          applyWelcomePromo: shouldApplyWelcomePromo(welcomePromoQuery.data),
+          applyWelcomePromo: promoEligible,
           promoCode: promoCode.trim() || undefined,
         });
         const bogoDisc = session.bogoDiscount ?? 0;
@@ -986,6 +972,7 @@ export function CheckoutView() {
           promoPending={promoPending}
           orderReference={orderReference}
           shippingAddress={checkoutShippingAddress}
+          welcomePromoEligible={promoEligible}
         />
         </div>
 
@@ -1328,6 +1315,7 @@ export function CheckoutView() {
           promoPending={promoPending}
           orderReference={orderReference}
           shippingAddress={checkoutShippingAddress}
+          welcomePromoEligible={promoEligible}
         />
       </div>
     </Container>

@@ -8,7 +8,7 @@ import { getCheckoutSnapshotByReference } from "@/lib/checkout-snapshot";
 import { resolveCheckoutNotificationEmail } from "@/lib/checkout-notification-email";
 import { recordCheckoutAbandonFromSession } from "@/lib/record-checkout-abandon";
 import { removeCheckoutAbandonByReference } from "@/lib/checkout-abandons-store";
-import { markWelcomePromoUsed } from "@/lib/welcome-promo-store";
+import { fulfillWelcomePromoFromStripeMetadata } from "@/lib/welcome-promo-fulfill";
 import { isCheckoutSessionPaidOnStripe } from "@/lib/stripe-checkout-session-status";
 import { getStripe } from "@/lib/stripe-server";
 export const runtime = "nodejs";
@@ -43,12 +43,7 @@ async function fulfillSessionIfPaid(
       await removeCheckoutAbandonByReference(session.metadata.reference);
     }
   }
-  if (
-    session.metadata?.welcomePromo === "1" &&
-    session.metadata.customerId
-  ) {
-    await markWelcomePromoUsed(session.metadata.customerId);
-  }
+  await fulfillWelcomePromoFromStripeMetadata(session.metadata);
 }
 
 async function cancelSessionIfUnpaid(

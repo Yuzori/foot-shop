@@ -8,7 +8,6 @@ import crypto from "node:crypto";
 
 import { formatFlocageLabel } from "@/config/shop";
 
-import { getSession } from "@/lib/auth";
 import { verifyAddressWithGeoApi } from "@/lib/checkout-address-verify";
 import {
   validateCheckoutContactForm,
@@ -24,8 +23,7 @@ import { applyFlocagePromoPrice } from "@/lib/apply-flocage-promo";
 import { resolveCartLines } from "@/lib/resolve-cart-lines";
 import { resolveShippingFee } from "@/lib/shipping-fee";
 import { welcomePromo } from "@/config/promotions";
-import { countPaidOrdersForCheckout } from "@/lib/customer-order-history";
-import { isWelcomePromoEligible } from "@/lib/welcome-promo-store";
+import { evaluateWelcomePromoEligibility } from "@/lib/welcome-promo-eligibility";
 import { bogoLineFromOrder, calculateWelcomeBogo } from "@/lib/welcome-bogo";
 import { prestashop } from "@/services/prestashop";
 
@@ -85,6 +83,10 @@ export interface PlaceOrderResult {
   bogoDiscount?: number;
 
   bogoApplied?: boolean;
+
+  welcomePromoIdentityHash?: string;
+
+  welcomePromoIpHash?: string;
 
   message?: string;
 
@@ -262,27 +264,31 @@ function distributePromoDiscountAcrossLines(
 
 async function applyWelcomeBogoToLines(
   lines: CreateOrderLine[],
-  customerId: string,
-  email: string,
+  context: {
+    contact: CheckoutBody["contact"];
+    address: CheckoutBody["address"];
+    clientIp: string;
+    customerId: string;
+  },
 ): Promise<{
   lines: CreateOrderLine[];
   bogoDiscount: number;
   bogoApplied: boolean;
+  welcomePromoIdentityHash?: string;
+  welcomePromoIpHash?: string;
 }> {
   if (!welcomePromo.enabled) {
     return { lines, bogoDiscount: 0, bogoApplied: false };
   }
 
-  const session = await getSession();
-  const sessionId = session?.id ? String(session.id) : "";
-  const paidOrders = await countPaidOrdersForCheckout({ email, customerId });
-  const eligible =
-    Boolean(sessionId) &&
-    sessionId === String(customerId) &&
-    paidOrders === 0 &&
-    (await isWelcomePromoEligible(sessionId));
+  const eligibility = await evaluateWelcomePromoEligibility({
+    contact: context.contact,
+    address: context.address,
+    clientIp: context.clientIp,
+    customerId: context.customerId,
+  });
 
-  if (!eligible) {
+  if (!eligibility.eligible) {
     return { lines, bogoDiscount: 0, bogoApplied: false };
   }
 
@@ -313,6 +319,8 @@ async function applyWelcomeBogoToLines(
     lines: adjusted,
     bogoDiscount: bogo.discountTotal,
     bogoApplied: true,
+    welcomePromoIdentityHash: eligibility.identityHash,
+    welcomePromoIpHash: eligibility.ipHash,
   };
 }
 
@@ -328,7 +336,10 @@ async function applyWelcomeBogoToLines(
 
  */
 
-export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> {
+export async function placeOrder(
+  body: CheckoutBody,
+  options?: { clientIp?: string },
+): Promise<PlaceOrderResult> {
 
   if (!prestashop.isConfigured) {
 
@@ -397,34 +408,31 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
 
 
 
-  const session = await getSession();
+  const clientIp = options?.clientIp?.trim() || "unknown";
 
-  let customerId = session?.id ? String(session.id) : null;
+  let customerId: string | null = null;
+  const existing = await prestashop.getCustomerAuthByEmail(contact.email);
+  if (existing) {
+    customerId = existing.id;
+  } else {
+    const created = await prestashop.createCustomer({
+      firstName: contact.firstName || "Client",
+      lastName: contact.lastName || "Client",
+      email: contact.email,
+      password: crypto.randomUUID(),
+    });
 
-  if (!customerId) {
-    const existing = await prestashop.getCustomerAuthByEmail(contact.email);
-    if (existing) {
-      customerId = existing.id;
-    } else {
-      const created = await prestashop.createCustomer({
-        firstName: contact.firstName || "Client",
-        lastName: contact.lastName || "Client",
-        email: contact.email,
-        password: crypto.randomUUID(),
-      });
-
-      if (!created.customer) {
-        return {
-          ok: false,
-          status: 502,
-          message:
-            "Impossible de créer le compte client. Vérifiez les permissions Webservice (customers).",
-          detail: created.error,
-        };
-      }
-
-      customerId = created.customer.id;
+    if (!created.customer) {
+      return {
+        ok: false,
+        status: 502,
+        message:
+          "Impossible de préparer la commande. Vérifiez les permissions Webservice (customers).",
+        detail: created.error,
+      };
     }
+
+    customerId = created.customer.id;
   }
 
   const secureKey = await prestashop.ensureCustomerSecureKey(customerId);
@@ -445,23 +453,26 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
 
   }
 
-  const bogoResult = await applyWelcomeBogoToLines(
-    resolvedLines,
-    customerId,
-    contact.email,
-  );
-  let orderLines = bogoResult.lines.map((line, index) => {
-    const optionsLabel = body.lines[index]?.optionsLabel?.trim();
-    return optionsLabel ? { ...line, optionsLabel } : line;
-  });
-
-  const normalizedAddress = {
+  const normalizedAddressEarly = {
     address1: address.address1.trim(),
     address2: address.address2?.trim() || undefined,
     postcode: address.postcode.trim(),
     city: address.city.trim(),
     country: address.country?.trim() || "France",
   };
+
+  const bogoResult = await applyWelcomeBogoToLines(resolvedLines, {
+    contact,
+    address: normalizedAddressEarly,
+    clientIp,
+    customerId,
+  });
+  let orderLines = bogoResult.lines.map((line, index) => {
+    const optionsLabel = body.lines[index]?.optionsLabel?.trim();
+    return optionsLabel ? { ...line, optionsLabel } : line;
+  });
+
+  const normalizedAddress = normalizedAddressEarly;
 
   const subtotal = orderLines.reduce(
     (sum, line) => sum + line.unitPrice * line.quantity,
@@ -615,6 +626,10 @@ export async function placeOrder(body: CheckoutBody): Promise<PlaceOrderResult> 
     bogoDiscount: bogoResult.bogoDiscount,
 
     bogoApplied: bogoResult.bogoApplied,
+
+    welcomePromoIdentityHash: bogoResult.welcomePromoIdentityHash,
+
+    welcomePromoIpHash: bogoResult.welcomePromoIpHash,
 
   };
 }

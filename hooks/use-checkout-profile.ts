@@ -2,92 +2,43 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { api } from "@/lib/api";
 import {
-  clearCheckoutProfileFromStorage,
   isCheckoutProfileComplete,
+  loadCheckoutProfileFromStorage,
   saveCheckoutProfileToStorage,
   type CheckoutDeliveryProfile,
 } from "@/lib/checkout-profile";
-import { useSession } from "@/hooks/use-auth";
 
-/** Charge et enregistre le profil de livraison (compte connecté uniquement). */
+/** Charge et enregistre le profil de livraison (local, sans compte). */
 export function useCheckoutProfile() {
-  const sessionQuery = useSession();
-  const userId = sessionQuery.data?.id ?? null;
   const [profile, setProfile] = useState<CheckoutDeliveryProfile | null>(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    if (!userId) {
-      setProfile(null);
-      clearCheckoutProfileFromStorage();
-      setLoaded(true);
-      return;
-    }
+    const stored = loadCheckoutProfileFromStorage();
+    setProfile(
+      stored && isCheckoutProfileComplete(stored) ? stored : null,
+    );
+    setLoaded(true);
+  }, []);
 
-    let cancelled = false;
-    setLoaded(false);
-
-    void api
-      .getPreferences()
-      .then((prefs) => {
-        if (cancelled) return;
-        const server = prefs.checkoutProfile;
-        if (server && isCheckoutProfileComplete(server)) {
-          setProfile(server);
-          saveCheckoutProfileToStorage(server);
-        } else {
-          setProfile(null);
-          clearCheckoutProfileFromStorage();
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setProfile(null);
-      })
-      .finally(() => {
-        if (!cancelled) setLoaded(true);
-      });
-
-    return () => {
-      cancelled = true;
+  const saveProfile = useCallback(async (next: CheckoutDeliveryProfile) => {
+    const payload: CheckoutDeliveryProfile = {
+      ...next,
+      updatedAt: new Date().toISOString(),
     };
-  }, [userId]);
-
-  const saveProfile = useCallback(
-    async (next: CheckoutDeliveryProfile) => {
-      if (!userId) return;
-
-      const payload: CheckoutDeliveryProfile = {
-        ...next,
-        updatedAt: new Date().toISOString(),
-      };
-      setProfile(payload);
-      saveCheckoutProfileToStorage(payload);
-
-      try {
-        const current = await api.getPreferences();
-        await api.savePreferences({
-          cart: current.cart,
-          favorites: current.favorites,
-          checkoutProfile: payload,
-        });
-      } catch {
-        /* non bloquant */
-      }
-    },
-    [userId],
-  );
+    setProfile(payload);
+    saveCheckoutProfileToStorage(payload);
+  }, []);
 
   const clearProfile = useCallback(() => {
     setProfile(null);
-    clearCheckoutProfileFromStorage();
   }, []);
 
   return {
     profile,
     loaded,
-    hasProfile: Boolean(userId && profile && isCheckoutProfileComplete(profile)),
+    hasProfile: Boolean(profile && isCheckoutProfileComplete(profile)),
     saveProfile,
     clearProfile,
   };

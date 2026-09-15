@@ -22,6 +22,8 @@ export type StripeOrderMetadataInput = {
   };
   lines: OrderLineForMetadata[];
   welcomePromo?: boolean;
+  welcomePromoIdentityHash?: string;
+  welcomePromoIpHash?: string;
   expectedTotalCents?: number;
   bogoFreeUnits?: number;
   promoCode?: string | null;
@@ -115,6 +117,8 @@ export function buildStripeOrderMetadata(input: StripeOrderMetadataInput): Recor
     address: shippingAddress.slice(0, META_VALUE_MAX),
     lineCount: String(lineMeta.length),
     welcomePromo: input.welcomePromo ? "1" : "",
+    welcomePromoIdentityHash: input.welcomePromoIdentityHash ?? "",
+    welcomePromoIpHash: input.welcomePromoIpHash ?? "",
     expectedTotalCents: String(input.expectedTotalCents ?? ""),
     bogoFreeUnits: input.bogoFreeUnits ? String(input.bogoFreeUnits) : "",
     promoCode: input.promoCode ?? "",

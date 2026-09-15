@@ -30,13 +30,6 @@ const SearchOverlay = dynamic(
     })),
   { ssr: false },
 );
-const WelcomePromoNotifier = dynamic(
-  () =>
-    import("@/components/marketing/welcome-promo-notifier").then((m) => ({
-      default: m.WelcomePromoNotifier,
-    })),
-  { ssr: false },
-);
 const FavoriteNudge = dynamic(
   () =>
     import("@/components/product/favorite-nudge").then((m) => ({
@@ -88,7 +81,6 @@ export function ClientShell() {
       <FavoritesDrawer />
       <AccountDrawer />
       <SearchOverlay />
-      <WelcomePromoNotifier />
       <FavoriteNudge />
       <RecentProductBar />
     </>

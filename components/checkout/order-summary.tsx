@@ -51,6 +51,7 @@ interface OrderSummaryProps {
   pinSummary?: boolean;
   /** `mobile` = récap compact en haut sur petit écran ; `sidebar` = panneau latéral desktop */
   variant?: "mobile" | "sidebar";
+  welcomePromoEligible?: boolean;
 }
 
 function itemCount(lines: CartLine[]): number {
@@ -188,6 +189,7 @@ export function OrderSummary({
   shippingAddress = null,
   pinSummary = true,
   variant = "sidebar",
+  welcomePromoEligible = false,
 }: OrderSummaryProps) {
   const units = itemCount(lines);
   const bogoDiscount =
@@ -261,6 +263,7 @@ export function OrderSummary({
             lines={bogoCartLines}
             appliedBogoDiscount={stripeBogoDiscount}
             appliedFreeUnits={stripeFreeUnits}
+            promoEligible={welcomePromoEligible}
           />
         </div>
 
@@ -320,6 +323,7 @@ export function OrderSummary({
           lines={bogoCartLines}
           appliedBogoDiscount={stripeBogoDiscount}
           appliedFreeUnits={stripeFreeUnits}
+          promoEligible={welcomePromoEligible}
         />
       </div>
 

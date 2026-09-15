@@ -29,10 +29,9 @@ interface MobileMenuProps {
   onClose: () => void;
 }
 
-const accountLinks = [
-  { label: "Connexion", href: routes.login },
-  { label: "Mon compte", href: routes.account },
+const helpLinks = [
   { label: "Suivi de commande", href: routes.tracking },
+  { label: "Contact", href: routes.contact },
 ];
 
 export function MobileMenu({ open, onClose }: MobileMenuProps) {
@@ -182,7 +181,7 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
 
             <div className="shrink-0 border-t border-ink/8 px-5 py-4 sm:px-6">
               <div className="flex flex-col gap-3">
-                {accountLinks.map((link) => (
+                {helpLinks.map((link) => (
                   <Link
                     key={link.href}
                     href={link.href}

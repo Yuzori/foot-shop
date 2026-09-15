@@ -25,6 +25,16 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   compress: true,
   serverExternalPackages: ["sharp"],
+  async redirects() {
+    return [
+      { source: "/connexion", destination: "/", permanent: false },
+      { source: "/creer-compte", destination: "/", permanent: false },
+      { source: "/mot-de-passe-oublie", destination: "/", permanent: false },
+      { source: "/reinitialiser", destination: "/", permanent: false },
+      { source: "/compte", destination: "/suivi", permanent: false },
+      { source: "/compte/commandes", destination: "/suivi", permanent: false },
+    ];
+  },
   images: {
     // When no host is configured yet, fall back to unoptimized images so the
     // app keeps building/running. Configure PRESTASHOP_IMAGE_HOSTS in prod.

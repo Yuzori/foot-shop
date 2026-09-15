@@ -1,7 +1,5 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-
 import { welcomePromo } from "@/config/promotions";
 import { formatPrice } from "@/lib/format";
 import {
@@ -10,43 +8,20 @@ import {
   type BogoLine,
 } from "@/lib/welcome-bogo";
 
-type PromoResponse = {
-  status: "none" | "eligible" | "used";
-  enabled: boolean;
-  code: string | null;
-  label: string;
-  checkoutLabel: string;
-  shortLabel: string;
-};
-
-async function fetchWelcomePromo(): Promise<PromoResponse> {
-  const res = await fetch("/api/account/welcome-promo");
-  return res.json() as Promise<PromoResponse>;
-}
-
-export function useWelcomePromo() {
-  return useQuery({
-    queryKey: ["welcome-promo"],
-    queryFn: fetchWelcomePromo,
-    staleTime: 120_000,
-    refetchOnMount: false,
-  });
-}
-
 export function WelcomePromoCheckoutBanner({
   subtotal,
   lines,
   appliedBogoDiscount = 0,
   appliedFreeUnits = 0,
+  promoEligible = false,
 }: {
   subtotal: number;
   lines: BogoLine[];
   appliedBogoDiscount?: number;
   appliedFreeUnits?: number;
+  promoEligible?: boolean;
 }) {
-  const { data } = useWelcomePromo();
-
-  if (!welcomePromo.enabled || data?.status !== "eligible") {
+  if (!welcomePromo.enabled || !promoEligible) {
     return null;
   }
 
@@ -93,10 +68,4 @@ export function WelcomePromoCheckoutBanner({
       </p>
     </div>
   );
-}
-
-export function shouldApplyWelcomePromo(
-  promo: PromoResponse | undefined,
-): boolean {
-  return Boolean(welcomePromo.enabled && promo?.status === "eligible");
 }

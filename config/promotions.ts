@@ -21,9 +21,9 @@ export const promoPopup: PromoPopup = {
   eyebrow: "Offre de bienvenue",
   title: "2 achetés, 1 offert",
   message:
-    "Créez un compte et profitez de 2 achetés, 1 offert sur votre première commande - le 3ᵉ article est offert automatiquement au paiement.",
+    "Profitez de 2 achetés, 1 offert sur votre première commande - le 3ᵉ article est offert automatiquement au paiement.",
   code: "",
-  cta: { label: "J'en profite", href: "/creer-compte" },
+  cta: { label: "J'en profite", href: "/paiement" },
   delayMs: 3500,
 };
 
@@ -65,7 +65,7 @@ export const flocageTestPromo = {
 } as const;
 
 export const announcementMessages: string[] = [
-  "2 achetés, 1 offert sur votre 1ʳᵉ commande - créez un compte",
+  "2 achetés, 1 offert sur votre 1ʳᵉ commande",
   "Livraison offerte sur votre 1ʳᵉ commande",
   "Livraison express disponible",
   "Retours gratuits sous 14 jours",

@@ -138,7 +138,7 @@ export function HeaderPaint() {
             >
               <HeartIcon />
             </IconButton>
-            <IconButton label="Compte" onClick={openAccount}>
+            <IconButton label="Aide" onClick={openAccount}>
               <UserIcon />
             </IconButton>
             <IconButton

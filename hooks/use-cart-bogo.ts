@@ -2,16 +2,12 @@
 
 import { useMemo } from "react";
 
-import { useSession } from "@/hooks/use-auth";
-import {
-  shouldApplyWelcomePromo,
-  useWelcomePromo,
-} from "@/components/checkout/welcome-promo-banner";
 import {
   allocateBogoFreeQuantities,
   bogoLineFromCart,
   calculateWelcomeBogo,
 } from "@/lib/welcome-bogo";
+import { welcomePromo } from "@/config/promotions";
 import { cartSelectors, useCartStore } from "@/store/cart-store";
 import type { CartLine } from "@/types/domain";
 
@@ -20,21 +16,22 @@ export function cartLineUnitPrice(line: CartLine): number {
   return line.unitPrice + flocageUnit;
 }
 
-/** Prix BOGO pour le panier (offre de bienvenue éligible). */
+/** Estimation BOGO panier (confirmation au paiement selon éligibilité). */
 export function useCartBogo() {
   const lines = useCartStore((s) => s.lines);
   const subtotal = useCartStore(cartSelectors.subtotal);
-  const welcomePromoQuery = useWelcomePromo();
-  const sessionQuery = useSession();
 
   const bogoLines = useMemo(
     () => lines.map((line) => bogoLineFromCart(line)),
     [lines],
   );
 
-  const eligible =
-    Boolean(sessionQuery.data?.id) &&
-    shouldApplyWelcomePromo(welcomePromoQuery.data);
+  const totalUnits = useMemo(
+    () => lines.reduce((sum, line) => sum + line.quantity, 0),
+    [lines],
+  );
+
+  const eligible = welcomePromo.enabled && totalUnits >= 3;
 
   const freePerLine = useMemo(() => {
     if (!eligible) return lines.map(() => 0);
