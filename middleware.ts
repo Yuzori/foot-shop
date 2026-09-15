@@ -2,13 +2,6 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { ADMIN_API_CORS_HEADERS } from "@/lib/admin-api-cors";
-import { isVpnOrProxyIp } from "@/lib/vpn-check";
-
-function clientIp(request: NextRequest): string {
-  const forwarded = request.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0]?.trim() ?? "unknown";
-  return request.headers.get("x-real-ip")?.trim() ?? "unknown";
-}
 
 function wwwToCanonicalRedirect(request: NextRequest): NextResponse | null {
   const host =
@@ -25,29 +18,11 @@ function wwwToCanonicalRedirect(request: NextRequest): NextResponse | null {
   return NextResponse.redirect(url, 301);
 }
 
-function shouldSkipVpnCheck(pathname: string): boolean {
-  return (
-    pathname.startsWith("/api/") ||
-    pathname.startsWith("/_next/") ||
-    pathname === "/vpn-bloque" ||
-    pathname.startsWith("/admin/")
-  );
-}
-
 export async function middleware(request: NextRequest) {
   const wwwRedirect = wwwToCanonicalRedirect(request);
   if (wwwRedirect) return wwwRedirect;
 
   const pathname = request.nextUrl.pathname;
-  if (!shouldSkipVpnCheck(pathname)) {
-    const ip = clientIp(request);
-    if (await isVpnOrProxyIp(ip)) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/vpn-bloque";
-      url.search = "";
-      return NextResponse.redirect(url);
-    }
-  }
 
   if (pathname.startsWith("/api/admin/")) {
     if (request.method === "OPTIONS") {

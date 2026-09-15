@@ -11,12 +11,13 @@ import {
   isWelcomePromoIdentityClaimed,
   isWelcomePromoIpClaimed,
 } from "@/lib/welcome-promo-claims-store";
+import { isVpnOrProxyIp } from "@/lib/vpn-check";
 
 export type WelcomePromoEligibilityResult = {
   eligible: boolean;
   identityHash: string;
   ipHash: string;
-  reason?: "disabled" | "already_ordered" | "identity_used" | "ip_used";
+  reason?: "disabled" | "already_ordered" | "identity_used" | "ip_used" | "vpn";
 };
 
 export async function evaluateWelcomePromoEligibility(input: {
@@ -45,12 +46,16 @@ export async function evaluateWelcomePromoEligibility(input: {
     return { eligible: false, identityHash, ipHash, reason: "already_ordered" };
   }
 
+  const ip = input.clientIp.trim();
+  if (ip && ip !== "unknown" && (await isVpnOrProxyIp(ip))) {
+    return { eligible: false, identityHash, ipHash, reason: "vpn" };
+  }
+
   if (await isWelcomePromoIdentityClaimed(identityHash)) {
     return { eligible: false, identityHash, ipHash, reason: "identity_used" };
   }
 
-  const ip = input.clientIp.trim();
-  if (ip && ip !== "unknown" && await isWelcomePromoIpClaimed(ipHash)) {
+  if (ip && ip !== "unknown" && (await isWelcomePromoIpClaimed(ipHash))) {
     return { eligible: false, identityHash, ipHash, reason: "ip_used" };
   }
 

@@ -33,6 +33,8 @@ const nextConfig: NextConfig = {
       { source: "/reinitialiser", destination: "/", permanent: false },
       { source: "/compte", destination: "/suivi", permanent: false },
       { source: "/compte/commandes", destination: "/suivi", permanent: false },
+      { source: "/payment", destination: "/paiement", permanent: true },
+      { source: "/payment/:path*", destination: "/paiement/:path*", permanent: true },
     ];
   },
   images: {

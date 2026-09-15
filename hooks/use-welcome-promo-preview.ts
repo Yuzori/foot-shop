@@ -5,11 +5,12 @@ import { useQuery } from "@tanstack/react-query";
 import { welcomePromo } from "@/config/promotions";
 
 type PromoPreviewResponse = {
-  status: "none" | "eligible" | "used";
+  status: "none" | "eligible" | "used" | "vpn";
   enabled: boolean;
   label: string;
   checkoutLabel: string;
   shortLabel: string;
+  message?: string;
 };
 
 type PreviewInput = {

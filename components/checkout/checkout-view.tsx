@@ -340,7 +340,6 @@ export function CheckoutView() {
   useEffect(() => {
     if (step !== "payment") return;
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-    paymentSectionRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
   }, [step]);
 
   const checkoutLines = frozenLines ?? [];
@@ -952,39 +951,53 @@ export function CheckoutView() {
       ) : null}
 
       <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[1fr_380px] lg:gap-12">
-        <div className="lg:hidden">
-        <OrderSummary
-          variant="mobile"
-          lines={lines}
-          freePerLine={freePerLine}
-          bogoCartLines={bogoCartLines}
-          subtotal={subtotal}
-          orderTotal={orderTotal}
-          welcomeBogoDiscount={bogoDiscount}
-          stripeBogoDiscount={stripeBogoDiscount}
-          stripeFreeUnits={stripeFreeUnits}
-          shippingFee={effectiveShippingFee}
-          shippingLabel={effectiveShippingLabel}
-          promoDiscount={promoDiscount}
-          promoCode={promoCode}
-          onPromoCodeChange={handlePromoCodeChange}
-          promoError={promoError}
-          promoPending={promoPending}
-          orderReference={orderReference}
-          shippingAddress={checkoutShippingAddress}
-          welcomePromoEligible={promoEligible}
-        />
-        </div>
+        {step === "payment" ? (
+          <div className="lg:hidden">
+            <OrderSummary
+              variant="mobile"
+              lines={lines}
+              freePerLine={freePerLine}
+              bogoCartLines={bogoCartLines}
+              subtotal={subtotal}
+              orderTotal={orderTotal}
+              welcomeBogoDiscount={bogoDiscount}
+              stripeBogoDiscount={stripeBogoDiscount}
+              stripeFreeUnits={stripeFreeUnits}
+              shippingFee={effectiveShippingFee}
+              shippingLabel={effectiveShippingLabel}
+              promoDiscount={promoDiscount}
+              promoCode={promoCode}
+              onPromoCodeChange={handlePromoCodeChange}
+              promoError={promoError}
+              promoPending={promoPending}
+              orderReference={orderReference}
+              shippingAddress={checkoutShippingAddress}
+              welcomePromoEligible={promoEligible}
+            />
+          </div>
+        ) : null}
 
         {step === "details" ? (
           <form
             ref={detailsFormRef}
             onSubmit={handleDetailsSubmit}
-            className="space-y-8 pb-24 lg:pb-0"
+            className="space-y-8 pb-28 lg:pb-0"
           >
             <WelcomePromoGuestNudge
               totalUnits={lines.reduce((sum, line) => sum + line.quantity, 0)}
             />
+            {welcomePromoQuery.data?.status === "vpn" ? (
+              <div
+                className="rounded-2xl border border-amber-200/80 bg-amber-50 px-5 py-4 text-sm text-amber-950"
+                role="status"
+              >
+                <p className="font-semibold">VPN détecté</p>
+                <p className="mt-1 text-amber-900/85">
+                  {welcomePromoQuery.data.message ??
+                    "Désactivez votre VPN pour bénéficier de l'offre de bienvenue. Vous pouvez quand même payer normalement."}
+                </p>
+              </div>
+            ) : null}
             {hasProfile && savedProfile ? (
               <section className="rounded-2xl border border-ink/10 bg-paper-soft/60 p-5 sm:p-6">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

@@ -59,7 +59,9 @@ export async function POST(request: Request) {
     ? "eligible"
     : eligibility.reason === "identity_used" || eligibility.reason === "ip_used"
       ? "used"
-      : "none";
+      : eligibility.reason === "vpn"
+        ? "vpn"
+        : "none";
 
   return NextResponse.json({
     enabled: welcomePromo.enabled,
@@ -67,5 +69,9 @@ export async function POST(request: Request) {
     label: welcomePromo.label,
     checkoutLabel: welcomePromo.checkoutLabel,
     shortLabel: welcomePromo.shortLabel,
+    message:
+      eligibility.reason === "vpn"
+        ? "Désactivez votre VPN pour bénéficier de l'offre de bienvenue."
+        : undefined,
   });
 }

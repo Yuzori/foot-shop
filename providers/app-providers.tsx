@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { type ReactNode } from "react";
 
 import { UserPreferencesSync } from "@/components/account/user-preferences-sync";
+import { ScrollToTopOnNavigate } from "@/components/layout/scroll-to-top-on-navigate";
 import { getQueryClient } from "@/lib/query-client";
 import { CartHydration } from "@/providers/cart-hydration";
 
@@ -14,6 +15,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <CartHydration>
+        <ScrollToTopOnNavigate />
         <UserPreferencesSync />
         {children}
       </CartHydration>

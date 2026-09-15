@@ -18,7 +18,7 @@ function isPrivateIp(ip: string): boolean {
   );
 }
 
-/** Détecte VPN / proxy public (ip-api.com). En cas d'erreur API : ne pas bloquer. */
+/** Détecte VPN / proxy public (ip-api.com). N'inclut pas les hébergeurs (évite les faux positifs). */
 export async function isVpnOrProxyIp(ip: string): Promise<boolean> {
   if (isPrivateIp(ip)) return false;
 
@@ -29,7 +29,7 @@ export async function isVpnOrProxyIp(ip: string): Promise<boolean> {
 
   let blocked = false;
   try {
-    const url = `http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,proxy,hosting`;
+    const url = `http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,proxy`;
     const res = await fetch(url, {
       signal: AbortSignal.timeout(2500),
       cache: "no-store",
@@ -38,10 +38,8 @@ export async function isVpnOrProxyIp(ip: string): Promise<boolean> {
       const data = (await res.json()) as {
         status?: string;
         proxy?: boolean;
-        hosting?: boolean;
       };
-      blocked =
-        data.status === "success" && Boolean(data.proxy || data.hosting);
+      blocked = data.status === "success" && Boolean(data.proxy);
     }
   } catch {
     blocked = false;
