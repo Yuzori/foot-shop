@@ -271,8 +271,8 @@ export function CategoryShowcase() {
               <span className="block text-paper/90">collection</span>
             </h2>
             <p className="mt-4 max-w-md text-sm leading-relaxed text-paper/60">
-              Maillots par division, shorts en un clic - entrez directement dans
-              le bon catalogue.
+              Maillots par division, shorts et vestes en un clic - entrez
+              directement dans le bon catalogue.
             </p>
           </div>
           <Link
@@ -298,11 +298,10 @@ export function CategoryShowcase() {
             />
           </StaggerItem>
 
-          <div className="grid gap-4 [--trophy-stack-gap:1rem] lg:col-span-5 lg:row-span-2 lg:grid-rows-2 lg:gap-5 lg:[--trophy-stack-gap:1.25rem]">
+          <div className="grid gap-4 lg:col-span-5 lg:row-span-2 lg:grid-rows-3 lg:gap-5">
             <StaggerItem>
               <CollectionPanel
                 contentOnly
-                trophySegment="top"
                 href={catalogNav.shorts.href}
                 label="Performance"
                 title="Shorts"
@@ -314,15 +313,27 @@ export function CategoryShowcase() {
             </StaggerItem>
 
             <StaggerItem>
+              <CollectionPanel
+                contentOnly
+                href={catalogNav.jackets.href}
+                label="Training"
+                title="Vestes"
+                description="Toute la collection vestes, accès direct."
+                index="03"
+                variant="dark"
+                backgroundSrc={collectionShowcaseImages.jacket}
+              />
+            </StaggerItem>
+
+            <StaggerItem>
               {worldCupConfig.enabled ? (
                 <CollectionPanel
                   contentOnly
-                  trophySegment="bottom"
                   href={`${routes.category(worldCupConfig.categoryId)}?kind=jersey&audience=adult`}
                   label="Édition spéciale"
                   title="Coupe du monde"
                   description="La collection CDM - sélection adulte, prête à explorer."
-                  index="03"
+                  index="04"
                   variant="wc"
                   backgroundSrc={collectionShowcaseImages.worldCup}
                   icon={<TrophyIcon className="h-6 w-6 text-paper/80" />}
@@ -334,7 +345,7 @@ export function CategoryShowcase() {
                   label="Par division"
                   title="Maillots"
                   description="Ligue 1, Premier League, Liga et plus."
-                  index="03"
+                  index="04"
                   variant="dark"
                 />
               )}

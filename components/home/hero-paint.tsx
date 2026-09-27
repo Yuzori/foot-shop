@@ -67,7 +67,7 @@ export function HeroPaint() {
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.65, ease, delay: 0.4 }}
-          className="mt-8 grid w-full max-w-lg grid-cols-2 gap-3 sm:mt-12 sm:flex sm:w-auto sm:max-w-none"
+          className="mt-8 grid w-full max-w-lg grid-cols-2 gap-3 sm:mt-12 sm:flex sm:w-auto sm:max-w-none sm:flex-wrap"
         >
           <Link
             href={catalogNav.maillots.href}
@@ -91,6 +91,18 @@ export function HeroPaint() {
             style={brandButtonStyle(undefined, "light")}
           >
             {cfg.ctaShorts}
+          </Link>
+
+          <Link
+            href={catalogNav.jackets.href}
+            className={buttonClasses(
+              "outline",
+              "lg",
+              "btn-brand-light col-span-2 w-full justify-center px-4 text-xs sm:col-span-1 sm:w-auto sm:px-8 sm:text-sm",
+            )}
+            style={brandButtonStyle(undefined, "light")}
+          >
+            {cfg.ctaJackets}
           </Link>
         </motion.div>
       </Container>

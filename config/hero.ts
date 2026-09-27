@@ -7,9 +7,10 @@ export const heroPaintConfig = {
   titleImage: "/titre.png",
   titleAlt: "Portez les couleurs de la légende",
   description:
-    "Maillots et shorts, éditions limitées et flocage personnalisé. Une sélection pensée pour les vrais passionnés.",
+    "Maillots, shorts et vestes - éditions limitées et flocage personnalisé.",
   ctaJerseys: "Voir les maillots",
   ctaShorts: "Voir les shorts",
+  ctaJackets: "Voir les vestes",
   seasonLabel: "Season",
   seasonValue: "24-25",
   /** Texte vertical défilant à droite */
