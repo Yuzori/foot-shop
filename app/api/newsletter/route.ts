@@ -24,7 +24,7 @@ async function sendWelcomeNewsletterEmail(email: string): Promise<void> {
     html: emailLayout(`
       ${emailHeading("Bienvenue !")}
       ${emailParagraph(`Vous êtes inscrit à la newsletter <strong>${publicConfig.siteName}</strong>.`)}
-      ${emailParagraph("Nouveautés, éditions limitées et retours en stock - directement dans votre boîte mail.")}
+      ${emailParagraph("Nouveautés, éditions limitées et retours en stock, directement dans votre boîte mail.")}
       ${emailButton(`${base}/catalogue`, "Découvrir la boutique")}
     `),
   });

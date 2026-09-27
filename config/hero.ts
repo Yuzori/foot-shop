@@ -7,10 +7,9 @@ export const heroPaintConfig = {
   titleImage: "/titre.png",
   titleAlt: "Portez les couleurs de la légende",
   description:
-    "Maillots, shorts et vestes - éditions limitées et flocage personnalisé.",
+    "Maillots et shorts, éditions limitées et flocage personnalisé. Une sélection pensée pour les vrais passionnés.",
   ctaJerseys: "Voir les maillots",
   ctaShorts: "Voir les shorts",
-  ctaJackets: "Voir les vestes",
   seasonLabel: "Season",
   seasonValue: "24-25",
   /** Texte vertical défilant à droite */
@@ -30,7 +29,7 @@ export const heroPaintConfig = {
   /** Bandeau confiance sous le hero (sans livraison express). */
   trustItems: [
     { id: "secure", label: "Paiement 100% sécurisé" },
-    { id: "shipping", label: "Livraison offerte - 1ʳᵉ commande" },
+    { id: "shipping", label: "Livraison offerte sur la 1ʳᵉ commande" },
     { id: "bogo", label: "2 achetés, 1 offert" },
     { id: "returns", label: "Retours gratuits 14 jours" },
     { id: "flocage", label: "Flocage premium" },

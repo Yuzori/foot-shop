@@ -109,6 +109,20 @@ export function Header() {
             >
               {catalogNav.shorts.label}
             </Link>
+            <Link
+              href={catalogNav.jackets.href}
+              prefetch={false}
+              className={cn(
+                "link-underline text-sm font-medium text-ink/65 transition-colors hover:text-ink",
+                (Boolean(catalogNav.jackets.categoryId) &&
+                  pathname.includes(`/categories/${catalogNav.jackets.categoryId}`)) ||
+                  pathname.includes("kind=jacket")
+                  ? "text-ink after:scale-x-100"
+                  : "",
+              )}
+            >
+              {catalogNav.jackets.label}
+            </Link>
             {primaryNav.map((link) => (
               <Link
                 key={link.href}

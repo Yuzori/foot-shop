@@ -46,7 +46,7 @@ export function emailProductImage(imageUrl: string, alt: string): string {
 
 export function emailAntiSpamNote(): string {
   return emailParagraph(
-    "Ce message est une notification légitime de votre demande sur notre boutique - ce n'est pas du spam.",
+    "Ce message est une notification légitime de votre demande sur notre boutique, ce n'est pas du spam.",
   );
 }
 

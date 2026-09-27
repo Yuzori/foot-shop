@@ -36,7 +36,7 @@ export async function sendWelcomePromoEmail(input: {
     `Bonjour ${input.firstName},`,
     "",
     `${welcomePromo.label} sur votre première commande.`,
-    `${welcomePromo.checkoutLabel} au paiement dès 3 articles - une seule utilisation.`,
+    `${welcomePromo.checkoutLabel} au paiement dès 3 articles, une seule utilisation.`,
     "",
     checkoutUrl,
   ].join("\n");

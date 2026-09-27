@@ -21,21 +21,21 @@ export const catalogConfig = {
       "",
   },
   kidsMaillots: {
-    label: "Maillot - Enfant",
+    label: "Maillot enfant",
     categoryId:
       process.env.NEXT_PUBLIC_ENFANT_MAILLOTS_CATEGORY_ID?.trim() ??
       process.env.NEXT_PUBLIC_KIDS_MAILLOTS_CATEGORY_ID?.trim() ??
       "",
   },
   kidsShorts: {
-    label: "Enfant - Short",
+    label: "Enfant short",
     categoryId:
       process.env.NEXT_PUBLIC_ENFANT_SHORTS_CATEGORY_ID?.trim() ??
       process.env.NEXT_PUBLIC_KIDS_SHORTS_CATEGORY_ID?.trim() ??
       "",
   },
   kidsJackets: {
-    label: "Enfant - Veste",
+    label: "Enfant veste",
     categoryId:
       process.env.NEXT_PUBLIC_ENFANT_VESTES_CATEGORY_ID?.trim() ??
       process.env.NEXT_PUBLIC_KIDS_JACKETS_CATEGORY_ID?.trim() ??

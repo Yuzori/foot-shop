@@ -98,7 +98,7 @@ export async function sendStockAlertConfirmation(input: {
 
   return sendMail({
     to: input.email,
-    subject: `${publicConfig.siteName} - Alerte stock enregistrée`,
+    subject: `${publicConfig.siteName} · Alerte stock enregistrée`,
     text: `Nous vous préviendrons dès que ${input.label} sera disponible.\n${base}`,
     html: emailLayout(`
       ${emailHeading("Alerte enregistrée")}

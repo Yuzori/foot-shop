@@ -21,7 +21,7 @@ export const promoPopup: PromoPopup = {
   eyebrow: "Offre de bienvenue",
   title: "2 achetés, 1 offert",
   message:
-    "Profitez de 2 achetés, 1 offert sur votre première commande - le 3ᵉ article est offert automatiquement au paiement.",
+    "Profitez de 2 achetés, 1 offert sur votre première commande : le 3ᵉ article est offert automatiquement au paiement.",
   code: "",
   cta: { label: "J'en profite", href: "/paiement" },
   delayMs: 3500,
@@ -69,6 +69,6 @@ export const announcementMessages: string[] = [
   "Livraison offerte sur votre 1ʳᵉ commande",
   "Livraison express disponible",
   "Retours gratuits sous 14 jours",
-  "Maillots & shorts - flocage premium",
+  "Maillots & shorts, flocage premium",
   "Paiement 100% sécurisé",
 ];

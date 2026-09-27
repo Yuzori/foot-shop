@@ -31,17 +31,17 @@ export const legalInfo = {
     "LEGAL_VAT",
     "TVA non applicable, article 293 B du CGI (franchise en base)",
   ),
-  rcs: envOr("LEGAL_RCS", "RCS Lyon — SIREN 109 167 346"),
+  rcs: envOr("LEGAL_RCS", "RCS Lyon, SIREN 109 167 346"),
   publicationDirector: envOr("LEGAL_DIRECTOR", "Zakaria Bouchaour"),
   host: envOr(
     "LEGAL_HOST",
-    "Hostinger International Ltd. - 61 Lordou Vironos Street, 6023 Larnaca, Chypre",
+    "Hostinger International Ltd., 61 Lordou Vironos Street, 6023 Larnaca, Chypre",
   ),
   withdrawalDays: 14,
   /** Délai commercial « changer d'avis » à compter de la réception. */
   returnDays: 14,
   odrUrl: "https://ec.europa.eu/consumers/odr",
   /** Médiateur de la consommation (obligatoire pour les professionnels). */
-  mediatorName: envOr("LEGAL_MEDIATOR_NAME", "Médiateur de la consommation - à désigner"),
+  mediatorName: envOr("LEGAL_MEDIATOR_NAME", "Médiateur de la consommation, à désigner"),
   mediatorUrl: envOr("LEGAL_MEDIATOR_URL", "https://ec.europa.eu/consumers/odr"),
 } as const;

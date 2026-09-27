@@ -12,11 +12,6 @@ export const collectionShowcaseImages = {
   jersey: "/myo.jpg",
   /** Desktop `/short.jpg` - mobile `/short-tel.jpg` */
   short: "/short.jpg",
-  /**
-   * Vestes — réutilise short en attendant une image dédiée
-   * (`/veste.jpg` + `/veste-tel.jpg`).
-   */
-  jacket: "/short.jpg",
   /** Desktop `/wc.jpg` - mobile `/wc-tel.jpg` */
   worldCup: "/wc.jpg",
   /**

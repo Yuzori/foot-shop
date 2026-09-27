@@ -394,7 +394,7 @@ export function CheckoutMobileStickyBar({
               Préparation…
             </span>
           ) : (
-            `Continuer - ${formatPrice(orderTotal)}`
+            `Continuer · ${formatPrice(orderTotal)}`
           )}
         </Button>
       </div>

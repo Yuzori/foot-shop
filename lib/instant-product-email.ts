@@ -38,7 +38,7 @@ export async function sendInstantNewProductEmail(input: {
     ${emailHeading("Nouveau maillot disponible")}
     ${emailProductImage(image, input.name)}
     ${emailParagraph(`<strong>${escapeHtml(input.name)}</strong> vient d'arriver sur ${escapeHtml(publicConfig.siteName)}.`)}
-    ${emailParagraph("Stock limité - ne ratez pas ce drop.")}
+    ${emailParagraph("Stock limité, ne ratez pas ce drop.")}
     ${emailButton(url, "Voir le maillot")}
   `;
 
