@@ -31,10 +31,14 @@ export async function GET() {
   const shortsCategoryIds = new Set(
     [nav.shortsCategoryId, nav.kidsShortsCategoryId].filter(Boolean),
   );
+  const jacketsCategoryIds = new Set(
+    [nav.jacketsCategoryId, nav.kidsJacketsCategoryId].filter(Boolean),
+  );
 
   const fresh = filterNotifiableProducts(
     result.items.filter((product) => queueIds.has(product.id)),
     shortsCategoryIds,
+    jacketsCategoryIds,
   );
 
   return NextResponse.json({

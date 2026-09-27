@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AdminCategoryPicker } from "@/components/admin/admin-category-picker";
+import {
+  applyCollectionKindToName,
+  CollectionKindPicker,
+} from "@/components/admin/collection-kind-picker";
 import { ImportLinkAlerts } from "@/components/admin/import-link-alerts";
 import { PushFailuresAlert } from "@/components/admin/push-failures-alert";
 import { Button } from "@/components/ui/button";
@@ -34,7 +38,12 @@ import {
   saveStudioDraft,
   type PersistedStudioProduct,
 } from "@/lib/jersey-studio/studio-draft-storage";
-import type { ProductCollectionKind } from "@/lib/product-collection";
+import {
+  collectionKindLabel,
+  type ProductCollectionKind,
+} from "@/lib/product-collection";
+import { detectAudience } from "@/lib/product-import/format-product-name";
+import { suggestImportCategory } from "@/lib/product-import/suggest-import-category";
 import { parseSourceUrls } from "@/lib/product-import/parse-urls";
 import { autoSelectJerseyImageUrls } from "@/lib/jersey-studio/auto-select-images";
 import {
@@ -531,6 +540,7 @@ export function JerseyStudioSection({
   const [price, setPrice] = useState("24.99");
   const [stock, setStock] = useState("20");
   const [categoryOptGroups, setCategoryOptGroups] = useState<AdminCategoryOptGroup[]>([]);
+  const [rawCategories, setRawCategories] = useState<CategoryOption[]>([]);
   const [defaultCategoryId, setDefaultCategoryId] = useState("");
   const [products, setProducts] = useState<StudioProduct[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
@@ -679,6 +689,7 @@ export function JerseyStudioSection({
           data.categoryGroups ??
           buildAdminCategoryOptGroups(data.categories ?? []);
         setCategoryOptGroups(optGroups);
+        setRawCategories(data.categories ?? []);
         if (data.removeBg) setRemoveBgStatus(data.removeBg);
 
         const flat = flattenAdminCategoryOptGroups(optGroups);
@@ -802,6 +813,30 @@ export function JerseyStudioSection({
         p.id === id ? { ...p, ...patch, modifiedAt: Date.now() } : p,
       ),
     );
+  }
+
+  function setProductCollectionKind(
+    product: StudioProduct,
+    kind: ProductCollectionKind,
+  ) {
+    const name = applyCollectionKindToName(product.name, kind);
+    const suggestion = suggestImportCategory({
+      title: name,
+      sourceUrl: product.sourceUrl,
+      audience: detectAudience(name),
+      kind,
+      categories: rawCategories,
+      optGroups: categoryOptGroups,
+    });
+    updateProduct(product.id, {
+      collectionKind: kind,
+      name,
+      categoryId: suggestion?.categoryId || product.categoryId,
+      suggestedCategoryId: suggestion?.categoryId ?? null,
+      suggestedCategoryLabel: suggestion?.label ?? null,
+      suggestedCategoryReason: suggestion?.reason ?? null,
+      pushResult: null,
+    });
   }
 
   function touchProduct(id: string, updater: (product: StudioProduct) => StudioProduct) {
@@ -1160,8 +1195,10 @@ export function JerseyStudioSection({
       <p className="mt-2 text-sm text-ink/55">
         Collez des liens produit, sélectionnez une ou plusieurs images (clic = basculer),
         rendez-les (fond <code className="text-xs">#161616</code> + halo · 656×822 px), vérifiez
-        le nom et la catégorie, puis envoyez sur PrestaShop. Le type <strong>Maillot</strong> ou{" "}
-        <strong>Short</strong> est détecté automatiquement. La catégorie est suggérée depuis le{" "}
+        le nom et la catégorie, puis envoyez sur PrestaShop. Le type{" "}
+        <strong>Maillot</strong>, <strong>Short</strong> ou <strong>Veste</strong>{" "}
+        peut être choisi manuellement (ou détecté automatiquement). La catégorie
+        est suggérée depuis le{" "}
         <strong>titre</strong> et l&apos;<strong>URL</strong> (ligue, CDM 2026, sélection…).
       </p>
 
@@ -1409,16 +1446,16 @@ export function JerseyStudioSection({
                     >
                       {nameCopiedId === product.id ? "Copié" : "Copier"}
                     </button>
-                    <span
-                      className={cn(
-                        "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
-                        product.collectionKind === "short"
-                          ? "bg-amber-100 text-amber-900"
-                          : "bg-sky-100 text-sky-900",
-                      )}
-                    >
-                      {product.collectionKind === "short" ? "Short" : "Maillot"}
-                    </span>
+                  </div>
+                  <div className="mt-2">
+                    <p className="mb-1 text-[11px] font-medium text-ink/45">
+                      Type · {collectionKindLabel(product.collectionKind)}
+                    </p>
+                    <CollectionKindPicker
+                      value={product.collectionKind}
+                      disabled={busy}
+                      onChange={(kind) => setProductCollectionKind(product, kind)}
+                    />
                   </div>
                   <a
                     href={product.sourceUrl}

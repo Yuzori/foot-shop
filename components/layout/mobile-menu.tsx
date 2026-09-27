@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 
 import { LeagueIcon } from "@/components/layout/league-icon";
 import {
+  buildJacketsCatalogHref,
   buildJerseyLeagueHref,
   buildShortsCatalogHref,
   type CatalogLeague,
@@ -164,6 +165,13 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
                   allCategories={catalogNav.allCategories}
                   onClose={onClose}
                 />
+                <MobileCatalogGroup
+                  label={catalogNav.jackets.label}
+                  kind="jacket"
+                  categories={catalogNav.categories}
+                  allCategories={catalogNav.allCategories}
+                  onClose={onClose}
+                />
 
                 {primaryNav.map((link) => (
                   <Link
@@ -209,7 +217,7 @@ function MobileCatalogGroup({
   onClose,
 }: {
   label: string;
-  kind: "jersey" | "short";
+  kind: "jersey" | "short" | "jacket";
   categories: CatalogNavCategories;
   allCategories?: import("@/types/domain").Category[];
   leagues?: CatalogLeague[];
@@ -218,10 +226,14 @@ function MobileCatalogGroup({
   const [open, setOpen] = useState(false);
   const jerseyLeagues = leagues ?? [];
 
-  if (kind === "short") {
+  if (kind === "short" || kind === "jacket") {
     return (
       <Link
-        href={buildShortsCatalogHref(categories)}
+        href={
+          kind === "short"
+            ? buildShortsCatalogHref(categories)
+            : buildJacketsCatalogHref(categories)
+        }
         onClick={onClose}
         className="border-b border-ink/5 py-4 text-2xl font-medium tracking-tightest"
       >

@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { CatalogueView } from "@/components/catalogue/catalogue-view";
 import { Container } from "@/components/ui/container";
 import type { ProductCollectionKind } from "@/lib/product-collection";
+import { PRODUCT_COLLECTION_KINDS } from "@/lib/product-collection";
 import type { SortOption } from "@/types/domain";
 
 const VALID_SORTS: SortOption[] = [
@@ -15,8 +16,6 @@ const VALID_SORTS: SortOption[] = [
   "name-asc",
 ];
 
-const VALID_KINDS: ProductCollectionKind[] = ["jersey", "short"];
-
 export function CatalogueClient() {
   const params = useSearchParams();
   const sortParam = params.get("sort");
@@ -24,16 +23,20 @@ export function CatalogueClient() {
   const initialSort = VALID_SORTS.includes(sortParam as SortOption)
     ? (sortParam as SortOption)
     : "newest";
-  const kind = VALID_KINDS.includes(kindParam as ProductCollectionKind)
+  const kind = PRODUCT_COLLECTION_KINDS.includes(
+    kindParam as ProductCollectionKind,
+  )
     ? (kindParam as ProductCollectionKind)
     : undefined;
 
   const title =
     kind === "short"
       ? "Shorts"
-      : kind === "jersey"
-        ? "Maillots"
-        : "La boutique";
+      : kind === "jacket"
+        ? "Vestes"
+        : kind === "jersey"
+          ? "Maillots"
+          : "La boutique";
 
   return (
     <Container className="py-12 lg:py-16">
@@ -43,9 +46,11 @@ export function CatalogueClient() {
         <p className="mt-4 text-sm leading-relaxed text-ink/55">
           {kind === "short"
             ? "Shorts et éditions premium."
-            : kind === "jersey"
-              ? "Maillots et éditions premium."
-              : "Maillots et éditions premium, sélectionnés pour vous."}
+            : kind === "jacket"
+              ? "Vestes et éditions premium."
+              : kind === "jersey"
+                ? "Maillots et éditions premium."
+                : "Maillots, shorts et vestes, sélectionnés pour vous."}
         </p>
       </header>
 

@@ -4,6 +4,7 @@ import { useMemo } from "react";
 
 import { catalogConfig } from "@/config/catalog";
 import {
+  buildJacketsCatalogHref,
   buildShortsCatalogHref,
   resolveCatalogLeagues,
 } from "@/config/catalog-leagues";
@@ -11,14 +12,17 @@ import { routes } from "@/config/site";
 import { useCategories } from "@/hooks/use-categories";
 import { resolveCatalogNavCategories } from "@/lib/resolve-catalog-nav";
 
-/** Liens Maillots / Shorts pour la navigation et l'accueil. */
+/** Liens Maillots / Shorts / Vestes pour la navigation et l'accueil. */
 export function useCatalogNav() {
   const { data: categories = [], isLoading } = useCategories();
 
   return useMemo(() => {
     const navCategories = resolveCatalogNavCategories(categories);
-    const { maillotsCategoryId: maillotsId, shortsCategoryId: shortsId } =
-      navCategories;
+    const {
+      maillotsCategoryId: maillotsId,
+      shortsCategoryId: shortsId,
+      jacketsCategoryId: jacketsId,
+    } = navCategories;
 
     return {
       isLoading,
@@ -34,6 +38,11 @@ export function useCatalogNav() {
         label: catalogConfig.shorts.label,
         categoryId: shortsId,
         href: buildShortsCatalogHref(navCategories),
+      },
+      jackets: {
+        label: catalogConfig.jackets.label,
+        categoryId: jacketsId,
+        href: buildJacketsCatalogHref(navCategories),
       },
     };
   }, [categories]);

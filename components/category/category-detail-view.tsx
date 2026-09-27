@@ -25,10 +25,10 @@ import type { Product, SortOption } from "@/types/domain";
 import {
   collectionKindFromCategory,
   filterProductsByKind,
+  PRODUCT_COLLECTION_KINDS,
   type ProductCollectionKind,
 } from "@/lib/product-collection";
 
-const VALID_KINDS: ProductCollectionKind[] = ["jersey", "short"];
 const VALID_AUDIENCES = ["adult", "kids"] as const;
 
 function applyKindFilter(
@@ -52,7 +52,9 @@ export function CategoryDetailView({ id }: { id: string }) {
   const kindParam = searchParams.get("kind");
   const audienceParam = searchParams.get("audience");
   const leagueParam = searchParams.get("league");
-  const forcedKind = VALID_KINDS.includes(kindParam as ProductCollectionKind)
+  const forcedKind = PRODUCT_COLLECTION_KINDS.includes(
+    kindParam as ProductCollectionKind,
+  )
     ? (kindParam as ProductCollectionKind)
     : null;
   const audience = VALID_AUDIENCES.includes(
@@ -83,20 +85,25 @@ export function CategoryDetailView({ id }: { id: string }) {
   const collectionKind =
     forcedKind ??
     (category
-      ? category.id === catalogNav.shorts.categoryId ||
-          category.id === catalogNav.categories.kidsShortsCategoryId
-        ? "short"
-        : category.id === catalogNav.maillots.categoryId ||
-            category.id === catalogNav.categories.kidsMaillotsCategoryId
-          ? "jersey"
-          : collectionKindFromCategory(
-              category.name,
-              category.id,
-              catalogNav.categories.maillotsCategoryId,
-              catalogNav.categories.shortsCategoryId,
-              catalogNav.categories.kidsMaillotsCategoryId,
-              catalogNav.categories.kidsShortsCategoryId,
-            )
+      ? category.id === catalogNav.jackets.categoryId ||
+          category.id === catalogNav.categories.kidsJacketsCategoryId
+        ? "jacket"
+        : category.id === catalogNav.shorts.categoryId ||
+            category.id === catalogNav.categories.kidsShortsCategoryId
+          ? "short"
+          : category.id === catalogNav.maillots.categoryId ||
+              category.id === catalogNav.categories.kidsMaillotsCategoryId
+            ? "jersey"
+            : collectionKindFromCategory(
+                category.name,
+                category.id,
+                catalogNav.categories.maillotsCategoryId,
+                catalogNav.categories.shortsCategoryId,
+                catalogNav.categories.kidsMaillotsCategoryId,
+                catalogNav.categories.kidsShortsCategoryId,
+                catalogNav.categories.jacketsCategoryId,
+                catalogNav.categories.kidsJacketsCategoryId,
+              )
       : null);
 
   const baseProducts = useMemo(() => {
@@ -120,6 +127,9 @@ export function CategoryDetailView({ id }: { id: string }) {
 
     if (collectionKind === "short") {
       return "Shorts";
+    }
+    if (collectionKind === "jacket") {
+      return "Vestes";
     }
     if (collectionKind === "jersey") {
       return "Maillots";
@@ -164,23 +174,34 @@ export function CategoryDetailView({ id }: { id: string }) {
   const emptyTitle =
     collectionKind === "short"
       ? "Aucun short pour le moment"
-      : collectionKind === "jersey"
-        ? "Aucun maillot pour le moment"
-        : "Aucun produit dans cette catégorie";
+      : collectionKind === "jacket"
+        ? "Aucune veste pour le moment"
+        : collectionKind === "jersey"
+          ? "Aucun maillot pour le moment"
+          : "Aucun produit dans cette catégorie";
+
+  const backHref =
+    collectionKind === "short"
+      ? catalogNav.shorts.href
+      : collectionKind === "jacket"
+        ? catalogNav.jackets.href
+        : routes.catalogHub({ kind: "jersey" });
+  const backLabel =
+    collectionKind === "short"
+      ? "Retour aux shorts"
+      : collectionKind === "jacket"
+        ? "Retour aux vestes"
+        : "Changer de division";
 
   return (
     <Container className="py-8 sm:py-12 lg:py-16">
       <Reveal>
         <header className="mb-6 max-w-2xl sm:mb-10 lg:mb-12">
         <Link
-          href={
-            collectionKind === "short"
-              ? catalogNav.shorts.href
-              : routes.catalogHub({ kind: "jersey" })
-          }
+          href={backHref}
           className="mb-4 inline-flex items-center gap-1 text-xs font-medium text-ink/45 transition-colors hover:text-ink sm:mb-6"
         >
-          ← {collectionKind === "short" ? "Retour aux shorts" : "Changer de division"}
+          ← {backLabel}
         </Link>
         <p className="eyebrow mb-2 sm:mb-3">Collection</p>
         <h1 className="display-2 text-[clamp(1.65rem,5.5vw,4rem)] leading-[1]">
@@ -198,11 +219,12 @@ export function CategoryDetailView({ id }: { id: string }) {
           description="Les produits correspondants apparaîtront ici dès publication."
           action={{
             label:
-              collectionKind === "short" ? "Voir les shorts" : "Changer de division",
-            href:
               collectionKind === "short"
-                ? catalogNav.shorts.href
-                : routes.catalogHub({ kind: "jersey" }),
+                ? "Voir les shorts"
+                : collectionKind === "jacket"
+                  ? "Voir les vestes"
+                  : "Changer de division",
+            href: backHref,
           }}
         />
       ) : (

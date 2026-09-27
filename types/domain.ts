@@ -175,6 +175,6 @@ export interface ProductQuery {
   page?: number;
   limit?: number;
   sort?: SortOption;
-  /** Filtre maillots / shorts par nom produit. */
-  kind?: "jersey" | "short";
+  /** Filtre maillots / shorts / vestes par nom produit. */
+  kind?: "jersey" | "short" | "jacket";
 }

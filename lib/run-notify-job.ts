@@ -49,6 +49,15 @@ function shortsCategoryIdsFromNav(
   );
 }
 
+function jacketsCategoryIdsFromNav(
+  categories: Awaited<ReturnType<typeof prestashop.getCategories>>,
+): Set<string> {
+  const nav = resolveCatalogNavCategories(categories);
+  return new Set(
+    [nav.jacketsCategoryId, nav.kidsJacketsCategoryId].filter(Boolean),
+  );
+}
+
 function wasNotified(productId: string, previous: ProductSnapshot): boolean {
   return (previous.notifiedProductIds ?? []).includes(productId);
 }
@@ -70,8 +79,11 @@ function shouldNotifyProduct(
   product: Product,
   previous: ProductSnapshot,
   shortsCategoryIds: ReadonlySet<string>,
+  jacketsCategoryIds: ReadonlySet<string> = new Set(),
 ): boolean {
-  if (!isNotifiableProduct(product, shortsCategoryIds)) return false;
+  if (!isNotifiableProduct(product, shortsCategoryIds, jacketsCategoryIds)) {
+    return false;
+  }
   if (wasNotified(product.id, previous)) return false;
   if (!previous.items[product.id]) return true;
   return isCreatedAfterSnapshot(product, previous);
@@ -107,6 +119,7 @@ async function runNotifyJobInner() {
   ]);
   const products = result.items;
   const shortsCategoryIds = shortsCategoryIdsFromNav(categories);
+  const jacketsCategoryIds = jacketsCategoryIdsFromNav(categories);
 
   const raw = await readSnapshot();
   const previous = repairNotifySnapshot(raw);
@@ -119,8 +132,11 @@ async function runNotifyJobInner() {
   const isBootstrap = !isSnapshotBootstrapped(previous);
 
   const newArrivals = filterNotifiableProducts(
-    products.filter((product) => shouldNotifyProduct(product, previous, shortsCategoryIds)),
+    products.filter((product) =>
+      shouldNotifyProduct(product, previous, shortsCategoryIds, jacketsCategoryIds),
+    ),
     shortsCategoryIds,
+    jacketsCategoryIds,
   );
   const backInStock = filterNotifiableProducts(
     products.filter(
@@ -130,6 +146,7 @@ async function runNotifyJobInner() {
         product.inStock,
     ),
     shortsCategoryIds,
+    jacketsCategoryIds,
   );
   const wentOutOfStock = filterNotifiableProducts(
     products.filter(
@@ -139,6 +156,7 @@ async function runNotifyJobInner() {
         !product.inStock,
     ),
     shortsCategoryIds,
+    jacketsCategoryIds,
   );
 
   const snapshot: ProductSnapshot = {

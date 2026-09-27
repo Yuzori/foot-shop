@@ -15,6 +15,7 @@ const COLOR_RE =
 const SIZE_RE = /\b(XXS|XS|S|M|L|XL|XXL|XXXL|2XL|3XL|\d{2,3})\b/g;
 
 const SHORT_RE = /\b(short|shorts|pantalon|pant)\b/i;
+const JACKET_RE = /\b(veste|vestes|jacket|jackets|hoodie|hoodies|sweat)\b/i;
 
 /** Titre produit : maillot enfant, junior, kids, ensemble, etc. */
 const KIDS_TITLE_RE =
@@ -25,7 +26,7 @@ const KIDS_DESC_RE =
   /\b(maillot|kit|short)\s+(pour\s+)?enfants?\b|\bversion\s+enfant\b|\btaille\s+enfant\b|\b\d+\s*[-–]\s*\d+\s*ans\b|\b(enfant|junior|kids?|youth)\s*:\s*\d/i;
 
 /** Nom déjà formaté par formatProductName (« Maillot Enfant … »). */
-const FORMATTED_KIDS_RE = /^(maillot|short)\s+enfant\b/i;
+const FORMATTED_KIDS_RE = /^(maillot|short|veste)\s+enfant\b/i;
 
 export type ProductAudience = "adult" | "kids";
 
@@ -71,7 +72,9 @@ export function detectAudience(text: string): ProductAudience {
 export function detectProductCollectionKind(
   text: string,
 ): import("@/lib/product-collection").ProductCollectionKind {
-  return SHORT_RE.test(text) ? "short" : "jersey";
+  if (JACKET_RE.test(text)) return "jacket";
+  if (SHORT_RE.test(text)) return "short";
+  return "jersey";
 }
 
 /** Alias anglais / abréviations → nom français affiché. */
@@ -328,8 +331,10 @@ function detectKitType(text: string): string {
   return kitTypeToFrenchLabel(detectKitTypeFromName(text) ?? "domicile");
 }
 
-function detectProductType(text: string): "Maillot" | "Short" {
-  return SHORT_RE.test(text) ? "Short" : "Maillot";
+function detectProductType(text: string): "Maillot" | "Short" | "Veste" {
+  if (JACKET_RE.test(text)) return "Veste";
+  if (SHORT_RE.test(text)) return "Short";
+  return "Maillot";
 }
 
 function cleanTitle(raw: string): string {
@@ -405,7 +410,7 @@ export function formatProductName(rawTitle: string, sourceUrl = ""): string {
 
   const audience = detectAudienceFromProduct(title, "");
   const productType = detectProductType(`${title} ${sourceUrl}`);
-  const kitType = detectKitType(title);
+  const kitType = productType === "Veste" ? null : detectKitType(title);
   const seasonCompact =
     detectSeasonCompact(title) ??
     detectSeasonCompact(sourceUrl) ??
@@ -418,7 +423,8 @@ export function formatProductName(rawTitle: string, sourceUrl = ""): string {
     "Équipe";
 
   const audienceTag = audience === "kids" ? "Enfant " : "";
-  const parts = [`${productType} ${audienceTag}${team}`.trim(), kitType];
+  const parts = [`${productType} ${audienceTag}${team}`.trim()];
+  if (kitType) parts.push(kitType);
   if (seasonCompact) parts.push(seasonCompact);
   return parts.join(" ").replace(/\s+/g, " ").trim();
 }

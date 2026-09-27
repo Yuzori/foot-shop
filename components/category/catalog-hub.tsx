@@ -8,6 +8,7 @@ import { useEffect, useMemo } from "react";
 import { LeagueIcon } from "@/components/layout/league-icon";
 import { Container } from "@/components/ui/container";
 import {
+  buildJacketsCatalogHref,
   buildJerseyLeagueHref,
   buildShortsCatalogHref,
   type CatalogKind,
@@ -16,7 +17,7 @@ import { routes } from "@/config/site";
 import { useCatalogNav } from "@/hooks/use-catalog-nav";
 import { cn } from "@/lib/utils";
 
-const VALID_KINDS: CatalogKind[] = ["jersey", "short"];
+const VALID_KINDS: CatalogKind[] = ["jersey", "short", "jacket"];
 const ease = [0.16, 1, 0.3, 1] as const;
 
 const kindOptions: {
@@ -26,6 +27,7 @@ const kindOptions: {
 }[] = [
   { id: "jersey", label: "Maillots", hint: "Par championnat" },
   { id: "short", label: "Shorts", hint: "Toute la collection" },
+  { id: "jacket", label: "Vestes", hint: "Toute la collection" },
 ];
 
 function StepProgress({ current }: { current: "kind" | "divisions" }) {
@@ -85,20 +87,36 @@ export function CatalogHub() {
 
   const step = useMemo(() => {
     if (!kind) return "kind" as const;
-    if (kind === "short") return "redirecting" as const;
+    if (kind === "short" || kind === "jacket") return "redirecting" as const;
     return "divisions" as const;
   }, [kind]);
 
-  const kindLabel = kind === "jersey" ? "Maillots" : kind === "short" ? "Shorts" : "";
+  const kindLabel =
+    kind === "jersey"
+      ? "Maillots"
+      : kind === "short"
+        ? "Shorts"
+        : kind === "jacket"
+          ? "Vestes"
+          : "";
 
   useEffect(() => {
-    if (kind !== "short") return;
-    router.replace(buildShortsCatalogHref(catalogNav.categories));
+    if (kind === "short") {
+      router.replace(buildShortsCatalogHref(catalogNav.categories));
+      return;
+    }
+    if (kind === "jacket") {
+      router.replace(buildJacketsCatalogHref(catalogNav.categories));
+    }
   }, [catalogNav.categories, kind, router]);
 
   function goKind(next: CatalogKind) {
     if (next === "short") {
       router.push(buildShortsCatalogHref(catalogNav.categories));
+      return;
+    }
+    if (next === "jacket") {
+      router.push(buildJacketsCatalogHref(catalogNav.categories));
       return;
     }
     router.push(routes.catalogHub({ kind: next }));
@@ -122,10 +140,10 @@ export function CatalogHub() {
               <p className="eyebrow text-accent">Étape 1</p>
               <h1 className="display-2 mt-3">Que voulez-vous voir ?</h1>
               <p className="mx-auto mt-3 max-w-md text-sm text-ink/55">
-                Maillots par division, ou tous les shorts en un clic.
+                Maillots par division, ou tous les shorts et vestes en un clic.
               </p>
 
-              <div className="mt-8 grid grid-cols-2 gap-3">
+              <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
                 {kindOptions.map((option) => (
                   <button
                     key={option.id}
@@ -156,7 +174,7 @@ export function CatalogHub() {
               animate={{ opacity: 1 }}
               className="py-16 text-center text-sm text-ink/50"
             >
-              Chargement des shorts…
+              Chargement des {kindLabel.toLowerCase()}…
             </motion.div>
           ) : null}
 

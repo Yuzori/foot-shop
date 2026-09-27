@@ -11,7 +11,7 @@ import {
   getDivisionForCategoryId,
 } from "@/lib/catalog-divisions";
 
-export type CatalogKind = "jersey" | "short";
+export type CatalogKind = "jersey" | "short" | "jacket";
 export type CatalogAudience = "adult" | "kids";
 
 export interface CatalogLeague {
@@ -31,8 +31,10 @@ export interface CatalogLeague {
 export interface CatalogNavCategories {
   maillotsCategoryId: string;
   shortsCategoryId: string;
+  jacketsCategoryId: string;
   kidsMaillotsCategoryId: string;
   kidsShortsCategoryId: string;
+  kidsJacketsCategoryId: string;
 }
 
 export const DEFAULT_CATALOG_AUDIENCE: CatalogAudience = "adult";
@@ -44,6 +46,11 @@ export const catalogAudiences: { id: CatalogAudience; label: string }[] = [
 /** Lien direct vers tous les shorts adultes. */
 export function buildShortsCatalogHref(categories: CatalogNavCategories): string {
   return buildAudienceCatalogHref("short", DEFAULT_CATALOG_AUDIENCE, categories);
+}
+
+/** Lien direct vers toutes les vestes adultes. */
+export function buildJacketsCatalogHref(categories: CatalogNavCategories): string {
+  return buildAudienceCatalogHref("jacket", DEFAULT_CATALOG_AUDIENCE, categories);
 }
 
 /** Lien division maillot (adulte uniquement). */
@@ -237,11 +244,15 @@ export function buildCatalogHref(
   const adultBase =
     kind === "jersey"
       ? categories.maillotsCategoryId
-      : categories.shortsCategoryId;
+      : kind === "short"
+        ? categories.shortsCategoryId
+        : categories.jacketsCategoryId;
   const kidsBase =
     kind === "jersey"
       ? categories.kidsMaillotsCategoryId
-      : categories.kidsShortsCategoryId;
+      : kind === "short"
+        ? categories.kidsShortsCategoryId
+        : categories.kidsJacketsCategoryId;
 
   const params = new URLSearchParams();
   params.set("kind", kind);
@@ -292,7 +303,7 @@ export function buildCatalogHref(
   return `${base}?${params.toString()}`;
 }
 
-/** Lien direct vers tous les shorts (ou maillots) adulte/enfant, toutes divisions. */
+/** Lien direct vers tous les shorts / vestes / maillots adulte/enfant. */
 export function buildAudienceCatalogHref(
   kind: CatalogKind,
   audience: CatalogAudience,
@@ -306,10 +317,14 @@ export function buildAudienceCatalogHref(
     audience === "kids"
       ? kind === "jersey"
         ? categories.kidsMaillotsCategoryId
-        : categories.kidsShortsCategoryId
+        : kind === "short"
+          ? categories.kidsShortsCategoryId
+          : categories.kidsJacketsCategoryId
       : kind === "jersey"
         ? categories.maillotsCategoryId
-        : categories.shortsCategoryId;
+        : kind === "short"
+          ? categories.shortsCategoryId
+          : categories.jacketsCategoryId;
 
   if (categoryId) {
     return `${routes.category(categoryId)}?${params.toString()}`;

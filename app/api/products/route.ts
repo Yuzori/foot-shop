@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { isAdminAuthorized } from "@/lib/admin-auth";
 
-import { filterProductsByKind, type ProductCollectionKind } from "@/lib/product-collection";
+import { filterProductsByKind, PRODUCT_COLLECTION_KINDS, type ProductCollectionKind } from "@/lib/product-collection";
 import { maybeProcessStockAlerts } from "@/lib/stock-notify";
 import { maybeRunCatalogNotifications } from "@/lib/catalog-notify";
 
@@ -10,34 +10,17 @@ import { prestashop } from "@/services/prestashop";
 
 import type { SortOption } from "@/types/domain";
 
-
-
 const SORTS: SortOption[] = [
-
   "relevance",
-
   "newest",
-
   "price-asc",
-
   "price-desc",
-
   "name-asc",
-
 ];
 
-
-
-const KINDS: ProductCollectionKind[] = ["jersey", "short"];
-
-
-
 export async function GET(request: Request) {
-
   try {
   const { searchParams } = new URL(request.url);
-
-
 
   const sortParam = searchParams.get("sort");
 
@@ -45,14 +28,10 @@ export async function GET(request: Request) {
     ? (sortParam as SortOption)
     : "newest";
 
-
-
   const kindParam = searchParams.get("kind");
 
-  const kind = KINDS.includes(kindParam as ProductCollectionKind)
-
+  const kind = PRODUCT_COLLECTION_KINDS.includes(kindParam as ProductCollectionKind)
     ? (kindParam as ProductCollectionKind)
-
     : undefined;
 
 

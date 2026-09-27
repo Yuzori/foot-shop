@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AdminCategoryPicker } from "@/components/admin/admin-category-picker";
+import {
+  applyCollectionKindToName,
+  CollectionKindPicker,
+} from "@/components/admin/collection-kind-picker";
 import { ImportLinkAlerts } from "@/components/admin/import-link-alerts";
 import { ManualQuickImportPanel } from "@/components/admin/manual-quick-import-panel";
 import { PushFailuresAlert } from "@/components/admin/push-failures-alert";
@@ -14,14 +18,21 @@ import {
   flattenAdminCategoryOptGroups,
   type AdminCategoryOptGroup,
 } from "@/lib/admin/import-category-tree";
-import type { ProductCollectionKind } from "@/lib/product-collection";
+import {
+  collectionKindLabel,
+  type ProductCollectionKind,
+} from "@/lib/product-collection";
 import { autoSelectJerseyImageUrls } from "@/lib/jersey-studio/auto-select-images";
 import {
   readAutoSelectImagesPreference,
   writeAutoSelectImagesPreference,
 } from "@/lib/jersey-studio/auto-select-preference";
 import { parseSourceUrls } from "@/lib/product-import/parse-urls";
-import { detectProductCollectionKind } from "@/lib/product-import/format-product-name";
+import {
+  detectAudience,
+  detectProductCollectionKind,
+} from "@/lib/product-import/format-product-name";
+import { suggestImportCategory } from "@/lib/product-import/suggest-import-category";
 import {
   loadQuickImportDraft,
   saveQuickImportDraft,
@@ -279,6 +290,7 @@ export function QuickImportSection({
   const [categoryOptGroups, setCategoryOptGroups] = useState<AdminCategoryOptGroup[]>(
     [],
   );
+  const [rawCategories, setRawCategories] = useState<CategoryOption[]>([]);
   const [products, setProducts] = useState<QuickProduct[]>(
     (saved?.products as QuickProduct[]) ?? [],
   );
@@ -389,6 +401,7 @@ export function QuickImportSection({
         const optGroups =
           data.categoryGroups ?? buildAdminCategoryOptGroups(data.categories ?? []);
         setCategoryOptGroups(optGroups);
+        setRawCategories(data.categories ?? []);
         const flat = flattenAdminCategoryOptGroups(optGroups);
         const configured = data.defaultCategoryId ?? "";
         const pick =
@@ -411,6 +424,30 @@ export function QuickImportSection({
 
   function updateProduct(id: string, patch: Partial<QuickProduct>) {
     setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+  }
+
+  function setProductCollectionKind(
+    product: QuickProduct,
+    kind: ProductCollectionKind,
+  ) {
+    const name = applyCollectionKindToName(product.name, kind);
+    const suggestion = suggestImportCategory({
+      title: name,
+      sourceUrl: product.sourceUrl,
+      audience: detectAudience(name),
+      kind,
+      categories: rawCategories,
+      optGroups: categoryOptGroups,
+    });
+    updateProduct(product.id, {
+      collectionKind: kind,
+      name,
+      categoryId: suggestion?.categoryId || product.categoryId,
+      suggestedCategoryId: suggestion?.categoryId ?? null,
+      suggestedCategoryLabel: suggestion?.label ?? null,
+      suggestedCategoryReason: suggestion?.reason ?? null,
+      pushResult: null,
+    });
   }
 
   async function scrapeBatch() {
@@ -939,6 +976,16 @@ export function QuickImportSection({
                   value={product.name}
                   onChange={(e) => updateProduct(product.id, { name: e.target.value })}
                   className="min-w-0 flex-1 rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm font-medium"
+                />
+              </div>
+              <div className="mt-2">
+                <p className="mb-1 text-[11px] font-medium text-ink/45">
+                  Type · {collectionKindLabel(product.collectionKind)}
+                </p>
+                <CollectionKindPicker
+                  value={product.collectionKind}
+                  disabled={busy}
+                  onChange={(kind) => setProductCollectionKind(product, kind)}
                 />
               </div>
               {product.sourceUrl ? (

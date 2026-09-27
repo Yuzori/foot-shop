@@ -53,8 +53,10 @@ export async function GET(
     [
       nav.maillotsCategoryId,
       nav.shortsCategoryId,
+      nav.jacketsCategoryId,
       nav.kidsMaillotsCategoryId,
       nav.kidsShortsCategoryId,
+      nav.kidsJacketsCategoryId,
     ].filter(Boolean),
   );
 
@@ -76,9 +78,15 @@ export async function GET(
       const kidsBase =
         kindParam === "short"
           ? nav.kidsShortsCategoryId
-          : nav.kidsMaillotsCategoryId;
+          : kindParam === "jacket"
+            ? nav.kidsJacketsCategoryId
+            : nav.kidsMaillotsCategoryId;
       const adultBase =
-        kindParam === "short" ? nav.shortsCategoryId : nav.maillotsCategoryId;
+        kindParam === "short"
+          ? nav.shortsCategoryId
+          : kindParam === "jacket"
+            ? nav.jacketsCategoryId
+            : nav.maillotsCategoryId;
 
       const divisionCategoryId =
         audienceParam === "kids"

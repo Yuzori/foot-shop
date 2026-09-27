@@ -20,7 +20,7 @@ export function useCategory(
   id: string,
   options?: {
     audience?: "kids" | "adult" | null;
-    kind?: "jersey" | "short" | null;
+    kind?: "jersey" | "short" | "jacket" | null;
     league?: string | null;
     sort?: SortOption;
   },

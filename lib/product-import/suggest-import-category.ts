@@ -68,6 +68,27 @@ function resolveKidsShortsBaseId(categories: readonly CategoryRow[]): string {
   );
 }
 
+function resolveJacketsBaseId(categories: readonly CategoryRow[]): string {
+  const configured = catalogConfig.jackets.categoryId.trim();
+  if (configured) return configured;
+  return findCategoryIdByMatcher(
+    categories,
+    (name) =>
+      /\b(vestes?|jackets?|hoodies?)\b/i.test(name) && !/\benfant\b/i.test(name),
+  );
+}
+
+function resolveKidsJacketsBaseId(categories: readonly CategoryRow[]): string {
+  const configured = catalogConfig.kidsJackets.categoryId.trim();
+  if (configured) return configured;
+  return findCategoryIdByMatcher(
+    categories,
+    (name) =>
+      /\b(veste|vestes|jacket|jackets|hoodie|sweat)\b/i.test(name) &&
+      /\b(enfant|kids?|junior)\b/i.test(name),
+  );
+}
+
 function formatCategoryLabel(
   categoryId: string,
   categories: readonly CategoryRow[],
@@ -101,6 +122,20 @@ export function suggestImportCategory(params: {
   optGroups?: readonly AdminCategoryOptGroup[];
 }): ImportCategorySuggestion | null {
   const { title, sourceUrl, audience, kind, categories, optGroups } = params;
+
+  /** Vestes : catégorie plate (comme shorts), pas de divisions ligues. */
+  if (kind === "jacket") {
+    const baseId =
+      audience === "kids"
+        ? resolveKidsJacketsBaseId(categories) || resolveJacketsBaseId(categories)
+        : resolveJacketsBaseId(categories);
+    if (!baseId) return null;
+    return {
+      categoryId: baseId,
+      label: formatCategoryLabel(baseId, categories, optGroups),
+      reason: audience === "kids" ? "Veste enfant" : "Vestes",
+    };
+  }
 
   const signal = detectImportCategorySignal(title, sourceUrl ?? "");
   if (signal?.type === "extra") {

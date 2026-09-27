@@ -90,7 +90,7 @@ export const api = {
     id: string,
     options?: {
       audience?: "kids" | "adult";
-      kind?: "jersey" | "short";
+      kind?: "jersey" | "short" | "jacket";
       league?: string;
       sort?: ProductQuery["sort"];
     },

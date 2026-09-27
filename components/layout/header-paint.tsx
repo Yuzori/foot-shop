@@ -104,6 +104,19 @@ export function HeaderPaint() {
             >
               {catalogNav.shorts.label}
             </Link>
+            <Link
+              href={catalogNav.jackets.href}
+              prefetch={false}
+              className={cn(
+                "header-paint-nav-link",
+                ((Boolean(catalogNav.jackets.categoryId) &&
+                  pathname.includes(`/categories/${catalogNav.jackets.categoryId}`)) ||
+                  pathname.includes("kind=jacket")) &&
+                  "header-paint-nav-link--active",
+              )}
+            >
+              {catalogNav.jackets.label}
+            </Link>
             {primaryNav.map((link) => (
               <Link
                 key={link.href}

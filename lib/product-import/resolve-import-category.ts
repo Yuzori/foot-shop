@@ -30,20 +30,23 @@ const EXTRA_LEAGUE_TO_KEY: Partial<Record<string, ImportKidsExtraCategoryKey>> =
 let kidsCategoryCache: {
   maillots: string;
   shorts: string;
+  jackets: string;
 } | null = null;
 
 async function loadKidsCategoryIds(): Promise<{
   maillots: string;
   shorts: string;
+  jackets: string;
 }> {
   if (kidsCategoryCache) return kidsCategoryCache;
 
   const fromEnv = {
     maillots: catalogConfig.kidsMaillots.categoryId,
     shorts: catalogConfig.kidsShorts.categoryId,
+    jackets: catalogConfig.kidsJackets.categoryId,
   };
 
-  if (fromEnv.maillots && fromEnv.shorts) {
+  if (fromEnv.maillots && fromEnv.shorts && fromEnv.jackets) {
     kidsCategoryCache = fromEnv;
     return fromEnv;
   }
@@ -57,8 +60,17 @@ async function loadKidsCategoryIds(): Promise<{
     findCategoryIdByMatcher(categories, matchKidsShortsCategory, maillots
       ? [maillots]
       : []);
+  const jackets =
+    fromEnv.jackets ||
+    findCategoryIdByMatcher(
+      categories,
+      (name) =>
+        /\b(veste|vestes|jacket|jackets|hoodie|sweat)\b/i.test(name) &&
+        /\b(enfant|kids?|junior)\b/i.test(name),
+      [maillots, shorts].filter(Boolean),
+    );
 
-  kidsCategoryCache = { maillots, shorts };
+  kidsCategoryCache = { maillots, shorts, jackets };
   return kidsCategoryCache;
 }
 
@@ -102,17 +114,32 @@ export async function resolveImportCategoryForProduct(
   divisionCategoryId: string | number,
   productName?: string,
 ): Promise<string> {
+  if (kind === "jacket" && audience !== "kids") {
+    return normalizeCategoryId(divisionCategoryId);
+  }
+
   if (audience !== "kids") return normalizeCategoryId(divisionCategoryId);
 
   const categories = await prestashop.getCategories();
   const kids = await loadKidsCategoryIds();
-  const kidsBaseId = kind === "short" ? kids.shorts : kids.maillots;
+  const kidsBaseId =
+    kind === "short"
+      ? kids.shorts
+      : kind === "jacket"
+        ? kids.jackets
+        : kids.maillots;
   const kidsShortsBaseId = kids.shorts;
 
   if (!kidsBaseId) {
     throw new Error(
-      `Produit enfant détecté mais catégorie « ${kind === "short" ? catalogConfig.kidsShorts.label : catalogConfig.kidsMaillots.label} » introuvable dans PrestaShop. ` +
-        "Créez-la ou renseignez NEXT_PUBLIC_ENFANT_MAILLOTS_CATEGORY_ID / NEXT_PUBLIC_ENFANT_SHORTS_CATEGORY_ID.",
+      `Produit enfant détecté mais catégorie « ${
+        kind === "short"
+          ? catalogConfig.kidsShorts.label
+          : kind === "jacket"
+            ? catalogConfig.kidsJackets.label
+            : catalogConfig.kidsMaillots.label
+      } » introuvable dans PrestaShop. ` +
+        "Créez-la ou renseignez les IDs NEXT_PUBLIC_ENFANT_*_CATEGORY_ID.",
     );
   }
 

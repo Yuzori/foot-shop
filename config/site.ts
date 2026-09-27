@@ -10,7 +10,7 @@ export const routes = {
   category: (id: number | string) => `/categories/${id}`,
   /** Hub de navigation : audience → divisions. */
   catalogHub: (options?: {
-    kind?: "jersey" | "short";
+    kind?: "jersey" | "short" | "jacket";
     audience?: "adult" | "kids";
   }) => {
     const params = new URLSearchParams();
@@ -57,6 +57,7 @@ export const footerNav: { title: string; links: NavLink[] }[] = [
     links: [
       { label: "Maillots", href: `${routes.catalogue}?kind=jersey` },
       { label: "Shorts", href: `${routes.catalogue}?kind=short` },
+      { label: "Vestes", href: `${routes.catalogue}?kind=jacket` },
       { label: "Collections", href: routes.categories },
       { label: "Nouveautés", href: `${routes.catalogue}?sort=newest` },
       { label: "Favoris", href: routes.favorites },
